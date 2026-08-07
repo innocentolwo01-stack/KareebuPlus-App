@@ -1,0 +1,45 @@
+export const assets = {
+  mark: require('../assets/kareebu-plus/kareebu-plus-mark.png'),
+  wordmark: require('../assets/kareebu-plus/kareebu-plus-wordmark.png'),
+  promoVisual: require('../assets/kareebu-plus/kareebu-black-visual.png'),
+  ribbons: require('../assets/karibu/splash-ribbons.png'),
+  flag: require('../assets/karibu/uganda-flag.png'),
+  welcomeHero: require('../assets/karibu/premium/welcome-hero-premium.png'),
+  service: {
+    rides: require('../assets/karibu/premium/rides.png'),
+    boda: require('../assets/karibu/premium/boda.png'),
+    food: require('../assets/karibu/premium/food.png'),
+    shops: require('../assets/karibu/premium/shops.png'),
+    send: require('../assets/karibu/premium/send.png'),
+    groceries: require('../assets/karibu/premium/groceries.png'),
+    pay: require('../assets/karibu/premium/pay.png'),
+    all: require('../assets/karibu/premium/all.png'),
+  },
+  maps: {
+    where: require('../assets/karibu/premium/where-map-premium.png'),
+    driver: require('../assets/karibu/maps/driver.png'),
+    onTrip: require('../assets/karibu/maps/on-trip.png'),
+  },
+  food: {
+    promo: require('../assets/karibu/food/promo.png'),
+    cafeJavas: require('../assets/karibu/food/cafe-javas.png'),
+    chickenTonight: require('../assets/karibu/food/chicken-tonight.png'),
+    tamaraThai: require('../assets/karibu/food/tamara-thai.png'),
+  },
+  shops: {
+    promo: require('../assets/karibu/shops/promo.png'),
+    jumia: require('../assets/karibu/shops/jumia.png'),
+    carrefour: require('../assets/karibu/shops/carrefour.png'),
+    game: require('../assets/karibu/shops/game.png'),
+    pharmacy: require('../assets/karibu/shops/pharmacy.png'),
+  },
+  payment: {
+    mtn: require('../assets/karibu/payment/mtn.png'),
+    airtel: require('../assets/karibu/payment/airtel.png'),
+    visa: require('../assets/karibu/payment/visa.png'),
+  },
+  avatars: {
+    driver: require('../assets/karibu/avatars/driver.png'),
+    account: require('../assets/karibu/premium/account-avatar-premium.png'),
+  },
+};
