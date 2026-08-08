@@ -8,7 +8,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "validate": "node scripts/validate.mjs"
+    "validate": "node scripts/validate.mjs",
+    "validate:food": "node scripts/validate-food-parity.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",

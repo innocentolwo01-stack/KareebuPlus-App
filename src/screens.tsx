@@ -46,6 +46,8 @@ import { COLORS, FONT, SHADOW, TYPE } from './theme';
 import { dialCodeFor, formatMoney, localeProfile, primaryMobileMoneyFor, secondaryMobileMoneyFor } from './locale';
 import { DEMO_PROMOTIONS, DEMO_RESTAURANTS, DEMO_SHOPS, HOME_REAL_BRANDS, HOME_RETAIL_PROMOTIONS, DemoMenuItem, DemoRestaurant, DemoShop, HomeRealBrand, HomeRetailPromotion, demoDirections } from './demoData';
 import { askKareebuAssistant, KareebuAssistantAction, KareebuAssistantRecommendation } from './ai/kareebuAssistant';
+import { FoodItemDetailsView, FoodCheckoutView, FoodOrderSuccessView, cartLineDescription, calculateFoodCartSubtotal } from './food/screens';
+import type { FoodCartLine, FoodCheckoutDraft, FoodOrder } from './food/types';
 
 export type AppData = {
   guest: boolean;
@@ -70,6 +72,10 @@ export type AppData = {
   rating: number;
   tip: number;
   selectedRestaurantId: string;
+  selectedFoodItemId: string | null;
+  foodCartLines: FoodCartLine[];
+  foodCheckout: FoodCheckoutDraft;
+  lastFoodOrder: FoodOrder | null;
   selectedShopId: string;
   shopCategoryPreset: string;
   cartQuantities: Record<string, number>;
@@ -101,6 +107,12 @@ export type AppActions = {
   setRating: (value: number) => void;
   setTip: (value: number) => void;
   selectRestaurant: (restaurantId: string) => void;
+  selectFoodItem: (itemId: string | null) => void;
+  addFoodCartLine: (line: FoodCartLine) => void;
+  setFoodCartLineQuantity: (lineId: string, quantity: number) => void;
+  removeFoodCartLine: (lineId: string) => void;
+  updateFoodCheckout: (patch: Partial<FoodCheckoutDraft>) => void;
+  placeFoodOrder: (order: FoodOrder) => void;
   selectShop: (shopId: string) => void;
   setShopCategoryPreset: (category: string) => void;
   setCartItemQuantity: (itemId: string, quantity: number) => void;
@@ -2745,6 +2757,10 @@ export function FoodScreen({ data, actions }: { data: AppData; actions: AppActio
   const categories = ['Burgers','Chicken','Grills','Pizza','Local dishes','Desserts'] as const;
   const featuredIds = ['java-house','pizza-inn','chicken-tonight','cafe-javas','roast-rhyme','smokery'];
   const featured = featuredIds.map((id)=>DEMO_RESTAURANTS.find((restaurant)=>restaurant.id===id)).filter((restaurant): restaurant is DemoRestaurant=>Boolean(restaurant));
+  const menuEntries = useMemo(() => DEMO_RESTAURANTS.flatMap((restaurant) => restaurant.menu.slice(0, 4).map((item) => ({ restaurant, item }))), []);
+  const popularEntries = menuEntries.filter(({ item }) => item.popular).slice(0, 8);
+  const trendingEntries = menuEntries.filter(({ item }) => Boolean(item.badge) || item.popular).slice(0, 8);
+  const quickDelivery = [...DEMO_RESTAURANTS].sort((a,b)=>Number(a.eta.split('–')[0])-Number(b.eta.split('–')[0])).slice(0,6);
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
     const rows = DEMO_RESTAURANTS.filter((restaurant) => {
@@ -2759,22 +2775,42 @@ export function FoodScreen({ data, actions }: { data: AppData; actions: AppActio
     return rows;
   }, [query, activeCategory, activeFilter, sortMode]);
   const openRestaurant = (restaurant: DemoRestaurant) => { actions.selectRestaurant(restaurant.id); actions.go('restaurant'); };
-  const cartCount = Object.values(data.cartQuantities).reduce((sum, quantity) => sum + quantity, 0);
+  const openFoodItem = (restaurant: DemoRestaurant, item: DemoMenuItem) => { actions.selectRestaurant(restaurant.id); actions.selectFoodItem(item.id); actions.go('foodItem'); };
+  const cartCount = data.foodCartLines.reduce((sum, line) => sum + line.quantity, 0);
   return (
     <ScreenShell>
       <ScrollView style={styles.flex} contentContainerStyle={styles.v40CommerceScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <CommerceHeader title="Food" location={data.deliveryPlace?.name || data.city} cart cartCount={cartCount} go={actions.go} onLocation={() => { actions.setLocationReturn('food'); actions.go('locationPicker'); }} />
-        <View style={styles.v40CommerceSearch}><Feather name="search" size={21} color={COLORS.black}/><TextInput value={query} onChangeText={setQuery} placeholder="Search for pizza, burgers or restaurants" placeholderTextColor={COLORS.mutedLight} style={styles.v40CommerceSearchInput}/>{query?<Pressable onPress={()=>setQuery('')}><Ionicons name="close-circle" size={20} color={COLORS.muted}/></Pressable>:null}</View>
+        <View style={styles.v40CommerceSearch}><Feather name="search" size={21} color={COLORS.black}/><TextInput value={query} onChangeText={setQuery} placeholder="Search dishes or restaurants" placeholderTextColor={COLORS.mutedLight} style={styles.v40CommerceSearchInput}/>{query?<Pressable onPress={()=>setQuery('')}><Ionicons name="close-circle" size={20} color={COLORS.muted}/></Pressable>:null}</View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FoodPromoRow}><V40FoodPromoCard kind="exclusive"/><V40FoodPromoCard kind="discount"/><V40FoodPromoCard kind="delivery"/></ScrollView>
-
-        <View style={styles.v40FoodFeaturedPanel}>
-          <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>Top restaurants near you</Text><Text style={styles.v40SectionSub}>Based on what everyone loves nearby</Text></View><TextButton label="See all" onPress={()=>setActiveFilter('All restaurants')} color={COLORS.red}/></View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40RestaurantBrandRow}>{featured.map((restaurant,index)=><Pressable key={restaurant.id} onPress={()=>openRestaurant(restaurant)} style={styles.v40RestaurantBrandTile}><View style={[styles.v40RestaurantBrandLogo,{backgroundColor:index%3===0?'#FFF2EC':index%3===1?'#FFF9D9':'#F5F5F5'}]}><Text numberOfLines={2} style={styles.v40RestaurantBrandText}>{localisedRestaurantName(restaurant,data.country,data.city)}</Text></View><View style={styles.v40RestaurantOfferTag}><Ionicons name="pricetag-outline" size={11} color={COLORS.black}/><Text style={styles.v40RestaurantOfferTagText}>Offers</Text></View></Pressable>)}</ScrollView>
-        </View>
-
+        <View style={styles.foodParityHeading}><View><Text style={styles.foodParityTitle}>Find your food</Text><Text style={styles.foodParitySub}>Browse by what you feel like eating</Text></View></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FoodCategoryRow}>{categories.map((label,index)=>{const image=[assets.food.cafeJavas,assets.food.chickenTonight,assets.food.tamaraThai][index%3];const selected=activeCategory===label;return <Pressable key={label} onPress={()=>setActiveCategory(selected?'All':label)} style={styles.v40FoodCategory}><View style={[styles.v40FoodCategoryCircle,selected&&styles.v40FoodCategoryCircleActive]}><Image source={image} style={styles.v40FoodCategoryImage} resizeMode="cover"/></View><Text style={[styles.v40FoodCategoryText,selected&&styles.v40FoodCategoryTextActive]}>{label}</Text></Pressable>})}</ScrollView>
 
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FoodPromoRow}><V40FoodPromoCard kind="discount"/><V40FoodPromoCard kind="exclusive"/><V40FoodPromoCard kind="delivery"/></ScrollView>
+
+        <View style={styles.foodParitySection}>
+          <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>Featured restaurants</Text><Text style={styles.v40SectionSub}>Popular places in {data.city}</Text></View><TextButton label="See all" onPress={()=>setActiveFilter('All restaurants')} color={COLORS.red}/></View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.foodParityRestaurantRail}>{featured.map((restaurant)=><Pressable key={restaurant.id} onPress={()=>openRestaurant(restaurant)} style={styles.foodParityRestaurantCard}><Image source={assets.food[restaurant.image]} style={styles.foodParityRestaurantImage}/><Text numberOfLines={1} style={styles.foodParityRestaurantName}>{localisedRestaurantName(restaurant,data.country,data.city)}</Text><Text style={styles.foodParityRestaurantMeta}>{restaurant.rating.toFixed(1)} ★ · {restaurant.eta}</Text>{restaurant.offer?<Text numberOfLines={1} style={styles.foodParityRestaurantOffer}>{restaurant.offer}</Text>:null}</Pressable>)}</ScrollView>
+        </View>
+
+        <View style={styles.foodParitySection}>
+          <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>Just for you</Text><Text style={styles.v40SectionSub}>Popular dishes picked from nearby menus</Text></View></View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.foodParityDishRail}>{popularEntries.map(({restaurant,item})=><Pressable key={`${restaurant.id}-${item.id}`} onPress={()=>openFoodItem(restaurant,item)} style={styles.foodParityDishCard}><Image source={assets.food[item.image]} style={styles.foodParityDishImage}/><Text numberOfLines={2} style={styles.foodParityDishName}>{item.name}</Text><Text style={styles.foodParityDishPrice}>{formatMoney(data.country,item.price)}</Text><Text numberOfLines={1} style={styles.foodParityDishStore}>{restaurant.name}</Text></Pressable>)}</ScrollView>
+        </View>
+
+        <View style={styles.foodParitySection}>
+          <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>Quick delivery</Text><Text style={styles.v40SectionSub}>Fastest nearby restaurants</Text></View></View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.foodParityQuickRail}>{quickDelivery.map((restaurant)=><Pressable key={restaurant.id} onPress={()=>openRestaurant(restaurant)} style={styles.foodParityQuickCard}><View style={styles.foodParityQuickIcon}><Ionicons name="flash" size={20} color={COLORS.red}/></View><View style={styles.flex}><Text numberOfLines={1} style={styles.foodParityQuickName}>{restaurant.name}</Text><Text style={styles.foodParityQuickMeta}>{restaurant.eta} · {restaurant.deliveryFee===0?'Free delivery':formatMoney(data.country,restaurant.deliveryFee)}</Text></View></Pressable>)}</ScrollView>
+        </View>
+
+        {data.lastFoodOrder ? <Pressable onPress={()=>actions.go('orderTracking')} style={styles.foodParityLastOrder}><View style={styles.foodParityLastOrderIcon}><Ionicons name="receipt-outline" size={22} color={COLORS.black}/></View><View style={styles.flex}><Text style={styles.foodParityLastOrderEyebrow}>Last order</Text><Text style={styles.foodParityLastOrderTitle}>{DEMO_RESTAURANTS.find((restaurant)=>restaurant.id===data.lastFoodOrder?.restaurantId)?.name ?? 'Food order'}</Text><Text style={styles.foodParityLastOrderMeta}>Order #{data.lastFoodOrder.id} · Track status</Text></View><Feather name="chevron-right" size={21} color={COLORS.muted}/></Pressable> : null}
+
+        <View style={styles.foodParitySection}>
+          <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>Trending dishes</Text><Text style={styles.v40SectionSub}>What people are ordering now</Text></View></View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.foodParityDishRail}>{trendingEntries.map(({restaurant,item})=><Pressable key={`trend-${restaurant.id}-${item.id}`} onPress={()=>openFoodItem(restaurant,item)} style={styles.foodParityDishCard}><View><Image source={assets.food[item.image]} style={styles.foodParityDishImage}/>{item.badge?<View style={styles.foodParityDishBadge}><Text style={styles.foodParityDishBadgeText}>{item.badge}</Text></View>:null}</View><Text numberOfLines={2} style={styles.foodParityDishName}>{item.name}</Text><Text style={styles.foodParityDishPrice}>{formatMoney(data.country,item.price)}</Text><Text numberOfLines={1} style={styles.foodParityDishStore}>{restaurant.name}</Text></Pressable>)}</ScrollView>
+        </View>
+
+        <View style={styles.foodParityExploreHeader}><View><Text style={styles.v40SectionTitle}>Explore restaurants</Text><Text style={styles.v40SectionSub}>All restaurants available around you</Text></View></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FilterRow}><FilterChip label={sortMode==='Recommended'?'Sort by':`Sort: ${sortMode}`} active={sortMode!=='Recommended'} onPress={()=>setSortMode(sortMode==='Recommended'?'Fastest':sortMode==='Fastest'?'Top rated':sortMode==='Top rated'?'Lowest fee':'Recommended')}/>{['Offers','Rating 4.0+','Fast delivery'].map((filter)=><FilterChip key={filter} label={filter} active={activeFilter===filter} onPress={()=>setActiveFilter(activeFilter===filter?'All restaurants':filter)}/>)}</ScrollView>
 
         <View style={styles.v40RestaurantList}>{filtered.map((restaurant)=><Pressable key={restaurant.id} onPress={()=>openRestaurant(restaurant)} style={({pressed})=>[styles.v40RestaurantRow,pressed&&styles.v26CardPressed]}><View style={styles.v40RestaurantImageWrap}><Image source={assets.food[restaurant.image]} style={styles.v40RestaurantImage} resizeMode="cover"/>{restaurant.offer?<View style={styles.v40RestaurantDiscount}><Text style={styles.v40RestaurantDiscountText}>{restaurant.offer.split(' ').slice(0,2).join(' ')}</Text></View>:null}</View><View style={styles.v40RestaurantCopy}><View style={styles.v40RestaurantNameRow}><View style={styles.v40ProTag}><Text style={styles.v40ProTagText}>pro</Text></View><Text numberOfLines={1} style={styles.v40RestaurantName}>{localisedRestaurantName(restaurant,data.country,data.city)}</Text><Pressable onPress={()=>actions.toggleFavoriteRestaurant(restaurant.id)}><Ionicons name={data.favoriteRestaurantIds.includes(restaurant.id)?'heart':'heart-outline'} size={21} color={data.favoriteRestaurantIds.includes(restaurant.id)?COLORS.red:COLORS.black}/></Pressable></View><Text style={styles.v40RestaurantMeta}>{restaurant.rating.toFixed(1)} <Text style={styles.star}>★</Text> ({restaurant.reviews}) · {restaurant.eta} · {restaurant.deliveryFee===0?formatMoney(data.country,0):formatMoney(data.country,restaurant.deliveryFee)}</Text><View style={styles.v40RestaurantReason}><Text style={styles.v40RestaurantReasonText}>{restaurantReason(restaurant)}</Text></View><Text numberOfLines={1} style={styles.v40RestaurantCuisine}>{restaurant.cuisine}</Text></View></Pressable>)}</View>
@@ -2785,6 +2821,7 @@ export function FoodScreen({ data, actions }: { data: AppData; actions: AppActio
   );
 }
 
+
 function FoodBottomNav({ go, active }: { go: (screen: Screen) => void; active: 'home'|'food'|'shops'|'orders'|'cart' }) {
   // Food and Shops remain commerce sub-flows while sharing the same global navigation pattern.
   return <BottomNav active={active === 'orders' ? 'orders' : 'home'} go={go} />;
@@ -2794,9 +2831,11 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
   const restaurant = DEMO_RESTAURANTS.find((item) => item.id === data.selectedRestaurantId) ?? DEMO_RESTAURANTS[0]!;
   const favorite = data.favoriteRestaurantIds.includes(restaurant.id);
   const categories = Array.from(new Set(restaurant.menu.map((item) => item.category)));
-  const cartCount = restaurant.menu.reduce((sum,item) => sum + (data.cartQuantities[item.id] ?? 0),0);
-  const cartTotal = restaurant.menu.reduce((sum,item) => sum + item.price * (data.cartQuantities[item.id] ?? 0),0);
-  const changeQuantity = (item: DemoMenuItem, delta: number) => actions.setCartItemQuantity(item.id, Math.max(0,(data.cartQuantities[item.id] ?? 0)+delta));
+  const restaurantLines = data.foodCartLines.filter((line) => line.restaurantId === restaurant.id);
+  const cartCount = restaurantLines.reduce((sum, line) => sum + line.quantity, 0);
+  const cartTotal = calculateFoodCartSubtotal(restaurantLines);
+  const itemQuantity = (itemId: string) => restaurantLines.filter((line) => line.itemId === itemId).reduce((sum, line) => sum + line.quantity, 0);
+  const openItem = (item: DemoMenuItem) => { actions.selectFoodItem(item.id); actions.go('foodItem'); };
   return (
     <ScreenShell>
       <Header onBack={() => actions.go('food')} right={<Pressable onPress={() => actions.toggleFavoriteRestaurant(restaurant.id)} style={styles.v30HeaderHeart}><Ionicons name={favorite?'heart':'heart-outline'} size={25} color={favorite?COLORS.red:COLORS.black} /></Pressable>} />
@@ -2816,8 +2855,8 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
           <View key={category} style={styles.v30MenuSection}>
             <View style={styles.v30MenuSectionHeading}><Text style={styles.v30MenuSectionTitle}>{category}</Text><Text style={styles.v30MenuSectionCount}>{restaurant.menu.filter((item)=>item.category===category).length} items</Text></View>
             {restaurant.menu.filter((item)=>item.category===category).map((item) => {
-              const quantity = data.cartQuantities[item.id] ?? 0;
-              return <View key={item.id} style={styles.v30MenuItem}><View style={styles.v30MenuCopy}><View style={styles.v30MenuNameRow}><Text style={styles.menuName}>{item.name}</Text>{item.popular?<View style={styles.v30PopularPill}><Text style={styles.v30PopularPillText}>Popular</Text></View>:null}</View><Text numberOfLines={2} style={styles.v30MenuDescription}>{item.description}</Text><Text style={styles.v30MenuPrice}>{formatMoney(data.country, item.price)}</Text>{item.badge?<Text style={styles.v30MenuBadgeText}>{item.badge}</Text>:null}</View><View style={styles.v30MenuVisualWrap}><Image source={assets.food[item.image]} style={styles.v30MenuImage}/>{quantity===0?<Pressable onPress={()=>changeQuantity(item,1)} style={styles.v30MenuAddButton}><Feather name="plus" size={20} color={COLORS.red}/></Pressable>:<View style={styles.v30MenuQuantity}><Pressable onPress={()=>changeQuantity(item,-1)}><Feather name="minus" size={16} color={COLORS.black}/></Pressable><Text style={styles.v30MenuQuantityText}>{quantity}</Text><Pressable onPress={()=>changeQuantity(item,1)}><Feather name="plus" size={16} color={COLORS.black}/></Pressable></View>}</View></View>;
+              const quantity = itemQuantity(item.id);
+              return <Pressable key={item.id} onPress={()=>openItem(item)} style={({pressed})=>[styles.v30MenuItem,pressed&&styles.v26CardPressed]}><View style={styles.v30MenuCopy}><View style={styles.v30MenuNameRow}><Text style={styles.menuName}>{item.name}</Text>{item.popular?<View style={styles.v30PopularPill}><Text style={styles.v30PopularPillText}>Popular</Text></View>:null}</View><Text numberOfLines={2} style={styles.v30MenuDescription}>{item.description}</Text><Text style={styles.v30MenuPrice}>{formatMoney(data.country, item.price)}</Text>{item.badge?<Text style={styles.v30MenuBadgeText}>{item.badge}</Text>:null}</View><View style={styles.v30MenuVisualWrap}><Image source={assets.food[item.image]} style={styles.v30MenuImage}/><View style={[styles.v30MenuAddButton,quantity>0&&{backgroundColor:COLORS.black,borderColor:COLORS.black}]}>{quantity>0?<Text style={{color:COLORS.white,fontFamily:FONT.bold,fontWeight:'900'}}>{quantity}</Text>:<Feather name="plus" size={20} color={COLORS.red}/>}</View></View></Pressable>;
             })}
           </View>
         ))}
@@ -2827,36 +2866,46 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
   );
 }
 
+export function FoodItemScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+  const restaurant = DEMO_RESTAURANTS.find((row) => row.id === data.selectedRestaurantId) ?? DEMO_RESTAURANTS[0]!;
+  const item = restaurant.menu.find((row) => row.id === data.selectedFoodItemId) ?? restaurant.menu[0]!;
+  return <FoodItemDetailsView country={data.country} restaurant={restaurant} item={item} onBack={()=>actions.go('restaurant')} onAdd={(line)=>{actions.addFoodCartLine(line);actions.go('restaurant');}}/>;
+}
+
+
 export function CartScreen({ data, actions }: { data: AppData; actions: AppActions }) {
   const restaurant = DEMO_RESTAURANTS.find((item) => item.id === data.selectedRestaurantId) ?? DEMO_RESTAURANTS[0]!;
-  const [note,setNote]=useState('');
-  const [promo,setPromo]=useState('');
-  const [appliedPromo,setAppliedPromo]=useState<'SAVE10'|'PLUSFREE'|null>(null);
-  const items = restaurant.menu.filter((item) => (data.cartQuantities[item.id] ?? 0)>0);
-  const itemsTotal = items.reduce((sum,item)=>sum+item.price*(data.cartQuantities[item.id]??0),0);
-  const discount = appliedPromo==='SAVE10' ? Math.round(itemsTotal*.10) : 0;
-  const delivery = appliedPromo==='PLUSFREE' ? 0 : restaurant.deliveryFee;
-  const platformFee = itemsTotal > 0 ? 1000 : 0;
-  const total = Math.max(0,itemsTotal-discount+delivery+platformFee);
-  const applyPromo=()=>{ const code=promo.trim().toUpperCase(); if(code==='SAVE10'||code==='PLUSFREE') setAppliedPromo(code); else setAppliedPromo(null); };
+  const lines = data.foodCartLines.filter((line) => line.restaurantId === restaurant.id);
+  const subtotal = calculateFoodCartSubtotal(lines);
+  const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
   return (
     <ScreenShell>
       <Header title="Your cart" onBack={() => actions.go('restaurant')} />
       <ScrollView style={styles.flex} contentContainerStyle={styles.cartScroll} keyboardShouldPersistTaps="handled">
         <View style={styles.v30CartRestaurantRow}><View><Text style={styles.cartRestaurant}>{restaurant.name}</Text><Text style={styles.v30CartRestaurantMeta}>{restaurant.eta} · {restaurant.distance}</Text></View><Pressable onPress={()=>actions.go('restaurant')}><Text style={styles.v30AddMore}>Add more</Text></Pressable></View>
-        {items.length ? items.map((item)=>{const quantity=data.cartQuantities[item.id]??0;return <View key={item.id} style={styles.cartItem}><Image source={assets.food[item.image]} style={styles.cartImage}/><View style={styles.flex}><Text style={styles.menuName}>{item.name}</Text><Text numberOfLines={1} style={styles.v30CartItemDesc}>{item.description}</Text><Text style={styles.v30MenuPrice}>{formatMoney(data.country, item.price*quantity)}</Text></View><View style={styles.quantity}><Pressable onPress={()=>actions.setCartItemQuantity(item.id,quantity-1)}><Feather name="minus" size={17}/></Pressable><Text style={styles.quantityText}>{quantity}</Text><Pressable onPress={()=>actions.setCartItemQuantity(item.id,quantity+1)}><Feather name="plus" size={17}/></Pressable></View></View>}) : <RoundedCard style={styles.v30EmptyState}><Ionicons name="bag-handle-outline" size={32} color={COLORS.muted}/><Text style={styles.v30EmptyTitle}>Your cart is empty</Text><Text style={styles.v30EmptyBody}>Add a few favourites from {restaurant.name}.</Text><TextButton label="Browse menu" onPress={()=>actions.go('restaurant')} color={COLORS.red}/></RoundedCard>}
-        <AppField placeholder="Add a note for the restaurant (optional)" value={note} onChangeText={setNote} />
-        <View style={styles.v30PromoApply}><View style={styles.v30PromoInputWrap}><Ionicons name="ticket-outline" size={20} color={COLORS.red}/><TextInput value={promo} onChangeText={setPromo} placeholder="Promo code · try SAVE10" placeholderTextColor={COLORS.mutedLight} autoCapitalize="characters" style={styles.v30PromoInput}/></View><Pressable onPress={applyPromo} style={styles.v30PromoApplyButton}><Text style={styles.v30PromoApplyText}>Apply</Text></Pressable></View>
-        {promo && !appliedPromo ? <Text style={styles.v30PromoHelp}>Demo codes: SAVE10 or PLUSFREE</Text> : null}
-        {appliedPromo ? <View style={styles.v30PromoSuccess}><Feather name="check-circle" size={18} color={COLORS.green}/><Text style={styles.v30PromoSuccessText}>{appliedPromo==='SAVE10'?'10% demo discount applied':'Free delivery demo applied'}</Text></View> : null}
-        <View style={styles.cartTotals}><View style={styles.priceRow}><Text style={styles.priceLabel}>Items total</Text><Text style={styles.priceValue}>{formatMoney(data.country, itemsTotal)}</Text></View>{discount>0?<View style={styles.priceRow}><Text style={[styles.priceLabel,{color:COLORS.green}]}>Promo discount</Text><Text style={[styles.priceValue,{color:COLORS.green}]}>−{formatMoney(data.country, discount)}</Text></View>:null}<View style={styles.priceRow}><Text style={styles.priceLabel}>Delivery fee</Text><Text style={styles.priceValue}>{delivery===0?'FREE':formatMoney(data.country, delivery)}</Text></View><View style={styles.priceRow}><Text style={styles.priceLabel}>Platform fee</Text><Text style={styles.priceValue}>{formatMoney(data.country, platformFee)}</Text></View><View style={[styles.priceRow,styles.totalRow]}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>{formatMoney(data.country, total)}</Text></View></View>
-        <RoundedCard style={styles.paymentSummary}><LocalPaymentLogo id={data.selectedPayment} country={data.country}/><View style={styles.flex}><Text style={styles.paymentTitle}>{paymentMethodTitle(data.selectedPayment,data.country)}</Text><Text style={styles.paymentSubtitle}>Payment method</Text></View><TextButton label="Change" onPress={()=>actions.go('wallet')}/></RoundedCard>
-        <PrimaryButton label={`Place order · ${formatMoney(data.country, total)}`} onPress={()=>actions.go('orderTracking')} disabled={items.length===0} />
-        <Text style={styles.v30CheckoutTrust}>🔒 Secure checkout · Live order updates · Kareebu+ support</Text>
+        {lines.length ? lines.map((line)=>{
+          const item=restaurant.menu.find((row)=>row.id===line.itemId);
+          if(!item)return null;
+          return <View key={line.id} style={styles.cartItem}><Image source={assets.food[item.image]} style={styles.cartImage}/><View style={styles.flex}><Text style={styles.menuName}>{item.name}</Text><Text numberOfLines={2} style={styles.v30CartItemDesc}>{cartLineDescription(item,line) || item.description}</Text>{line.specialInstructions?<Text numberOfLines={1} style={styles.v30CartItemDesc}>Note: {line.specialInstructions}</Text>:null}<Text style={styles.v30MenuPrice}>{formatMoney(data.country,line.unitPrice*line.quantity)}</Text></View><View style={styles.quantity}><Pressable onPress={()=>actions.setFoodCartLineQuantity(line.id,line.quantity-1)}><Feather name="minus" size={17}/></Pressable><Text style={styles.quantityText}>{line.quantity}</Text><Pressable onPress={()=>actions.setFoodCartLineQuantity(line.id,line.quantity+1)}><Feather name="plus" size={17}/></Pressable></View></View>;
+        }) : <RoundedCard style={styles.v30EmptyState}><Ionicons name="bag-handle-outline" size={32} color={COLORS.muted}/><Text style={styles.v30EmptyTitle}>Your cart is empty</Text><Text style={styles.v30EmptyBody}>Choose a meal, customise it, then add it here.</Text><TextButton label="Browse menu" onPress={()=>actions.go('restaurant')} color={COLORS.red}/></RoundedCard>}
+        {lines.length ? <><RoundedCard style={styles.paymentSummary}><View style={{width:42,height:42,borderRadius:13,backgroundColor:'#FFF0EE',alignItems:'center',justifyContent:'center'}}><Ionicons name="bag-check-outline" size={21} color={COLORS.red}/></View><View style={styles.flex}><Text style={styles.paymentTitle}>{itemCount} item{itemCount===1?'':'s'}</Text><Text style={styles.paymentSubtitle}>Customisations saved</Text></View><Text style={styles.v30MenuPrice}>{formatMoney(data.country,subtotal)}</Text></RoundedCard><View style={styles.cartTotals}><View style={styles.priceRow}><Text style={styles.priceLabel}>Subtotal</Text><Text style={styles.priceValue}>{formatMoney(data.country,subtotal)}</Text></View><View style={styles.priceRow}><Text style={styles.priceLabel}>Delivery, coupon, service fee & tip</Text><Text style={styles.priceValue}>Calculated next</Text></View></View><PrimaryButton label={`Proceed to checkout · ${formatMoney(data.country,subtotal)}`} onPress={()=>actions.go('foodCheckout')}/><Text style={styles.v30CheckoutTrust}>You can choose delivery or pickup, schedule, coupon, tip and payment on the next screen.</Text></> : null}
       </ScrollView>
     </ScreenShell>
   );
 }
+
+export function FoodCheckoutScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+  const restaurant = DEMO_RESTAURANTS.find((row) => row.id === data.selectedRestaurantId) ?? DEMO_RESTAURANTS[0]!;
+  const lines = data.foodCartLines.filter((line) => line.restaurantId === restaurant.id);
+  return <FoodCheckoutView country={data.country} city={data.city} addressLabel={data.deliveryPlace?.name || data.city} restaurant={restaurant} lines={lines} draft={data.foodCheckout} onBack={()=>actions.go('cart')} onChangeAddress={()=>{actions.setLocationReturn('foodCheckout');actions.go('locationPicker');}} onUpdateDraft={actions.updateFoodCheckout} onPlaceOrder={(order)=>{actions.placeFoodOrder(order);actions.go('foodOrderSuccess');}}/>;
+}
+
+export function FoodOrderSuccessScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+  const restaurant = DEMO_RESTAURANTS.find((row) => row.id === (data.lastFoodOrder?.restaurantId ?? data.selectedRestaurantId)) ?? DEMO_RESTAURANTS[0]!;
+  if (!data.lastFoodOrder) return <CartScreen data={data} actions={actions}/>;
+  return <FoodOrderSuccessView country={data.country} restaurant={restaurant} order={data.lastFoodOrder} onTrack={()=>actions.go('orderTracking')} onHome={()=>actions.go('home')}/>;
+}
+
 
 export function OrderTrackingScreen({ data, actions }: { data: AppData; actions: AppActions }) {
   const restaurant = DEMO_RESTAURANTS.find((item) => item.id === data.selectedRestaurantId) ?? DEMO_RESTAURANTS[0]!;
@@ -2865,7 +2914,7 @@ export function OrderTrackingScreen({ data, actions }: { data: AppData; actions:
       <Header title="Order in progress" onBack={() => actions.go('home')} />
       <ScrollView style={styles.flex} contentContainerStyle={styles.orderTrackingScroll}>
         <View style={styles.v30TrackingBrand}><Image source={assets.wordmark} style={styles.v30TrackingWordmark} resizeMode="contain"/><View style={styles.liveChip}><View style={styles.liveDot}/><Text style={styles.liveChipText}>Live</Text></View></View>
-        <Text style={styles.orderId}>Order #ORD-984512</Text><Text style={styles.orderEta}>Arriving in 22 min</Text><Text style={styles.orderRestaurant}>{localisedRestaurantName(restaurant,data.country,data.city)}</Text>
+        <Text style={styles.orderId}>Order #{data.lastFoodOrder?.id ?? 'ORD-984512'}</Text><Text style={styles.orderEta}>{data.lastFoodOrder?.schedule && data.lastFoodOrder.schedule !== 'Now' ? `Scheduled · ${data.lastFoodOrder.schedule}` : `Arriving in ${data.lastFoodOrder?.etaMinutes ?? 22} min`}</Text><Text style={styles.orderRestaurant}>{localisedRestaurantName(restaurant,data.country,data.city)}</Text>
         <View style={styles.v30OrderProgress}>{['Confirmed','Preparing','Picked up','Delivered'].map((label,index)=><View key={label} style={styles.v30OrderProgressItem}><View style={[styles.v30OrderProgressDot,index<2&&styles.v30OrderProgressDotActive]}>{index<2?<Feather name="check" size={11} color={COLORS.black}/>:null}</View><Text style={[styles.v30OrderProgressLabel,index<2&&styles.v30OrderProgressLabelActive]}>{label}</Text></View>)}</View>
         <InteractiveKareebuMap mode="driver" originCoordinate={{latitude:(CITY_REGIONS[data.city]??KAMPALA_REGION).latitude+0.012,longitude:(CITY_REGIONS[data.city]??KAMPALA_REGION).longitude-0.008}} destinationCoordinate={pickupCoordinate(data)} destinationLabel={pickupLabel(data)} />
         <DriverProfile actions={actions} country={data.country}/>
@@ -3062,7 +3111,10 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
     case 'rateTrip': return <RateTripScreen data={data} actions={actions}/>;
     case 'food': return <FoodScreen data={data} actions={actions}/>;
     case 'restaurant': return <RestaurantScreen data={data} actions={actions}/>;
+    case 'foodItem': return <FoodItemScreen data={data} actions={actions}/>;
     case 'cart': return <CartScreen data={data} actions={actions}/>;
+    case 'foodCheckout': return <FoodCheckoutScreen data={data} actions={actions}/>;
+    case 'foodOrderSuccess': return <FoodOrderSuccessScreen data={data} actions={actions}/>;
     case 'orderTracking': return <OrderTrackingScreen data={data} actions={actions}/>;
     case 'shops': return <ShopsScreen data={data} actions={actions}/>;
     case 'shop': return <StorefrontScreen data={data} actions={actions}/>;
@@ -4278,5 +4330,12 @@ const styles = StyleSheet.create({
   v404PaymentOptionTitle:{...TYPE.bodyStrong,color:COLORS.black},
   v404PaymentOptionMeta:{...TYPE.caption,color:COLORS.muted,marginTop:2},
   v404PaymentRadio:{width:22,height:22,borderRadius:11,borderWidth:1.5,borderColor:COLORS.lineDark},
+
+  foodParityHeading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:2},
+  foodParityTitle:{...TYPE.sectionTitle,color:COLORS.black},foodParitySub:{...TYPE.small,color:COLORS.muted,marginTop:3},
+  foodParitySection:{gap:11},foodParityRestaurantRail:{gap:12,paddingRight:8},foodParityRestaurantCard:{width:184},foodParityRestaurantImage:{width:184,height:112,borderRadius:17,backgroundColor:COLORS.surfaceStrong},foodParityRestaurantName:{...TYPE.cardTitle,color:COLORS.black,marginTop:8},foodParityRestaurantMeta:{...TYPE.small,color:COLORS.black,marginTop:3},foodParityRestaurantOffer:{...TYPE.caption,color:COLORS.red,marginTop:4,fontWeight:'800'},
+  foodParityDishRail:{gap:11,paddingRight:8},foodParityDishCard:{width:148,borderWidth:1,borderColor:COLORS.line,borderRadius:17,backgroundColor:COLORS.white,padding:9},foodParityDishImage:{width:'100%',height:105,borderRadius:13,backgroundColor:COLORS.surfaceStrong},foodParityDishName:{fontFamily:FONT.bold,fontSize:13,fontWeight:'800',lineHeight:17,color:COLORS.black,marginTop:8},foodParityDishPrice:{fontFamily:FONT.bold,fontSize:12.5,fontWeight:'900',color:COLORS.black,marginTop:5},foodParityDishStore:{...TYPE.caption,color:COLORS.muted,marginTop:3},foodParityDishBadge:{position:'absolute',left:7,top:7,borderRadius:9,backgroundColor:COLORS.red,paddingHorizontal:7,paddingVertical:4},foodParityDishBadgeText:{fontFamily:FONT.bold,fontSize:8.5,fontWeight:'900',color:COLORS.white},
+  foodParityQuickRail:{gap:10,paddingRight:8},foodParityQuickCard:{width:230,minHeight:66,borderRadius:17,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12},foodParityQuickIcon:{width:39,height:39,borderRadius:13,backgroundColor:'#FFF0EE',alignItems:'center',justifyContent:'center'},foodParityQuickName:{...TYPE.cardTitle,color:COLORS.black},foodParityQuickMeta:{...TYPE.caption,color:COLORS.muted,marginTop:3},
+  foodParityLastOrder:{minHeight:82,borderRadius:18,backgroundColor:'#FFF8E6',borderWidth:1,borderColor:'#F3E6B4',flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:14},foodParityLastOrderIcon:{width:42,height:42,borderRadius:14,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},foodParityLastOrderEyebrow:{...TYPE.caption,color:COLORS.muted},foodParityLastOrderTitle:{...TYPE.cardTitle,color:COLORS.black,marginTop:2},foodParityLastOrderMeta:{...TYPE.caption,color:COLORS.red,marginTop:3,fontWeight:'800'},foodParityExploreHeader:{marginTop:3},
 
 });

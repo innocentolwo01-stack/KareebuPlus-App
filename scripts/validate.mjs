@@ -30,7 +30,7 @@ const components = fs.readFileSync('src/components.tsx','utf8');
 const screens = [
   'SplashScreen','WelcomeScreen','CountryScreen','CityScreen','LocationScreen','LocationPickerScreen','PhoneScreen','OtpScreen','ProfileScreen','PermissionsScreen',
   'HomeScreen','GlobalSearchScreen','KareebuAssistantScreen','AllServicesScreen','WhereToScreen','ChooseRideScreen','ConfirmBookingScreen','DriverScreen','OnTripScreen',
-  'TripCompleteScreen','RateTripScreen','FoodScreen','RestaurantScreen','CartScreen','OrderTrackingScreen','ShopsScreen','StorefrontScreen','ParcelScreen','WalletScreen','AccountScreen','ActivityScreen','OrdersScreen'
+  'TripCompleteScreen','RateTripScreen','FoodScreen','RestaurantScreen','FoodItemScreen','CartScreen','FoodCheckoutScreen','FoodOrderSuccessScreen','OrderTrackingScreen','ShopsScreen','StorefrontScreen','ParcelScreen','WalletScreen','AccountScreen','ActivityScreen','OrdersScreen'
 ];
 for (const screen of screens) {
   if (!source.includes(`function ${screen}`)) {
@@ -71,6 +71,9 @@ const requirements = [
   ['ride comparison', source, 'Choose ride'],
   ['functional trip scheduling', source, 'Schedule pickup'],
   ['functional restaurant sorting', source, "sortMode === 'Fastest'"],
+  ['food item customisation flow', source, 'FoodItemDetailsView'],
+  ['food checkout flow', source, 'FoodCheckoutView'],
+  ['food order confirmation', source, 'FoodOrderSuccessView'],
   ['different car silhouettes', source, 'RideVehicleVisual'],
   ['Boda option', source, "id: 'boda'"],
   ['Economy option', source, "id: 'economy'"],
@@ -78,7 +81,7 @@ const requirements = [
   ['XL option', source, "id: 'xl'"],
   ['Delivery option', source, "id: 'delivery'"],
   ['Food promo rail', source, 'Only on'],
-  ['Top restaurants', source, 'Top restaurants near you'],
+  ['Food featured restaurants', source, 'Featured restaurants'],
   ['Pharmacy hero', source, "accent:'Wellness Drop'"],
   ['category hero banners', source, 'V40ShopHeroBanner'],
   ['Kareebu AI screen', source, 'Kareebu AI'],

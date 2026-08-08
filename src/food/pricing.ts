@@ -1,0 +1,37 @@
+import type { DemoMenuItem, DemoRestaurant } from '../demoData';
+import { foodConfigurationFor } from './catalog';
+import type { FoodCartLine, FoodCheckoutDraft } from './types';
+
+export function configuredUnitPrice(item: DemoMenuItem, selections: Record<string, string>, addonIds: string[]) {
+  const config = foodConfigurationFor(item);
+  const choiceDelta = config.choiceGroups.reduce((sum, group) => {
+    const selected = group.options.find((option) => option.id === selections[group.id]);
+    return sum + (selected?.priceDelta ?? 0);
+  }, 0);
+  const addons = config.addons.reduce((sum, addon) => sum + (addonIds.includes(addon.id) ? addon.price : 0), 0);
+  return item.price + choiceDelta + addons;
+}
+
+export function foodCartLineId(itemId: string, selections: Record<string, string>, addonIds: string[]) {
+  const choiceKey = Object.entries(selections).sort(([a], [b]) => a.localeCompare(b)).map(([group, option]) => `${group}:${option}`).join('|');
+  const addonKey = [...addonIds].sort().join('|');
+  return `${itemId}::${choiceKey}::${addonKey}`;
+}
+
+export function foodSubtotal(lines: FoodCartLine[]) {
+  return lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
+}
+
+export function foodItemCount(lines: FoodCartLine[]) {
+  return lines.reduce((sum, line) => sum + line.quantity, 0);
+}
+
+export function foodCheckoutTotals(restaurant: DemoRestaurant, lines: FoodCartLine[], draft: FoodCheckoutDraft) {
+  const subtotal = foodSubtotal(lines);
+  const discount = draft.couponCode === 'SAVE10' ? Math.round(subtotal * 0.1) : draft.couponCode === 'WELCOME15' ? Math.round(subtotal * 0.15) : 0;
+  const deliveryFee = draft.orderType === 'takeaway' || draft.couponCode === 'PLUSFREE' ? 0 : restaurant.deliveryFee;
+  const serviceFee = subtotal > 0 ? 1000 : 0;
+  const tip = draft.orderType === 'takeaway' ? 0 : draft.tip;
+  const total = Math.max(0, subtotal - discount + deliveryFee + serviceFee + tip);
+  return { subtotal, discount, deliveryFee, serviceFee, tip, total };
+}

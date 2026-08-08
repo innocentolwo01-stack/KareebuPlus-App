@@ -4,6 +4,7 @@ import { AppActions, AppData, renderScreen } from './src/screens';
 import { RideId, Screen } from './src/types';
 import { VehicleMode } from './src/ride/vehicle';
 import { PlaceSelection } from './src/places/types';
+import { createFoodCheckoutDraft, FoodCartLine, FoodCheckoutDraft, FoodOrder } from './src/food/types';
 import * as NativeSplashScreen from 'expo-splash-screen';
 
 // Keep the native launch layer in place until the first React Native splash
@@ -37,6 +38,10 @@ export default function App() {
   const [rating, setRating] = useState(5);
   const [tip, setTip] = useState(1000);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState('cafe-javas');
+  const [selectedFoodItemId, setSelectedFoodItemId] = useState<string | null>(null);
+  const [foodCartLines, setFoodCartLines] = useState<FoodCartLine[]>([]);
+  const [foodCheckout, setFoodCheckout] = useState<FoodCheckoutDraft>(() => createFoodCheckoutDraft());
+  const [lastFoodOrder, setLastFoodOrder] = useState<FoodOrder | null>(null);
   const [selectedShopId, setSelectedShopId] = useState('goodlife');
   const [shopCategoryPreset, setShopCategoryPreset] = useState('All');
   const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({ 'javas-breakfast': 1, 'javas-chicken-sandwich': 1 });
@@ -77,12 +82,16 @@ export default function App() {
     rating,
     tip,
     selectedRestaurantId,
+    selectedFoodItemId,
+    foodCartLines,
+    foodCheckout,
+    lastFoodOrder,
     selectedShopId,
     shopCategoryPreset,
     cartQuantities,
     favoriteRestaurantIds,
     favoriteShopIds,
-  }), [guest, authReturn, locationReturn, country, city, phone, otp, fullName, email, locationAllowed, notificationsAllowed, destinationPlace, deliveryPlace, focusedPlace, selectedVehicleMode, selectedRide, selectedPayment, walletBalance, scheduledTrip, rating, tip, selectedRestaurantId, selectedShopId, shopCategoryPreset, cartQuantities, favoriteRestaurantIds, favoriteShopIds]);
+  }), [guest, authReturn, locationReturn, country, city, phone, otp, fullName, email, locationAllowed, notificationsAllowed, destinationPlace, deliveryPlace, focusedPlace, selectedVehicleMode, selectedRide, selectedPayment, walletBalance, scheduledTrip, rating, tip, selectedRestaurantId, selectedFoodItemId, foodCartLines, foodCheckout, lastFoodOrder, selectedShopId, shopCategoryPreset, cartQuantities, favoriteRestaurantIds, favoriteShopIds]);
 
   const actions: AppActions = useMemo(() => ({
     go: navigate,
@@ -108,9 +117,27 @@ export default function App() {
     setRating,
     setTip,
     selectRestaurant: (restaurantId: string) => setSelectedRestaurantId((current) => {
-      if (current !== restaurantId) setCartQuantities({});
+      if (current !== restaurantId) {
+        setCartQuantities({});
+        setFoodCartLines([]);
+        setSelectedFoodItemId(null);
+        setFoodCheckout(createFoodCheckoutDraft());
+      }
       return restaurantId;
     }),
+    selectFoodItem: setSelectedFoodItemId,
+    addFoodCartLine: (line: FoodCartLine) => setFoodCartLines((current) => {
+      const existing = current.find((item) => item.id === line.id);
+      if (!existing) return [...current, line];
+      return current.map((item) => item.id === line.id ? { ...item, quantity: Math.min(99, item.quantity + line.quantity), specialInstructions: line.specialInstructions || item.specialInstructions } : item);
+    }),
+    setFoodCartLineQuantity: (lineId: string, quantity: number) => setFoodCartLines((current) => quantity <= 0 ? current.filter((line) => line.id !== lineId) : current.map((line) => line.id === lineId ? { ...line, quantity } : line)),
+    removeFoodCartLine: (lineId: string) => setFoodCartLines((current) => current.filter((line) => line.id !== lineId)),
+    updateFoodCheckout: (patch: Partial<FoodCheckoutDraft>) => setFoodCheckout((current) => ({ ...current, ...patch })),
+    placeFoodOrder: (order: FoodOrder) => {
+      setLastFoodOrder(order);
+      setFoodCartLines([]);
+    },
     selectShop: setSelectedShopId,
     setShopCategoryPreset,
     setCartItemQuantity: (itemId: string, quantity: number) => setCartQuantities((current) => {
