@@ -4,6 +4,8 @@ import path from 'node:path';
 const required = [
   'App.tsx','package.json','app.json','app.config.js','.env.example','tsconfig.json',
   'src/screens.tsx','src/components.tsx','src/assets.ts','src/theme.ts','src/types.ts','src/demoData.ts','src/locale.ts',
+  'src/app/KareebuApp.tsx','src/app/state/types.ts','src/app/state/useKareebuAppState.ts','src/app/providers/SuperAppServicesProvider.tsx','src/app/navigation/renderAppScreen.tsx','src/app/superAppManifest.ts',
+  'src/core/config/runtimeConfig.ts','src/core/services/contracts.ts','src/services/createSuperAppServices.ts','src/services/demo/demoSuperAppServices.ts','src/services/kareebu/kareebuSuperAppServices.ts','src/services/legacy6am/legacy6amSuperAppServices.ts','docs/super-app-architecture.md',
   'src/ai/kareebuAssistant.ts','server/kareebu-ai-api.mjs','docs/openai-kareebu-ai.md','CHANGELOG-v4.0.md','CHANGELOG-v4.0.2.md','CHANGELOG-v4.0.4.md','TEST-READINESS-v4.0.4.md','UX-FLOW.md',
   'src/places/provider.ts','src/places/usePlaceAutocomplete.ts','src/places/photon.ts',
   'src/routing/provider.ts','src/routing/useRouteEstimate.ts','src/routing/valhalla.ts',
@@ -20,7 +22,11 @@ if (missing.length) {
 }
 
 const source = fs.readFileSync('src/screens.tsx','utf8');
-const app = fs.readFileSync('App.tsx','utf8');
+const rootApp = fs.readFileSync('App.tsx','utf8');
+const app = fs.readFileSync('src/app/KareebuApp.tsx','utf8');
+const state = fs.readFileSync('src/app/state/useKareebuAppState.ts','utf8');
+const services = fs.readFileSync('src/services/createSuperAppServices.ts','utf8');
+const contracts = fs.readFileSync('src/core/services/contracts.ts','utf8');
 const ai = fs.readFileSync('src/ai/kareebuAssistant.ts','utf8');
 const server = fs.readFileSync('server/kareebu-ai-api.mjs','utf8');
 const demo = fs.readFileSync('src/demoData.ts','utf8');
@@ -40,15 +46,21 @@ for (const screen of screens) {
 }
 
 const requirements = [
-  ['exact branded JS splash is first screen', app, "useState<Screen>('splash')"],
-  ['synchronous navigation', app, 'const navigate = useCallback'],
+  ['thin root app delegates to migrated shell', rootApp, "./src/app/KareebuApp"],
+  ['exact branded JS splash is first screen', state, "useState<Screen>('splash')"],
+  ['synchronous navigation', state, 'const navigate = useCallback'],
   ['native splash handoff held until RN layout', app, 'NativeSplashScreen.preventAutoHideAsync'],
   ['native splash hides after root layout', app, 'NativeSplashScreen.hideAsync'],
+  ['super app service provider installed', app, 'SuperAppServicesProvider'],
+  ['backend adapter boundary', services, 'createSuperAppServices'],
+  ['typed catalog contract', contracts, 'interface CatalogService'],
+  ['typed parcels contract', contracts, 'interface ParcelsService'],
+  ['typed rides contract', contracts, 'interface RidesService'],
   ['country crash namespace removed', source, 'assets.countrySelection', true],
   ['device trip sharing', source, 'Share.share'],
   ['interactive wallet top up', source, 'setTopUpOpen(true)'],
   ['inline ride payment picker', source, 'setPaymentOpen(true)'],
-  ['session wallet balance', app, 'walletBalance'],
+  ['session wallet balance', state, 'walletBalance'],
   ['requested Karibu splash copy', source, '>Karibu</Text>'],
   ['compact Where to map', source, 'v40WhereMapWrap:{height:248'],
   ['Get started -> Country', source, 'beginOnboarding(false)'],
@@ -117,6 +129,7 @@ for (const dep of ['expo-location','react-native-maps']) {
   }
 }
 
-console.log('Kareebu+ Premium v4.0.4 validation passed.');
+console.log('Kareebu+ Premium v4.0.4 UX validation passed.');
 console.log(`${screens.length} native screens found.`);
+console.log('Super App foundation validation passed: state, navigation and backend service boundaries are installed.');
 console.log('Country crash fix, branded splash, Android safe zones, uniform type scale and functional UX polish are present.');

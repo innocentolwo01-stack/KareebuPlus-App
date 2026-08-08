@@ -1,0 +1,66 @@
+import type { PlaceSelection } from '../../places/types';
+import type { VehicleMode } from '../../ride/vehicle';
+import type { RideId, Screen } from '../../types';
+
+export type PaymentMethod = 'mtn' | 'airtel' | 'visa';
+
+export type AppData = {
+  guest: boolean;
+  authReturn: Screen;
+  locationReturn: Screen;
+  country: string;
+  city: string;
+  phone: string;
+  otp: string[];
+  fullName: string;
+  email: string;
+  locationAllowed: boolean;
+  notificationsAllowed: boolean;
+  destinationPlace: PlaceSelection | null;
+  deliveryPlace: PlaceSelection | null;
+  focusedPlace: PlaceSelection | null;
+  selectedVehicleMode: VehicleMode;
+  selectedRide: RideId;
+  selectedPayment: PaymentMethod;
+  walletBalance: number;
+  scheduledTrip: string | null;
+  rating: number;
+  tip: number;
+  selectedRestaurantId: string;
+  selectedShopId: string;
+  shopCategoryPreset: string;
+  cartQuantities: Record<string, number>;
+  favoriteRestaurantIds: string[];
+  favoriteShopIds: string[];
+};
+
+export type AppActions = {
+  go: (screen: Screen) => void;
+  setGuest: (value: boolean) => void;
+  setAuthReturn: (value: Screen) => void;
+  setLocationReturn: (value: Screen) => void;
+  setCountry: (value: string) => void;
+  setCity: (value: string) => void;
+  setPhone: (value: string) => void;
+  setOtp: (value: string[]) => void;
+  setFullName: (value: string) => void;
+  setEmail: (value: string) => void;
+  setLocationAllowed: (value: boolean) => void;
+  setNotificationsAllowed: (value: boolean) => void;
+  setDestinationPlace: (value: PlaceSelection | null) => void;
+  setDeliveryPlace: (value: PlaceSelection | null) => void;
+  setFocusedPlace: (value: PlaceSelection | null) => void;
+  setSelectedVehicleMode: (value: VehicleMode) => void;
+  setSelectedRide: (value: RideId) => void;
+  setSelectedPayment: (value: PaymentMethod) => void;
+  setWalletBalance: (value: number) => void;
+  setScheduledTrip: (value: string | null) => void;
+  setRating: (value: number) => void;
+  setTip: (value: number) => void;
+  selectRestaurant: (restaurantId: string) => void;
+  selectShop: (shopId: string) => void;
+  setShopCategoryPreset: (category: string) => void;
+  setCartItemQuantity: (itemId: string, quantity: number) => void;
+  toggleFavoriteRestaurant: (restaurantId: string) => void;
+  toggleFavoriteShop: (shopId: string) => void;
+};
