@@ -9,7 +9,8 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "validate": "node scripts/validate.mjs",
-    "validate:food": "node scripts/validate-food-parity.mjs"
+    "validate:food": "node scripts/validate-food-parity.mjs",
+    "validate:parity": "node scripts/validate-v41-parity.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",

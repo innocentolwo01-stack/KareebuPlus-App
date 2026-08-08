@@ -5,6 +5,7 @@ import { RideId, Screen } from './src/types';
 import { VehicleMode } from './src/ride/vehicle';
 import { PlaceSelection } from './src/places/types';
 import { createFoodCheckoutDraft, FoodCartLine, FoodCheckoutDraft, FoodOrder } from './src/food/types';
+import { createCommerceCheckoutDraft, createParcelDraft, createServiceRequest, CommerceCartLine, CommerceCheckoutDraft, CommerceOrder, ParcelDraft, ParcelOrder, RentalBooking, ServiceBooking, ServiceRequest } from './src/parity/types';
 import * as NativeSplashScreen from 'expo-splash-screen';
 
 // Keep the native launch layer in place until the first React Native splash
@@ -47,6 +48,20 @@ export default function App() {
   const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({ 'javas-breakfast': 1, 'javas-chicken-sandwich': 1 });
   const [favoriteRestaurantIds, setFavoriteRestaurantIds] = useState<string[]>(['cafe-javas']);
   const [favoriteShopIds, setFavoriteShopIds] = useState<string[]>(['goodlife']);
+  const [selectedCommerceProductId, setSelectedCommerceProductId] = useState<string | null>(null);
+  const [commerceCartLines, setCommerceCartLines] = useState<CommerceCartLine[]>([]);
+  const [commerceCheckout, setCommerceCheckout] = useState<CommerceCheckoutDraft>(() => createCommerceCheckoutDraft());
+  const [lastCommerceOrder, setLastCommerceOrder] = useState<CommerceOrder | null>(null);
+  const [parcelDraft, setParcelDraft] = useState<ParcelDraft>(() => createParcelDraft('Kampala'));
+  const [lastParcelOrder, setLastParcelOrder] = useState<ParcelOrder | null>(null);
+  const [selectedRideBidId, setSelectedRideBidId] = useState<string | null>(null);
+  const [selectedRentalVehicleId, setSelectedRentalVehicleId] = useState('rav4');
+  const [lastRentalBooking, setLastRentalBooking] = useState<RentalBooking | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState('cleaning');
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
+  const [serviceRequest, setServiceRequest] = useState<ServiceRequest>(() => createServiceRequest('Kampala'));
+  const [lastServiceBooking, setLastServiceBooking] = useState<ServiceBooking | null>(null);
+  const [rewardPoints, setRewardPoints] = useState(1280);
   const currentScreenRef = useRef<Screen>('splash');
   const nativeSplashHiddenRef = useRef(false);
 
@@ -91,7 +106,21 @@ export default function App() {
     cartQuantities,
     favoriteRestaurantIds,
     favoriteShopIds,
-  }), [guest, authReturn, locationReturn, country, city, phone, otp, fullName, email, locationAllowed, notificationsAllowed, destinationPlace, deliveryPlace, focusedPlace, selectedVehicleMode, selectedRide, selectedPayment, walletBalance, scheduledTrip, rating, tip, selectedRestaurantId, selectedFoodItemId, foodCartLines, foodCheckout, lastFoodOrder, selectedShopId, shopCategoryPreset, cartQuantities, favoriteRestaurantIds, favoriteShopIds]);
+    selectedCommerceProductId,
+    commerceCartLines,
+    commerceCheckout,
+    lastCommerceOrder,
+    parcelDraft,
+    lastParcelOrder,
+    selectedRideBidId,
+    selectedRentalVehicleId,
+    lastRentalBooking,
+    selectedServiceId,
+    selectedProviderId,
+    serviceRequest,
+    lastServiceBooking,
+    rewardPoints,
+  }), [guest, authReturn, locationReturn, country, city, phone, otp, fullName, email, locationAllowed, notificationsAllowed, destinationPlace, deliveryPlace, focusedPlace, selectedVehicleMode, selectedRide, selectedPayment, walletBalance, scheduledTrip, rating, tip, selectedRestaurantId, selectedFoodItemId, foodCartLines, foodCheckout, lastFoodOrder, selectedShopId, shopCategoryPreset, cartQuantities, favoriteRestaurantIds, favoriteShopIds, selectedCommerceProductId, commerceCartLines, commerceCheckout, lastCommerceOrder, parcelDraft, lastParcelOrder, selectedRideBidId, selectedRentalVehicleId, lastRentalBooking, selectedServiceId, selectedProviderId, serviceRequest, lastServiceBooking, rewardPoints]);
 
   const actions: AppActions = useMemo(() => ({
     go: navigate,
@@ -99,7 +128,11 @@ export default function App() {
     setAuthReturn,
     setLocationReturn,
     setCountry,
-    setCity,
+    setCity: (value: string) => {
+      setCity(value);
+      setParcelDraft((current) => ({ ...current, pickupAddress: current.pickupAddress === city ? value : current.pickupAddress, dropoffAddress: current.dropoffAddress === `${city} centre` ? `${value} centre` : current.dropoffAddress }));
+      setServiceRequest((current) => ({ ...current, address: current.address === city ? value : current.address }));
+    },
     setPhone,
     setOtp,
     setFullName,
@@ -138,8 +171,37 @@ export default function App() {
       setLastFoodOrder(order);
       setFoodCartLines([]);
     },
-    selectShop: setSelectedShopId,
+    selectShop: (shopId: string) => {
+      setSelectedShopId((current) => {
+        if (current !== shopId) {
+          setSelectedCommerceProductId(null);
+          setCommerceCartLines([]);
+          setCommerceCheckout(createCommerceCheckoutDraft());
+        }
+        return shopId;
+      });
+    },
     setShopCategoryPreset,
+    selectCommerceProduct: setSelectedCommerceProductId,
+    addCommerceCartLine: (line: CommerceCartLine) => setCommerceCartLines((current) => {
+      const existing = current.find((item) => item.id === line.id);
+      if (!existing) return [...current, line];
+      return current.map((item) => item.id === line.id ? { ...item, quantity: Math.min(99, item.quantity + line.quantity), note: line.note || item.note } : item);
+    }),
+    setCommerceCartLineQuantity: (lineId: string, quantity: number) => setCommerceCartLines((current) => quantity <= 0 ? current.filter((line) => line.id !== lineId) : current.map((line) => line.id === lineId ? { ...line, quantity } : line)),
+    removeCommerceCartLine: (lineId: string) => setCommerceCartLines((current) => current.filter((line) => line.id !== lineId)),
+    updateCommerceCheckout: (patch: Partial<CommerceCheckoutDraft>) => setCommerceCheckout((current) => ({ ...current, ...patch })),
+    placeCommerceOrder: (order: CommerceOrder) => { setLastCommerceOrder(order); setCommerceCartLines([]); },
+    updateParcelDraft: (patch: Partial<ParcelDraft>) => setParcelDraft((current) => ({ ...current, ...patch })),
+    placeParcelOrder: setLastParcelOrder,
+    setSelectedRideBidId,
+    selectRentalVehicle: setSelectedRentalVehicleId,
+    placeRentalBooking: setLastRentalBooking,
+    selectService: (serviceId: string) => { setSelectedServiceId(serviceId); setServiceRequest((current) => ({ ...current, serviceId })); },
+    selectServiceProvider: (providerId: string | null) => { setSelectedProviderId(providerId); setServiceRequest((current) => ({ ...current, providerId })); },
+    updateServiceRequest: (patch: Partial<ServiceRequest>) => setServiceRequest((current) => ({ ...current, ...patch })),
+    placeServiceBooking: setLastServiceBooking,
+    setRewardPoints,
     setCartItemQuantity: (itemId: string, quantity: number) => setCartQuantities((current) => {
       const next = { ...current };
       if (quantity <= 0) delete next[itemId]; else next[itemId] = quantity;
@@ -147,7 +209,7 @@ export default function App() {
     }),
     toggleFavoriteRestaurant: (restaurantId: string) => setFavoriteRestaurantIds((current) => current.includes(restaurantId) ? current.filter((id) => id !== restaurantId) : [...current, restaurantId]),
     toggleFavoriteShop: (shopId: string) => setFavoriteShopIds((current) => current.includes(shopId) ? current.filter((id) => id !== shopId) : [...current, shopId]),
-  }), [navigate]);
+  }), [navigate, city]);
 
   const onRootLayout = useCallback(() => {
     if (nativeSplashHiddenRef.current) return;
