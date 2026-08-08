@@ -2,6 +2,30 @@ export const assets = {
   mark: require('../assets/kareebu-plus/kareebu-plus-mark.png'),
   wordmark: require('../assets/kareebu-plus/kareebu-plus-wordmark.png'),
   promoVisual: require('../assets/kareebu-plus/kareebu-black-visual.png'),
+  homeOffers: {
+    glovo: require('../assets/kareebu-plus/home-offers/glovo.png'),
+    carrefour: require('../assets/kareebu-plus/home-offers/carrefour.png'),
+    goodlife: require('../assets/kareebu-plus/home-offers/goodlife.png'),
+    jumia: require('../assets/kareebu-plus/home-offers/jumia.png'),
+  },
+  homeBrands: {
+    carrefour: require('../assets/kareebu-plus/home-brands/carrefour.png'),
+    jumia: require('../assets/kareebu-plus/home-brands/jumia.png'),
+    glovo: require('../assets/kareebu-plus/home-brands/glovo.png'),
+    goodlife: require('../assets/kareebu-plus/home-brands/goodlife.png'),
+    pizzahut: require('../assets/kareebu-plus/home-brands/pizzahut.png'),
+  },
+  countries: {
+    uganda: require('../assets/kareebu-plus/countries/uganda.png'),
+    kenya: require('../assets/kareebu-plus/countries/kenya.png'),
+    tanzania: require('../assets/kareebu-plus/countries/tanzania.png'),
+  },
+  countrySelection: {
+    map: require('../assets/kareebu-plus/country-landmarks/map.jpg'),
+    uganda: require('../assets/kareebu-plus/country-landmarks/uganda.jpg'),
+    kenya: require('../assets/kareebu-plus/country-landmarks/kenya.jpg'),
+    tanzania: require('../assets/kareebu-plus/country-landmarks/tanzania.jpg'),
+  },
   ribbons: require('../assets/karibu/splash-ribbons.png'),
   flag: require('../assets/karibu/uganda-flag.png'),
   welcomeHero: require('../assets/karibu/premium/welcome-hero-premium.png'),
@@ -41,5 +65,13 @@ export const assets = {
   avatars: {
     driver: require('../assets/karibu/avatars/driver.png'),
     account: require('../assets/karibu/premium/account-avatar-premium.png'),
+  },
+  cities: {
+    kampala: require('../assets/kareebu-plus/cities/kampala.png'),
+    entebbe: require('../assets/kareebu-plus/cities/entebbe.png'),
+    jinja: require('../assets/kareebu-plus/cities/jinja.png'),
+    wakiso: require('../assets/kareebu-plus/cities/wakiso.png'),
+    mbarara: require('../assets/kareebu-plus/cities/mbarara.png'),
+    gulu: require('../assets/kareebu-plus/cities/gulu.png'),
   },
 };

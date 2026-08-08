@@ -15,3 +15,6 @@ android/build/
 
 ios/Pods/
 ios/build/
+
+/android
+/ios
