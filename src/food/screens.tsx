@@ -9,6 +9,8 @@ import { COLORS, FONT, SHADOW, TYPE } from '../theme';
 import { defaultSelectionsFor, foodConfigurationFor } from './catalog';
 import { configuredUnitPrice, foodCartLineId, foodCheckoutTotals, foodItemCount, foodSubtotal } from './pricing';
 import type { FoodCartLine, FoodCheckoutDraft, FoodOrder, FoodPaymentMethod } from './types';
+import { ProductMetadataSections } from '../catalog/ProductMetadataSections';
+import { foodProductMetadataFor } from './productMetadata';
 
 export function FoodItemDetailsView({
   country,
@@ -24,6 +26,7 @@ export function FoodItemDetailsView({
   onAdd: (line: FoodCartLine) => void;
 }) {
   const config = useMemo(() => foodConfigurationFor(item), [item]);
+  const productMetadata = useMemo(() => foodProductMetadataFor(item, restaurant), [item, restaurant]);
   const [selections, setSelections] = useState<Record<string, string>>(() => defaultSelectionsFor(item));
   const [addonIds, setAddonIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1);
@@ -116,6 +119,8 @@ export function FoodItemDetailsView({
             </RoundedCard>
           </View>
         ) : null}
+
+        <ProductMetadataSections description={item.description} metadata={productMetadata}/>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Special instructions</Text>
@@ -268,10 +273,13 @@ export function FoodCheckoutView({
           </RoundedCard>
         </View>
 
+        {draft.orderType === 'delivery' ? <RoundedCard style={styles.demandCard}><View style={styles.demandIcon}><Ionicons name="pulse-outline" size={21} color={COLORS.red}/></View><View style={styles.flex}><Text style={styles.demandTitle}>{totals.demand.label} · {totals.demand.multiplier.toFixed(2)}×</Text><Text style={styles.demandMeta}>{totals.demand.reason}. Delivery pricing updates with courier availability.</Text></View></RoundedCard> : null}
+
         <RoundedCard style={styles.totalCard}>
           <PriceRow label="Subtotal" value={formatMoney(country, totals.subtotal)} />
           {totals.discount > 0 ? <PriceRow label="Coupon discount" value={`−${formatMoney(country, totals.discount)}`} positive /> : null}
-          <PriceRow label={draft.orderType === 'takeaway' ? 'Pickup' : 'Delivery fee'} value={totals.deliveryFee === 0 ? 'FREE' : formatMoney(country, totals.deliveryFee)} />
+          <PriceRow label={draft.orderType === 'takeaway' ? 'Pickup' : 'Base delivery'} value={totals.baseDeliveryFee === 0 ? 'FREE' : formatMoney(country, totals.baseDeliveryFee)} />
+          {draft.orderType === 'delivery' && totals.deliveryDemandAdjustment !== 0 ? <PriceRow label={`Demand · ${totals.demand.label}`} value={`${totals.deliveryDemandAdjustment > 0 ? '+' : '−'}${formatMoney(country, Math.abs(totals.deliveryDemandAdjustment))}`} /> : null}
           <PriceRow label="Service fee" value={formatMoney(country, totals.serviceFee)} />
           {totals.tip > 0 ? <PriceRow label="Courier tip" value={formatMoney(country, totals.tip)} /> : null}
           <View style={styles.totalDivider}/>
@@ -400,6 +408,10 @@ const styles = StyleSheet.create({
   cashIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#F2F3F3', alignItems: 'center', justifyContent: 'center' },
   paymentTitle: { ...TYPE.bodyStrong, color: COLORS.black },
   paymentDetail: { ...TYPE.caption, color: COLORS.muted, marginTop: 3 },
+  demandCard: { padding: 14, flexDirection: 'row', alignItems: 'center', gap: 11, backgroundColor: '#FFF8E8', shadowOpacity: 0 },
+  demandIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: '#FFEBC2', alignItems: 'center', justifyContent: 'center' },
+  demandTitle: { ...TYPE.bodyStrong, color: COLORS.black },
+  demandMeta: { ...TYPE.small, color: COLORS.muted, marginTop: 3, flexShrink: 1 },
   totalCard: { padding: 15, gap: 10, shadowOpacity: 0, backgroundColor: COLORS.surface },
   priceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   priceLabel: { ...TYPE.body, color: COLORS.muted },

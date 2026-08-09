@@ -10,7 +10,13 @@
     "typecheck": "tsc --noEmit",
     "validate": "node scripts/validate.mjs",
     "validate:food": "node scripts/validate-food-parity.mjs",
-    "validate:parity": "node scripts/validate-v41-parity.mjs"
+    "validate:parity": "node scripts/validate-v41-parity.mjs",
+    "validate:frontend": "node scripts/validate-v41-frontend.mjs",
+    "validate:products": "node scripts/validate-product-fidelity.mjs",
+    "validate:mobility": "node scripts/validate-mobility-parity.mjs",
+    "validate:captain": "node scripts/validate-cabbook-driver-integration.mjs",
+    "validate:uxui": "node scripts/validate-uxui.mjs",
+    "validate:demand": "node scripts/validate-demand-pricing.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",

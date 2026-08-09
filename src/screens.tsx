@@ -56,6 +56,58 @@ import { RentalsScreen, RentalVehicleScreen, RentalCheckoutScreen, RentalTripScr
 import { ServiceMarketplaceScreen, ServiceProvidersScreen, ServiceDetailScreen, ServiceRequestScreen, ServiceBidsScreen, ServiceCheckoutScreen, ServiceTrackingScreen, SERVICE_DEFS } from './services/screens';
 import { RewardsScreen, CouponsScreen, ReferralScreen, NotificationsScreen, MessagesScreen, ChatScreen, ReelsScreen, MembershipScreen, FavouritesScreen, SupportScreen, SettingsScreen, EditProfileScreen, RefundsScreen, ReviewsScreen } from './engagement/screens';
 import { RideFareBidsScreen, RideSafetyScreen } from './ride/parityScreens';
+import { captainOffers, rideFareBreakdown, rideLabel, RideFareBreakdown, RidePlan, RideProduct, RideReceipt } from './ride/mobility';
+import { CaptainProfileScreen, MobilityHomeScreen, RideFareDetailsScreen, RideHistoryScreen, RideReceiptScreen, RideScheduleScreen, SchoolRunScreen, WorkRideScreen } from './ride/mobilityScreens';
+import { CaptainLifecycleCard, captainStatusPresentation, type CaptainRideStatus } from './ride/captainDriverParity';
+import { applyDemand, demandQuote } from './pricing/demand';
+import {
+  AddAddressScreen,
+  AddressesScreen,
+  AllStoresScreen,
+  BrandItemsScreen,
+  BrandsScreen,
+  CampaignDetailsScreen,
+  CampaignsScreen,
+  CategoriesScreen,
+  CategoryItemsScreen,
+  FlashSaleScreen,
+  GroceryListScreen,
+  GuestTrackOrderScreen,
+  InterestsScreen,
+  ItemViewAllScreen,
+  LanguageScreen,
+  LegalScreen,
+  MedicineListScreen,
+  MonthlyOrdersScreen,
+  MyItemsScreen,
+  NoInternetScreen,
+  OffersScreen,
+  OrderDetailsScreen,
+  PartnerRegistrationScreen,
+  PaymentFailedScreen,
+  PaymentMethodsScreen,
+  ProviderProfileScreen,
+  QrScreen,
+  SignInScreen,
+  SignUpScreen,
+  ForgotPasswordScreen,
+  VerificationScreen,
+  ResetPasswordScreen,
+  GlobalCartScreen,
+  OfflinePaymentScreen,
+  PaymentProcessingScreen,
+  RidePaymentScreen,
+  RentalFavouritesScreen,
+  RideOffersScreen,
+  SearchFiltersScreen,
+  SubscriptionPlansScreen,
+  SubscriptionResultScreen,
+  UpdateScreen,
+} from './v41/frontend';
+
+function demandAdjustedDeliveryFee(baseFee: number, service: 'food-delivery' | 'store-delivery') {
+  return applyDemand(baseFee, demandQuote(service)).totalFee;
+}
 
 export type AppData = {
   guest: boolean;
@@ -96,6 +148,12 @@ export type AppData = {
   parcelDraft: ParcelDraft;
   lastParcelOrder: ParcelOrder | null;
   selectedRideBidId: string | null;
+  rideProduct: RideProduct;
+  ridePriority: boolean;
+  ridePromoCode: string;
+  ridePlan: RidePlan;
+  lastRideReceipt: RideReceipt | null;
+  captainRideStatus: CaptainRideStatus;
   selectedRentalVehicleId: string;
   lastRentalBooking: RentalBooking | null;
   selectedServiceId: string;
@@ -146,6 +204,12 @@ export type AppActions = {
   updateParcelDraft: (patch: Partial<ParcelDraft>) => void;
   placeParcelOrder: (order: ParcelOrder) => void;
   setSelectedRideBidId: (bidId: string | null) => void;
+  setRideProduct: (value: RideProduct) => void;
+  setRidePriority: (value: boolean) => void;
+  setRidePromoCode: (value: string) => void;
+  updateRidePlan: (patch: Partial<RidePlan>) => void;
+  setLastRideReceipt: (receipt: RideReceipt | null) => void;
+  setCaptainRideStatus: (status: CaptainRideStatus) => void;
   selectRentalVehicle: (vehicleId: string) => void;
   placeRentalBooking: (booking: RentalBooking) => void;
   selectService: (serviceId: string) => void;
@@ -244,8 +308,8 @@ function selectVehicleMode(actions: AppActions, mode: VehicleMode) {
 
 
 const serviceData: Array<{ label: string; image: ImageSourcePropType; screen: Screen }> = [
-  { label: 'Rides', image: assets.service.rides, screen: 'whereTo' },
-  { label: 'Boda', image: assets.service.boda, screen: 'whereTo' },
+  { label: 'Rides', image: assets.service.rides, screen: 'mobilityHome' },
+  { label: 'Boda', image: assets.service.boda, screen: 'mobilityHome' },
   { label: 'Food', image: assets.service.food, screen: 'food' },
   { label: 'Shops', image: assets.service.shops, screen: 'shops' },
   { label: 'Send', image: assets.service.send, screen: 'parcel' },
@@ -256,8 +320,8 @@ const serviceData: Array<{ label: string; image: ImageSourcePropType; screen: Sc
 
 const homeServiceData: Array<{ label: string; screen: Screen; image?: ImageSourcePropType; icon?: keyof typeof Ionicons.glyphMap }> = [
   { label: 'Food', screen: 'food', image: assets.service.food },
-  { label: 'Rides', screen: 'whereTo', image: assets.service.rides },
-  { label: 'Boda', screen: 'whereTo', image: assets.service.boda },
+  { label: 'Rides', screen: 'mobilityHome', image: assets.service.rides },
+  { label: 'Boda', screen: 'mobilityHome', image: assets.service.boda },
   { label: 'Groceries', screen: 'shops', image: assets.service.groceries },
   { label: 'Pharmacies', screen: 'shops', icon: 'medical-outline' },
   { label: 'Stores', screen: 'shops', image: assets.service.shops },
@@ -824,6 +888,9 @@ export function WelcomeScreen({ go, setGuest }: Pick<AppActions, 'go' | 'setGues
         <Pressable onPress={() => beginOnboarding(true)} hitSlop={10} style={({pressed})=>[styles.v40WelcomeGuest,pressed&&styles.pressed]}>
           <Text style={styles.v40WelcomeGuestText}>Continue as guest</Text>
         </Pressable>
+        <Pressable onPress={() => go('signIn')} hitSlop={10} style={({pressed})=>[styles.v40WelcomeGuest,pressed&&styles.pressed]}>
+          <Text style={styles.v40WelcomeGuestText}>Already have an account? Sign in</Text>
+        </Pressable>
       </View>
     </ScreenShell>
   );
@@ -1311,7 +1378,7 @@ function HomeHeader({ city, country, balance, go, onLocation }: { city: string; 
           <Feather name="chevron-down" size={16} color={COLORS.black} />
         </Pressable>
         <View style={styles.v31HeaderActions}>
-          <Pressable style={styles.v31HeaderCircle} onPress={() => go('activity')}>
+          <Pressable style={styles.v31HeaderCircle} onPress={() => go('notifications')}>
             <Ionicons name="notifications-outline" size={20} color={COLORS.black} />
           </Pressable>
           <Pressable style={styles.v31HeaderMarkButton} onPress={() => go('account')}>
@@ -1635,7 +1702,7 @@ function localeHomePromotions(country: string, city: string): HomeRetailPromotio
     eyebrow: store.category === 'Pharmacy' ? 'HEALTH & WELLNESS' : 'LOCAL DEALS',
     headline: store.category === 'Groceries' ? 'Fresh basket picks' : store.deal,
     detail: `${store.eta} delivery around ${city}.`,
-    priceLine: store.deliveryFee === 0 ? 'Free delivery on selected baskets' : `${formatMoney(country, store.deliveryFee)} delivery`,
+    priceLine: store.deliveryFee === 0 ? 'Free delivery on selected baskets' : `${formatMoney(country, demandAdjustedDeliveryFee(store.deliveryFee, 'store-delivery'))} delivery now`,
     cta: 'Shop now',
     target: 'shops',
     visual: store.category === 'Pharmacy' ? 'pharmacy' : store.category === 'Marketplace' ? 'tech' : 'groceries',
@@ -1752,7 +1819,7 @@ function V40NewFinds({ data, actions }: { data: AppData; actions: AppActions }) 
     <View>
       <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>New finds up to <Text style={styles.v40AccentText}>30% off</Text></Text><Text style={styles.v40SectionSub}>Discover more, spend less</Text></View><TextButton label="See all" onPress={()=>actions.go('shops')} color={COLORS.red}/></View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FindsRow}>
-        {stores.map((store)=><Pressable key={store.id} onPress={()=>{actions.selectShop(store.id);actions.go('shop')}} style={({pressed})=>[styles.v40FindCard,pressed&&styles.v26CardPressed]}><View style={styles.v40FindLogo}><PopularStoreLogo store={store}/></View><Text numberOfLines={1} style={styles.v40FindName}>{localisedStoreName(store,data.country)}</Text><Text style={styles.v40FindMeta}>★ {store.rating.toFixed(1)} · {store.eta}</Text><Text style={[styles.v40FindDelivery,store.deliveryFee===0&&styles.v40FindDeliveryFree]}>{store.deliveryFee===0?`${formatMoney(data.country,0)} delivery`:`${formatMoney(data.country,store.deliveryFee)} delivery`}</Text></Pressable>)}
+        {stores.map((store)=><Pressable key={store.id} onPress={()=>{actions.selectShop(store.id);actions.go('shop')}} style={({pressed})=>[styles.v40FindCard,pressed&&styles.v26CardPressed]}><View style={styles.v40FindLogo}><PopularStoreLogo store={store}/></View><Text numberOfLines={1} style={styles.v40FindName}>{localisedStoreName(store,data.country)}</Text><Text style={styles.v40FindMeta}>★ {store.rating.toFixed(1)} · {store.eta}</Text><Text style={[styles.v40FindDelivery,store.deliveryFee===0&&styles.v40FindDeliveryFree]}>{store.deliveryFee===0?`${formatMoney(data.country,0)} delivery`:`${formatMoney(data.country,demandAdjustedDeliveryFee(store.deliveryFee,'store-delivery'))} delivery`}</Text></Pressable>)}
       </ScrollView>
     </View>
   );
@@ -1763,7 +1830,7 @@ function V40PopularStores({ data, actions }: { data: AppData; actions: AppAction
   return (
     <View>
       <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>Popular stores</Text><Text style={styles.v40SectionSub}>Around {data.city}</Text></View><TextButton label="See all" onPress={()=>actions.go('shops')} color={COLORS.red}/></View>
-      <View style={styles.v40PopularStoreList}>{stores.map((store)=><Pressable key={store.id} onPress={()=>{actions.selectShop(store.id);actions.go('shop')}} style={({pressed})=>[styles.v40PopularStoreRow,pressed&&styles.v26CardPressed]}><View style={styles.v40PopularStoreLogo}><PopularStoreLogo store={store}/></View><View style={styles.flex}><Text numberOfLines={1} style={styles.v40PopularStoreName}>{localisedStoreName(store,data.country)}</Text><Text numberOfLines={1} style={styles.v40PopularStoreMeta}>{store.category} · {store.eta} · {store.deliveryFee===0?`${formatMoney(data.country,0)} delivery`:`${formatMoney(data.country,store.deliveryFee)} delivery`}</Text></View><View style={styles.v40PopularStoreRight}><Text style={styles.v40PopularStoreRating}>★ {store.rating.toFixed(1)}</Text><Text numberOfLines={1} style={styles.v40PopularStoreDeal}>{store.deal}</Text></View></Pressable>)}</View>
+      <View style={styles.v40PopularStoreList}>{stores.map((store)=><Pressable key={store.id} onPress={()=>{actions.selectShop(store.id);actions.go('shop')}} style={({pressed})=>[styles.v40PopularStoreRow,pressed&&styles.v26CardPressed]}><View style={styles.v40PopularStoreLogo}><PopularStoreLogo store={store}/></View><View style={styles.flex}><Text numberOfLines={1} style={styles.v40PopularStoreName}>{localisedStoreName(store,data.country)}</Text><Text numberOfLines={1} style={styles.v40PopularStoreMeta}>{store.category} · {store.eta} · {store.deliveryFee===0?`${formatMoney(data.country,0)} delivery`:`${formatMoney(data.country,demandAdjustedDeliveryFee(store.deliveryFee,'store-delivery'))} delivery`}</Text></View><View style={styles.v40PopularStoreRight}><Text style={styles.v40PopularStoreRating}>★ {store.rating.toFixed(1)}</Text><Text numberOfLines={1} style={styles.v40PopularStoreDeal}>{store.deal}</Text></View></Pressable>)}</View>
     </View>
   );
 }
@@ -1797,7 +1864,17 @@ export function HomeScreen({ data, actions }: { data: AppData; actions: AppActio
 
         <Pressable onPress={() => actions.go('assistant')} style={({pressed})=>[styles.v40AiStrip,pressed&&styles.v26CardPressed]}><View style={styles.v40AiStripIcon}><Ionicons name="sparkles" size={18} color={COLORS.black}/></View><View style={styles.flex}><Text style={styles.v40AiStripTitle}>Ask Kareebu AI</Text><Text style={styles.v40AiStripBody}>Tell me what you need and I’ll recommend the best options nearby.</Text></View><Feather name="chevron-right" size={18} color={COLORS.white}/></Pressable>
 
+        <View style={styles.uxHomeSectionHeading}><Text style={styles.uxHomeSectionTitle}>What do you need?</Text><Text style={styles.uxHomeSectionHint}>Everything in one place</Text></View>
         <View style={styles.v40ServiceGrid}>{homeServiceData.map((service)=><HomeServiceCard key={service.label} item={service} onPress={()=>openService(service.label,service.screen)}/>)}</View>
+
+        <View style={styles.v41BrowseBlock}>
+          <View style={styles.v41BrowseHeader}><Text style={styles.v41BrowseTitle}>Explore Kareebu+</Text><Pressable onPress={()=>actions.go('allStores')}><Text style={styles.v41BrowseAction}>See all</Text></Pressable></View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v41BrowseRail}>
+            {[
+              ['Categories','grid-outline','categories'],['Brands','ribbon-outline','brands'],['Offers','pricetag-outline','offers'],['Flash sale','flash-outline','flashSale'],['Campaigns','megaphone-outline','campaigns'],['All stores','storefront-outline','allStores']
+            ].map(([label,icon,screen])=><Pressable key={label} onPress={()=>actions.go(screen as Screen)} style={styles.v41BrowsePill}><View style={styles.v41BrowseIcon}><Ionicons name={icon as any} size={20} color={COLORS.black}/></View><Text style={styles.v41BrowseLabel}>{label}</Text></Pressable>)}
+          </ScrollView>
+        </View>
 
         <V40HomeHeroBanner data={data} actions={actions}/>
         <PromoDots count={4}/>
@@ -1911,6 +1988,7 @@ export function GlobalSearchScreen({ data, actions }: { data: AppData; actions: 
           <TextInput autoFocus value={query} onChangeText={setQuery} placeholder={`Search Kareebu+ in ${data.city}`} placeholderTextColor={COLORS.mutedLight} style={styles.globalSearchInput} returnKeyType="search" />
           {query.length>0?<Pressable onPress={()=>setQuery('')} style={styles.globalSearchClear}><Feather name="x" size={18} color={COLORS.black}/></Pressable>:null}
         </View>
+        <Pressable onPress={()=>actions.go('searchFilters')} style={styles.globalSearchBack}><Ionicons name="options-outline" size={21} color={COLORS.black}/></Pressable>
       </View>
       <KareebuContextBar label={`Search rides, food, shops and places around ${data.city}`} />
       <ScrollView keyboardShouldPersistTaps="handled" style={styles.flex} contentContainerStyle={styles.globalSearchScroll} showsVerticalScrollIndicator={false}>
@@ -1949,6 +2027,16 @@ const ALL_SERVICE_OPTIONS: Array<{label:string; description:string; screen:Scree
   { label:'Orders', description:'Track food, shops, parcels, rentals and services', screen:'orders', icon:'receipt-outline' },
   { label:'Activity', description:'Trips, orders and receipts', screen:'activity', icon:'time-outline' },
   { label:'Kareebu AI', description:'Ask for rides, food, shops and help in your own words', screen:'assistant', icon:'sparkles-outline' },
+  { label:'Categories', description:'Browse every shopping and service category', screen:'categories', icon:'grid-outline' },
+  { label:'Brands', description:'Browse popular brands and merchants', screen:'brands', icon:'ribbon-outline' },
+  { label:'Campaigns', description:'Seasonal campaigns and curated collections', screen:'campaigns', icon:'megaphone-outline' },
+  { label:'Flash sale', description:'Limited-time product offers', screen:'flashSale', icon:'flash-outline' },
+  { label:'All offers', description:'Coupons and promotions across Kareebu+', screen:'offers', icon:'ticket-outline' },
+  { label:'All stores', description:'Restaurants, groceries, pharmacies and shops', screen:'allStores', icon:'storefront-outline' },
+  { label:'Grocery list', description:'Build a reusable shopping list', screen:'groceryList', icon:'list-outline' },
+  { label:'Medicine list', description:'Send a prescription or medicine request', screen:'medicineList', icon:'document-attach-outline' },
+  { label:'Ride offers', description:'Coupons and savings for rides and Boda', screen:'rideOffers', icon:'car-sport-outline' },
+  { label:'Global cart', description:'See baskets from every Kareebu+ store in one place', screen:'globalCart', icon:'cart-outline' },
 ];
 
 
@@ -2058,7 +2146,7 @@ export function AllServicesScreen({ data, actions }: { data: AppData; actions: A
           </Pressable>)}
         </View>
       </ScrollView>
-      <BottomNav active="home" go={actions.go}/>
+      <BottomNav active="explore" go={actions.go}/>
     </ScreenShell>
   );
 }
@@ -2116,7 +2204,7 @@ export function StorefrontScreen({ data, actions }: { data: AppData; actions: Ap
           <View style={styles.v38StorefrontDeal}><Ionicons name="pricetag-outline" size={16} color={COLORS.red}/><Text style={styles.v38StorefrontDealText}>{store.deal}</Text></View>
         </View>
         <View style={styles.v25SearchBar}><Feather name="search" size={21} color={COLORS.black}/><TextInput value={query} onChangeText={setQuery} placeholder={`Search ${localisedStoreName(store,data.country)}`} placeholderTextColor={COLORS.mutedLight} style={styles.v30CommerceSearchInput}/>{query?<Pressable onPress={()=>setQuery('')}><Ionicons name="close-circle" size={20} color={COLORS.muted}/></Pressable>:null}</View>
-        <View style={styles.v38StorefrontInfoRow}><View><Text style={styles.v38StorefrontInfoLabel}>Delivery</Text><Text style={styles.v38StorefrontInfoValue}>{store.deliveryFee===0?'Free':formatMoney(data.country,store.deliveryFee)}</Text></View><View><Text style={styles.v38StorefrontInfoLabel}>Minimum</Text><Text style={styles.v38StorefrontInfoValue}>{formatMoney(data.country,store.minOrder)}</Text></View><View><Text style={styles.v38StorefrontInfoLabel}>Location</Text><Text style={styles.v38StorefrontInfoValue}>{data.city}</Text></View></View>
+        <View style={styles.v38StorefrontInfoRow}><View><Text style={styles.v38StorefrontInfoLabel}>Delivery</Text><Text style={styles.v38StorefrontInfoValue}>{store.deliveryFee===0?'Free':formatMoney(data.country,demandAdjustedDeliveryFee(store.deliveryFee,'store-delivery'))}</Text></View><View><Text style={styles.v38StorefrontInfoLabel}>Minimum</Text><Text style={styles.v38StorefrontInfoValue}>{formatMoney(data.country,store.minOrder)}</Text></View><View><Text style={styles.v38StorefrontInfoLabel}>Location</Text><Text style={styles.v38StorefrontInfoValue}>{data.city}</Text></View></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingRight:12}}>{['All',...categories].map((item)=><FilterChip key={item} label={item} active={category===item} onPress={()=>setCategory(item)}/>)}</ScrollView>
         <SectionTitle title="Popular products" />
         <View style={styles.v38ProductGrid}>{filtered.map((item)=>{const qty=lines.filter((line)=>line.productId===item.id).reduce((sum,line)=>sum+line.quantity,0);return <Pressable key={item.id} onPress={()=>{actions.selectCommerceProduct(item.id);actions.go('commerceProduct')}} style={styles.v38ProductCard}><View style={styles.v38ProductVisual}><Ionicons name={item.icon as any} size={34} color={COLORS.black}/>{item.badge?<View style={{position:'absolute',top:7,left:7,backgroundColor:COLORS.yellow,borderRadius:8,paddingHorizontal:7,paddingVertical:4}}><Text style={{fontFamily:FONT.bold,fontSize:9,fontWeight:'900'}}>{item.badge}</Text></View>:null}</View><Text numberOfLines={2} style={styles.v38ProductName}>{item.name}</Text><Text numberOfLines={1} style={styles.v38ProductDetail}>{item.detail}</Text><Text style={styles.v38ProductPrice}>{formatMoney(data.country,item.basePrice)}</Text><View style={[styles.v38ProductAdd,{backgroundColor:qty?COLORS.black:COLORS.red}]}><Text style={styles.v38ProductAddText}>{qty?`${qty} in basket`:'Choose'}</Text></View></Pressable>})}</View>
@@ -2333,7 +2421,7 @@ export function WhereToScreen({ data, actions }: { data: AppData; actions: AppAc
 
   return (
     <ScreenShell>
-      <View style={styles.v40WhereHeader}><Pressable onPress={()=>actions.go('home')} style={styles.v40CircleBack}><Feather name="arrow-left" size={23} color={COLORS.black}/></Pressable><Text style={styles.v40WhereTitle}>Where to?</Text><View style={styles.v40CircleBackPlaceholder}/></View>
+      <View style={styles.v40WhereHeader}><Pressable onPress={()=>actions.go('mobilityHome')} style={styles.v40CircleBack}><Feather name="arrow-left" size={23} color={COLORS.black}/></Pressable><Text style={styles.v40WhereTitle}>Where to?</Text><View style={styles.v40CircleBackPlaceholder}/></View>
       <View style={styles.v40WhereRouteCard}>
         <View style={styles.v40WhereRouteRow}><View style={styles.v40WherePickupDot}/><View style={styles.flex}><Text numberOfLines={1} style={styles.v40WhereRouteValue}>{pickupLabel(data)}</Text><Text style={styles.v40WhereRouteLabel}>Pickup location</Text></View><Pressable onPress={()=>{actions.setLocationReturn('whereTo');actions.go('locationPicker')}} style={styles.v40WhereChange}><Text style={styles.v40WhereChangeText}>Change</Text></Pressable></View>
         <View style={styles.v40WhereConnector}/>
@@ -2424,7 +2512,7 @@ export function ChooseRideScreen({ data, actions }: { data: AppData; actions: Ap
       <View style={styles.v40RideHeader}><Pressable onPress={()=>actions.go('whereTo')} style={styles.v40CircleBack}><Feather name="arrow-left" size={23} color={COLORS.black}/></Pressable><View style={styles.flex}><Text style={styles.v40RideHeaderTitle}>Choose ride</Text><Text style={styles.v40RideHeaderSub}>{routeState.loading?'Calculating route…':routeState.route?`${formatRouteDistance(routeState.route.distanceMeters)} · ${formatRouteDuration(routeState.route.durationSeconds)}`:`${pickupLabel(data)} → ${destinationLabel(data)}`}</Text></View><View style={styles.v40CircleBackPlaceholder}/></View>
       <ScrollView style={styles.flex} contentContainerStyle={styles.v40RideScroll} showsVerticalScrollIndicator={false}>
         <View style={styles.v40RideList}>
-          {rideData.map((ride)=>{const active=data.selectedRide===ride.id;return <Pressable key={ride.id} onPress={()=>selectRide(ride)} style={({pressed})=>[styles.v40RideCard,active&&styles.v40RideCardActive,pressed&&styles.v26CardPressed]}><View style={styles.v40RideImageWrap}><RideVehicleVisual rideId={ride.id}/></View><View style={styles.flex}><Text style={styles.v40RideName}>{ride.name}</Text><Text style={styles.v40RideEta}>{ride.eta}</Text><Text numberOfLines={1} style={styles.v40RideDescription}>{descriptions[ride.id]}</Text></View><View style={styles.v40RidePriceWrap}><Text style={styles.v40RidePrice}>{formatMoney(data.country,ride.baseFare)}</Text><View style={[styles.v40RideRadio,active&&styles.v40RideRadioActive]}>{active?<View style={styles.v40RideRadioDot}/>:null}</View></View></Pressable>})}
+          {rideData.map((ride)=>{const active=data.selectedRide===ride.id;const mode=vehicleModeForRide(ride.id);const preview=rideFareBreakdown({baseFare:ride.baseFare,rideProduct:data.scheduledTrip?'scheduled':'instant',vehicleMode:mode,priority:false,member:true,promoCode:''});return <Pressable key={ride.id} onPress={()=>selectRide(ride)} style={({pressed})=>[styles.v40RideCard,active&&styles.v40RideCardActive,pressed&&styles.v26CardPressed]}><View style={styles.v40RideImageWrap}><RideVehicleVisual rideId={ride.id}/></View><View style={styles.flex}><Text style={styles.v40RideName}>{ride.name}</Text><Text style={styles.v40RideEta}>{ride.eta}</Text><Text numberOfLines={1} style={styles.v40RideDescription}>{descriptions[ride.id]}</Text><Text style={styles.v40RideDemand}>{preview.demandLabel} · {preview.demandMultiplier.toFixed(2)}×</Text></View><View style={styles.v40RidePriceWrap}><Text style={styles.v40RidePrice}>{formatMoney(data.country,preview.total)}</Text><View style={[styles.v40RideRadio,active&&styles.v40RideRadioActive]}>{active?<View style={styles.v40RideRadioDot}/>:null}</View></View></Pressable>})}
         </View>
 
         <Pressable onPress={()=>setScheduleOpen(true)} style={({pressed})=>[styles.v40RideUtilityCard,pressed&&styles.v26CardPressed]}><View style={styles.v40RideUtilityIcon}><Ionicons name="calendar-outline" size={27} color={COLORS.red}/></View><View style={styles.flex}><Text style={styles.v40RideUtilityTitle}>Scheduled</Text><Text style={styles.v40RideUtilitySub}>{data.scheduledTrip ?? 'Book for later'}</Text></View>{data.scheduledTrip?<Pressable hitSlop={10} onPress={()=>actions.setScheduledTrip(null)}><Ionicons name="close-circle" size={22} color={COLORS.muted}/></Pressable>:<Feather name="chevron-right" size={22} color={COLORS.black}/>}</Pressable>
@@ -2432,8 +2520,8 @@ export function ChooseRideScreen({ data, actions }: { data: AppData; actions: Ap
         <View style={styles.v40RidePayment}><LocalPaymentLogo id={data.selectedPayment} country={data.country}/><View style={styles.flex}><Text style={styles.v40RidePaymentTitle}>{paymentMethodTitle(data.selectedPayment,data.country)}</Text><Text style={styles.v40RidePaymentSub}>Selected payment method</Text></View><TextButton label="Change" onPress={()=>setPaymentOpen(true)} color={COLORS.red}/></View>
 
         <Pressable onPress={()=>{if(selected.id==='delivery'){actions.go('parcel');return;}if(data.guest){actions.setAuthReturn('rideFareBids');actions.go('phone');}else actions.go('rideFareBids')}} style={({pressed})=>[styles.v40RideConfirm,pressed&&styles.v26CardPressed]}><Text style={styles.v40RideConfirmText}>{selected.id==='delivery'?'Continue to delivery':data.guest?`Sign in to book ${selected.name}`:`Confirm ${selected.name}`}</Text></Pressable>
-        <View style={styles.v40RideFareFooter}><Text style={styles.v40RideFareLabel}>Estimated fare</Text><Text style={styles.v40RideFareValue}>{formatMoney(data.country,selected.baseFare)}</Text></View>
-        <Text style={styles.v40RideFareNote}>Final fare is shown before dispatch. Live route and demand can affect the estimate.</Text>
+        <View style={styles.v40RideFareFooter}><Text style={styles.v40RideFareLabel}>Estimated fare</Text><Text style={styles.v40RideFareValue}>{formatMoney(data.country,rideFareBreakdown({baseFare:selected.baseFare,rideProduct:data.scheduledTrip?'scheduled':'instant',vehicleMode:data.selectedVehicleMode,priority:false,member:true,promoCode:''}).total)}</Text></View>
+        <Text style={styles.v40RideFareNote}>Demand pricing updates with nearby requests and available Captains. Your confirmed quote is shown before dispatch.</Text>
       </ScrollView>
       <Modal visible={scheduleOpen} transparent animationType="fade" onRequestClose={()=>setScheduleOpen(false)}>
         <Pressable style={styles.v404ScheduleBackdrop} onPress={()=>setScheduleOpen(false)}>
@@ -2483,19 +2571,47 @@ function PaymentChoice({ id, data, actions }: { id: 'mtn' | 'airtel' | 'visa'; d
 function selectedRideOffer(data: AppData) {
   if (!data.selectedRideBidId) return null;
   const selected = rideData.find((ride) => ride.id === data.selectedRide) ?? rideData[0];
-  const offers = {
-    peter: { driverName: 'Peter', rating: '4.9', eta: '3 min', fare: selected.baseFare },
-    james: { driverName: 'James', rating: '4.8', eta: '5 min', fare: Math.max(1000, selected.baseFare - 700) },
-    musa: { driverName: 'Musa', rating: '4.7', eta: '2 min', fare: selected.baseFare + 900 },
-  } as const;
-  return offers[data.selectedRideBidId as keyof typeof offers] ?? null;
+  return captainOffers(selected.baseFare, data.country, data.selectedVehicleMode).find((offer) => offer.id === data.selectedRideBidId) ?? null;
 }
+
+function currentRideFare(data: AppData): RideFareBreakdown {
+  const selected = rideData.find((ride) => ride.id === data.selectedRide) ?? rideData[0];
+  const offer = selectedRideOffer(data);
+  return rideFareBreakdown({
+    baseFare: selected.baseFare,
+    offeredFare: offer?.fare,
+    rideProduct: data.rideProduct,
+    vehicleMode: data.selectedVehicleMode,
+    priority: data.ridePriority,
+    member: true,
+    promoCode: data.ridePromoCode,
+  });
+}
+
+function currentRideReceipt(data: AppData): RideReceipt {
+  const selected = rideData.find((ride) => ride.id === data.selectedRide) ?? rideData[0];
+  const offer = selectedRideOffer(data) ?? captainOffers(selected.baseFare, data.country, data.selectedVehicleMode)[0];
+  return {
+    id: `ride-${Date.now()}`,
+    dateLabel: 'Today',
+    pickup: pickupLabel(data),
+    destination: destinationLabel(data),
+    rideName: rideLabel(data.selectedRide),
+    captainName: offer.captainName,
+    vehicle: `${offer.vehicleMake} ${offer.vehicleModel}`,
+    registration: offer.registration,
+    paymentLabel: paymentMethodTitle(data.selectedPayment, data.country),
+    fare: currentRideFare(data),
+  };
+}
+
 
 export function ConfirmBookingScreen({ data, actions }: { data: AppData; actions: AppActions }) {
   const selected = rideData.find((ride) => ride.id === data.selectedRide) ?? rideData[0];
   const offer = selectedRideOffer(data);
-  const base = offer?.fare ?? selected.baseFare;
-  const total = base + 500;
+  const fare = currentRideFare(data);
+  const base = fare.baseFare;
+  const total = fare.total;
   const routeState = useRouteEstimate(pickupCoordinate(data), destinationCoordinate(data), data.selectedVehicleMode);
   const routeMeta = `${formatRouteDistance(routeState.route?.distanceMeters)}  ·  ${formatRouteDuration(routeState.route?.durationSeconds)}`;
   return (
@@ -2511,18 +2627,22 @@ export function ConfirmBookingScreen({ data, actions }: { data: AppData; actions
           <Text style={styles.confirmRouteMeta}>{routeState.loading ? 'Calculating route…' : routeState.error ? 'Route temporarily unavailable' : routeMeta}</Text>
         </RoundedCard>
         <DemoDirectionsCard data={data} compact />
-        {offer ? <RoundedCard style={styles.v404ScheduledSummary}><View style={styles.v404ScheduledSummaryIcon}><Ionicons name="person-outline" size={20} color={COLORS.red}/></View><View style={styles.flex}><Text style={styles.v404ScheduledSummaryLabel}>Selected driver offer</Text><Text style={styles.v404ScheduledSummaryValue}>{offer.driverName} · ★ {offer.rating} · {offer.eta} away</Text></View><Text style={styles.priceValue}>{formatMoney(data.country, offer.fare)}</Text></RoundedCard> : null}
+        {offer ? <RoundedCard style={styles.v404ScheduledSummary}><View style={styles.v404ScheduledSummaryIcon}><Ionicons name="person-outline" size={20} color={COLORS.red}/></View><View style={styles.flex}><Text style={styles.v404ScheduledSummaryLabel}>Selected driver offer</Text><Text style={styles.v404ScheduledSummaryValue}>{offer.captainName} · ★ {offer.rating} · {offer.etaMinutes} min away · {offer.isOnline ? 'Online' : 'Offline'}</Text></View><Text style={styles.priceValue}>{formatMoney(data.country, offer.fare)}</Text></RoundedCard> : null}
         <SectionTitle title="Payment method" />
         <RoundedCard style={styles.paymentChoices}>
           <PaymentChoice id="mtn" data={data} actions={actions} />
           <PaymentChoice id="airtel" data={data} actions={actions} />
           <PaymentChoice id="visa" data={data} actions={actions} />
         </RoundedCard>
-        <Text style={styles.priceTitle}>Price details</Text>
-        <View style={styles.priceRow}><Text style={styles.priceLabel}>{offer ? `${offer.driverName} offer` : `${selected.name} fare`}</Text><Text style={styles.priceValue}>{formatMoney(data.country, base)}</Text></View>
-        <View style={styles.priceRow}><Text style={styles.priceLabel}>Booking fee</Text><Text style={styles.priceValue}>{formatMoney(data.country, 500)}</Text></View>
+        <View style={styles.ridePriceHeader}><Text style={styles.priceTitle}>Price details</Text><TextButton label="View breakdown" onPress={()=>actions.go('rideFareDetails')} color={COLORS.red}/></View>
+        <View style={styles.priceRow}><Text style={styles.priceLabel}>{offer ? `${offer.captainName} offer` : `${selected.name} fare`}</Text><Text style={styles.priceValue}>{formatMoney(data.country, base)}</Text></View>
+        {fare.demandAdjustment ? <View style={styles.priceRow}><Text style={styles.priceLabel}>Demand adjustment</Text><Text style={styles.priceValue}>{formatMoney(data.country, fare.demandAdjustment)}</Text></View> : null}
+        <View style={styles.priceRow}><Text style={styles.priceLabel}>Booking fee</Text><Text style={styles.priceValue}>{formatMoney(data.country, fare.bookingFee)}</Text></View>
+        {fare.priorityFee ? <View style={styles.priceRow}><Text style={styles.priceLabel}>Priority matching</Text><Text style={styles.priceValue}>{formatMoney(data.country, fare.priorityFee)}</Text></View> : null}
+        {fare.membershipSaving ? <View style={styles.priceRow}><Text style={styles.priceLabel}>Kareebu Black saving</Text><Text style={[styles.priceValue,{color:COLORS.green}]}>-{formatMoney(data.country, fare.membershipSaving)}</Text></View> : null}
+        {fare.promoDiscount ? <View style={styles.priceRow}><Text style={styles.priceLabel}>Promotion</Text><Text style={[styles.priceValue,{color:COLORS.green}]}>-{formatMoney(data.country, fare.promoDiscount)}</Text></View> : null}
         <View style={[styles.priceRow, styles.totalRow]}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>{formatMoney(data.country, total)}</Text></View>
-        <PrimaryButton label={offer ? `Accept ${offer.driverName} · ${formatMoney(data.country, total)}` : `Book ${selected.name}`} onPress={() => actions.go('driver')} />
+        <PrimaryButton label={offer ? `Continue with ${offer.captainName} · ${formatMoney(data.country, total)}` : `Continue · ${formatMoney(data.country, total)}`} onPress={() => actions.go('ridePayment')} />
         <Text style={styles.cancelPolicy}>You can cancel for free within 1 min.</Text>
       </ScrollView>
     </ScreenShell>
@@ -2544,41 +2664,68 @@ function DriverProfile({ name = 'Peter', rating = '4.8', actions, vehicleMode = 
 
 export function DriverScreen({ data, actions }: { data: AppData; actions: AppActions }) {
   const offer = selectedRideOffer(data);
-  const driverName = offer?.driverName ?? 'Peter';
+  const driverName = offer?.captainName ?? 'Peter';
   const origin = pickupCoordinate(data);
   const destination = destinationCoordinate(data);
   const routeState = useRouteEstimate(origin, destination, data.selectedVehicleMode);
+  const status = data.captainRideStatus;
+  const statusCopy = captainStatusPresentation(status, driverName);
+
+  // The CabBook driver donor advances accepted → on-way → arrived from driver
+  // events. Until Kareebu Captain is connected, local emulator QA simulates
+  // those exact passenger-visible transitions.
+  useEffect(() => {
+    if (status === 'accepted') {
+      const timer = setTimeout(() => actions.setCaptainRideStatus('on_way'), 850);
+      return () => clearTimeout(timer);
+    }
+    if (status === 'on_way') {
+      const timer = setTimeout(() => actions.setCaptainRideStatus('arrived'), 2200);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [status, actions]);
+
+  const arrived = status === 'arrived' || status === 'otp_required';
   return (
     <ScreenShell>
-      <Header title={`${driverName} is on the way`} right={<TextButton label="Safety" onPress={() => actions.go('rideSafety')} color={COLORS.red} />} />
-      <KareebuContextBar label="Driver matched · location sharing active" />
+      <Header title={statusCopy.title} right={<TextButton label="Safety" onPress={() => actions.go('rideSafety')} color={COLORS.red} />} />
+      <KareebuContextBar label={`${statusCopy.body} · Captain location sharing active`} />
       <View style={styles.rideStatusBar}>
-        <View><Text style={styles.rideStatusEyebrow}>PICKUP</Text><Text style={styles.rideStatusTitle}>2 min away</Text></View>
+        <View><Text style={styles.rideStatusEyebrow}>{arrived ? 'CAPTAIN ARRIVED' : 'PICKUP'}</Text><Text style={styles.rideStatusTitle}>{arrived ? 'Meet at pickup' : `${offer?.etaMinutes ?? 2} min away`}</Text></View>
         <View style={styles.liveChip}><View style={styles.liveDot} /><Text style={styles.liveChipText}>Live</Text></View>
       </View>
       <ScrollView style={styles.flex} contentContainerStyle={styles.driverScroll} showsVerticalScrollIndicator={false}>
         <InteractiveKareebuMap mode="driver" vehicleMode={data.selectedVehicleMode} originCoordinate={origin} destinationCoordinate={destination} routePath={routeState.route?.coordinates} destinationLabel={destinationLabel(data)} />
         <DemoDirectionsCard data={data} compact />
-        <DriverProfile name={driverName} rating={offer?.rating ?? '4.8'} actions={actions} vehicleMode={data.selectedVehicleMode} country={data.country} />
+        <CaptainLifecycleCard status={status} captainName={driverName} pickupCode="4821" />
+        <DriverProfile name={driverName} rating={String(offer?.rating ?? 4.8)} actions={actions} vehicleMode={data.selectedVehicleMode} country={data.country} />
+        <Pressable onPress={()=>actions.go('captainProfile')} style={styles.captainProfileLink}><Text style={styles.captainProfileLinkText}>View Captain profile</Text><Feather name="chevron-right" size={18} color={COLORS.red}/></Pressable>
         <RoundedCard style={styles.pickupCodeCard}>
           <View style={styles.pickupCodeIcon}><MaterialCommunityIcons name="shield-key-outline" size={24} color={COLORS.black} /></View>
           <View style={styles.flex}>
-            <Text style={styles.pickupCodeLabel}>Your pickup code</Text>
+            <Text style={styles.pickupCodeLabel}>Your pickup code · Ride OTP</Text>
             <Text style={styles.pickupCode}>4821</Text>
-            <Text style={styles.pickupCodeHelp}>Only share this code with {driverName} once you are together.</Text>
+            <Text style={styles.pickupCodeHelp}>{arrived ? `Only share this code with ${driverName} after checking the vehicle.` : `Keep this code private until ${driverName} arrives.`}</Text>
           </View>
         </RoundedCard>
         <View style={styles.driverActionGrid}>
           {[["call", "Call"], ["chatbubble-outline", "Chat"], ["share-social-outline", "Share trip"], ["close", "Cancel"]].map(([icon, label]) => (
             <Pressable key={label} onPress={()=>{
-              if(label==='Cancel') return Alert.alert('Cancel trip?','You can cancel free within the stated cancellation window.',[{text:'Keep trip',style:'cancel'},{text:'Cancel trip',style:'destructive',onPress:()=>actions.go('home')}]);
+              if(label==='Cancel') return Alert.alert('Cancel trip?','You can cancel free within the stated cancellation window.',[{text:'Keep trip',style:'cancel'},{text:'Cancel trip',style:'destructive',onPress:()=>{actions.setCaptainRideStatus('cancelled');actions.go('mobilityHome')}}]);
               if(label==='Share trip') return void shareTrip(data);
-              Alert.alert(label==='Call'?'Call driver':'Chat with driver',label==='Call'?'Calling is available once a live driver is matched.':'Secure trip chat is available once a live driver is matched.');
+              Alert.alert(label==='Call'?'Call Captain':'Chat with Captain',label==='Call'?'Calling is available once a live Captain is matched.':'Secure trip chat is available once a live Captain is matched.');
             }} style={styles.driverAction}><Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={23} color={label === 'Cancel' ? COLORS.red : COLORS.black} /><Text style={styles.driverActionLabel}>{label}</Text></Pressable>
           ))}
         </View>
-        <PrimaryButton label={`I’m with ${driverName}`} onPress={() => actions.go('onTrip')} />
-        <Text style={styles.flowHelp}>In the live app, your trip starts automatically when the driver confirms pickup.</Text>
+        <PrimaryButton disabled={!arrived} label={arrived ? 'Share Ride OTP 4821' : `Waiting for ${driverName}…`} onPress={() => {
+          actions.setCaptainRideStatus('otp_required');
+          Alert.alert('Ride OTP ready', `Share 4821 with ${driverName}. The trip begins when the Captain verifies it.`, [
+            { text: 'Not yet', style: 'cancel' },
+            { text: 'OTP verified', onPress: () => { actions.setCaptainRideStatus('ongoing'); actions.go('onTrip'); } },
+          ]);
+        }} />
+        <Text style={styles.flowHelp}>Kareebu Captain will drive these status changes automatically when the live dispatch backend is connected.</Text>
       </ScrollView>
     </ScreenShell>
   );
@@ -2586,6 +2733,7 @@ export function DriverScreen({ data, actions }: { data: AppData; actions: AppAct
 
 export function OnTripScreen({ data, actions }: { data: AppData; actions: AppActions }) {
   const offer = selectedRideOffer(data);
+  useEffect(() => { if (data.captainRideStatus !== 'ongoing') actions.setCaptainRideStatus('ongoing'); }, [data.captainRideStatus, actions]);
   const origin = pickupCoordinate(data);
   const destination = destinationCoordinate(data);
   const routeState = useRouteEstimate(origin, destination, data.selectedVehicleMode);
@@ -2598,6 +2746,7 @@ export function OnTripScreen({ data, actions }: { data: AppData; actions: AppAct
       <ScrollView style={styles.flex} contentContainerStyle={styles.tripScroll} showsVerticalScrollIndicator={false}>
         <InteractiveKareebuMap mode="trip" vehicleMode={data.selectedVehicleMode} originCoordinate={origin} destinationCoordinate={destination} routePath={routeState.route?.coordinates} destinationLabel={destinationLabel(data)} />
         <DemoDirectionsCard data={data} />
+        <CaptainLifecycleCard status={data.captainRideStatus} captainName={offer?.captainName ?? 'Peter'} />
         <RoundedCard style={styles.tripSummary}>
           <Text style={styles.tripLabel}>Ride to</Text><Text style={styles.tripDestination}>{destinationLabel(data)}</Text>
           <View style={styles.tripRule} />
@@ -2605,10 +2754,10 @@ export function OnTripScreen({ data, actions }: { data: AppData; actions: AppAct
             {[['Distance',distance],['Time',duration],['Fare', formatMoney(data.country, offer?.fare ?? (rideData.find((ride) => ride.id === data.selectedRide) ?? rideData[0]).baseFare)]].map(([label,value]) => <View key={label}><Text style={styles.tripStatLabel}>{label}</Text><Text style={styles.tripStatValue}>{value}</Text></View>)}
           </View>
           <View style={styles.tripButtons}><Pressable onPress={()=>void shareTrip(data)} style={styles.tripSecondary}><Feather name="share" size={21} /><Text style={styles.tripSecondaryText}>Share trip</Text></Pressable><Pressable onPress={()=>actions.go('rideSafety')} style={styles.tripSecondary}><MaterialCommunityIcons name="shield-check-outline" size={23} /><Text style={styles.tripSecondaryText}>Safety toolkit</Text></Pressable></View>
-          <PrimaryButton label="I’ve arrived" onPress={() => actions.go('tripComplete')} />
+          <PrimaryButton label="I’ve arrived" onPress={() => { actions.setCaptainRideStatus('complete'); actions.setLastRideReceipt(currentRideReceipt(data)); actions.go('tripComplete'); }} />
           <Text style={styles.flowHelp}>Trip completion is normally confirmed automatically by the driver.</Text>
         </RoundedCard>
-        <DriverProfile name={offer?.driverName ?? 'Peter'} rating={offer?.rating ?? '4.8'} actions={actions} vehicleMode={data.selectedVehicleMode} country={data.country} />
+        <DriverProfile name={offer?.captainName ?? 'Peter'} rating={String(offer?.rating ?? 4.8)} actions={actions} vehicleMode={data.selectedVehicleMode} country={data.country} />
       </ScrollView>
     </ScreenShell>
   );
@@ -2617,8 +2766,9 @@ export function OnTripScreen({ data, actions }: { data: AppData; actions: AppAct
 export function TripCompleteScreen({ data, actions }: { data: AppData; actions: AppActions }) {
   const selected = rideData.find((ride) => ride.id === data.selectedRide) ?? rideData[0];
   const offer = selectedRideOffer(data);
-  const base = offer?.fare ?? selected.baseFare;
-  const total = base + 500;
+  const fare = currentRideFare(data);
+  const base = fare.baseFare;
+  const total = fare.total;
   const routeState = useRouteEstimate(pickupCoordinate(data), destinationCoordinate(data), data.selectedVehicleMode);
   const routeMeta = `${formatRouteDistance(routeState.route?.distanceMeters)}  ·  ${formatRouteDuration(routeState.route?.durationSeconds)}`;
   return (
@@ -2634,8 +2784,12 @@ export function TripCompleteScreen({ data, actions }: { data: AppData; actions: 
         </RoundedCard>
         <RoundedCard style={styles.receiptCard}>
           <Text style={styles.receiptTitle}>Fare breakdown</Text>
-          <View style={styles.priceRow}><Text style={styles.priceLabel}>{selected.name} fare</Text><Text style={styles.priceValue}>{formatMoney(data.country, selected.baseFare)}</Text></View>
-          <View style={styles.priceRow}><Text style={styles.priceLabel}>Booking fee</Text><Text style={styles.priceValue}>{formatMoney(data.country, 500)}</Text></View>
+          <View style={styles.priceRow}><Text style={styles.priceLabel}>{selected.name} fare</Text><Text style={styles.priceValue}>{formatMoney(data.country, fare.baseFare)}</Text></View>
+          {fare.demandAdjustment ? <View style={styles.priceRow}><Text style={styles.priceLabel}>Demand adjustment</Text><Text style={styles.priceValue}>{formatMoney(data.country, fare.demandAdjustment)}</Text></View> : null}
+          <View style={styles.priceRow}><Text style={styles.priceLabel}>Booking fee</Text><Text style={styles.priceValue}>{formatMoney(data.country, fare.bookingFee)}</Text></View>
+          {fare.priorityFee ? <View style={styles.priceRow}><Text style={styles.priceLabel}>Priority</Text><Text style={styles.priceValue}>{formatMoney(data.country, fare.priorityFee)}</Text></View> : null}
+          {fare.membershipSaving ? <View style={styles.priceRow}><Text style={styles.priceLabel}>Membership saving</Text><Text style={[styles.priceValue,{color:COLORS.green}]}>-{formatMoney(data.country, fare.membershipSaving)}</Text></View> : null}
+          {fare.promoDiscount ? <View style={styles.priceRow}><Text style={styles.priceLabel}>Promotion</Text><Text style={[styles.priceValue,{color:COLORS.green}]}>-{formatMoney(data.country, fare.promoDiscount)}</Text></View> : null}
           <View style={[styles.priceRow, styles.totalRow]}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>{formatMoney(data.country, total)}</Text></View>
           <View style={styles.paidWith}><LocalPaymentLogo id={data.selectedPayment} country={data.country}/><View><Text style={styles.paymentSubtitle}>Paid with</Text><Text style={styles.paymentTitle}>{paymentMethodTitle(data.selectedPayment,data.country)}</Text></View></View>
         </RoundedCard>
@@ -2846,7 +3000,7 @@ export function FoodScreen({ data, actions }: { data: AppData; actions: AppActio
 
         <View style={styles.foodParitySection}>
           <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>Quick delivery</Text><Text style={styles.v40SectionSub}>Fastest nearby restaurants</Text></View></View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.foodParityQuickRail}>{quickDelivery.map((restaurant)=><Pressable key={restaurant.id} onPress={()=>openRestaurant(restaurant)} style={styles.foodParityQuickCard}><View style={styles.foodParityQuickIcon}><Ionicons name="flash" size={20} color={COLORS.red}/></View><View style={styles.flex}><Text numberOfLines={1} style={styles.foodParityQuickName}>{restaurant.name}</Text><Text style={styles.foodParityQuickMeta}>{restaurant.eta} · {restaurant.deliveryFee===0?'Free delivery':formatMoney(data.country,restaurant.deliveryFee)}</Text></View></Pressable>)}</ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.foodParityQuickRail}>{quickDelivery.map((restaurant)=><Pressable key={restaurant.id} onPress={()=>openRestaurant(restaurant)} style={styles.foodParityQuickCard}><View style={styles.foodParityQuickIcon}><Ionicons name="flash" size={20} color={COLORS.red}/></View><View style={styles.flex}><Text numberOfLines={1} style={styles.foodParityQuickName}>{restaurant.name}</Text><Text style={styles.foodParityQuickMeta}>{restaurant.eta} · {restaurant.deliveryFee===0?'Free delivery':formatMoney(data.country,demandAdjustedDeliveryFee(restaurant.deliveryFee,'food-delivery'))}</Text></View></Pressable>)}</ScrollView>
         </View>
 
         {data.lastFoodOrder ? <Pressable onPress={()=>actions.go('orderTracking')} style={styles.foodParityLastOrder}><View style={styles.foodParityLastOrderIcon}><Ionicons name="receipt-outline" size={22} color={COLORS.black}/></View><View style={styles.flex}><Text style={styles.foodParityLastOrderEyebrow}>Last order</Text><Text style={styles.foodParityLastOrderTitle}>{DEMO_RESTAURANTS.find((restaurant)=>restaurant.id===data.lastFoodOrder?.restaurantId)?.name ?? 'Food order'}</Text><Text style={styles.foodParityLastOrderMeta}>Order #{data.lastFoodOrder.id} · Track status</Text></View><Feather name="chevron-right" size={21} color={COLORS.muted}/></Pressable> : null}
@@ -2859,7 +3013,7 @@ export function FoodScreen({ data, actions }: { data: AppData; actions: AppActio
         <View style={styles.foodParityExploreHeader}><View><Text style={styles.v40SectionTitle}>Explore restaurants</Text><Text style={styles.v40SectionSub}>All restaurants available around you</Text></View></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FilterRow}><FilterChip label={sortMode==='Recommended'?'Sort by':`Sort: ${sortMode}`} active={sortMode!=='Recommended'} onPress={()=>setSortMode(sortMode==='Recommended'?'Fastest':sortMode==='Fastest'?'Top rated':sortMode==='Top rated'?'Lowest fee':'Recommended')}/>{['Offers','Rating 4.0+','Fast delivery'].map((filter)=><FilterChip key={filter} label={filter} active={activeFilter===filter} onPress={()=>setActiveFilter(activeFilter===filter?'All restaurants':filter)}/>)}</ScrollView>
 
-        <View style={styles.v40RestaurantList}>{filtered.map((restaurant)=><Pressable key={restaurant.id} onPress={()=>openRestaurant(restaurant)} style={({pressed})=>[styles.v40RestaurantRow,pressed&&styles.v26CardPressed]}><View style={styles.v40RestaurantImageWrap}><Image source={assets.food[restaurant.image]} style={styles.v40RestaurantImage} resizeMode="cover"/>{restaurant.offer?<View style={styles.v40RestaurantDiscount}><Text style={styles.v40RestaurantDiscountText}>{restaurant.offer.split(' ').slice(0,2).join(' ')}</Text></View>:null}</View><View style={styles.v40RestaurantCopy}><View style={styles.v40RestaurantNameRow}><View style={styles.v40ProTag}><Text style={styles.v40ProTagText}>pro</Text></View><Text numberOfLines={1} style={styles.v40RestaurantName}>{localisedRestaurantName(restaurant,data.country,data.city)}</Text><Pressable onPress={()=>actions.toggleFavoriteRestaurant(restaurant.id)}><Ionicons name={data.favoriteRestaurantIds.includes(restaurant.id)?'heart':'heart-outline'} size={21} color={data.favoriteRestaurantIds.includes(restaurant.id)?COLORS.red:COLORS.black}/></Pressable></View><Text style={styles.v40RestaurantMeta}>{restaurant.rating.toFixed(1)} <Text style={styles.star}>★</Text> ({restaurant.reviews}) · {restaurant.eta} · {restaurant.deliveryFee===0?formatMoney(data.country,0):formatMoney(data.country,restaurant.deliveryFee)}</Text><View style={styles.v40RestaurantReason}><Text style={styles.v40RestaurantReasonText}>{restaurantReason(restaurant)}</Text></View><Text numberOfLines={1} style={styles.v40RestaurantCuisine}>{restaurant.cuisine}</Text></View></Pressable>)}</View>
+        <View style={styles.v40RestaurantList}>{filtered.map((restaurant)=><Pressable key={restaurant.id} onPress={()=>openRestaurant(restaurant)} style={({pressed})=>[styles.v40RestaurantRow,pressed&&styles.v26CardPressed]}><View style={styles.v40RestaurantImageWrap}><Image source={assets.food[restaurant.image]} style={styles.v40RestaurantImage} resizeMode="cover"/>{restaurant.offer?<View style={styles.v40RestaurantDiscount}><Text style={styles.v40RestaurantDiscountText}>{restaurant.offer.split(' ').slice(0,2).join(' ')}</Text></View>:null}</View><View style={styles.v40RestaurantCopy}><View style={styles.v40RestaurantNameRow}><View style={styles.v40ProTag}><Text style={styles.v40ProTagText}>pro</Text></View><Text numberOfLines={1} style={styles.v40RestaurantName}>{localisedRestaurantName(restaurant,data.country,data.city)}</Text><Pressable onPress={()=>actions.toggleFavoriteRestaurant(restaurant.id)}><Ionicons name={data.favoriteRestaurantIds.includes(restaurant.id)?'heart':'heart-outline'} size={21} color={data.favoriteRestaurantIds.includes(restaurant.id)?COLORS.red:COLORS.black}/></Pressable></View><Text style={styles.v40RestaurantMeta}>{restaurant.rating.toFixed(1)} <Text style={styles.star}>★</Text> ({restaurant.reviews}) · {restaurant.eta} · {restaurant.deliveryFee===0?formatMoney(data.country,0):formatMoney(data.country,demandAdjustedDeliveryFee(restaurant.deliveryFee,'food-delivery'))}</Text><View style={styles.v40RestaurantReason}><Text style={styles.v40RestaurantReasonText}>{restaurantReason(restaurant)}</Text></View><Text numberOfLines={1} style={styles.v40RestaurantCuisine}>{restaurant.cuisine}</Text></View></Pressable>)}</View>
         {filtered.length===0?<RoundedCard style={styles.v30EmptyState}><Ionicons name="restaurant-outline" size={32} color={COLORS.muted}/><Text style={styles.v30EmptyTitle}>No restaurants match</Text><Text style={styles.v30EmptyBody}>Try another category, filter or search.</Text></RoundedCard>:null}
       </ScrollView>
       <FoodBottomNav go={actions.go} active="food" />
@@ -2870,7 +3024,7 @@ export function FoodScreen({ data, actions }: { data: AppData; actions: AppActio
 
 function FoodBottomNav({ go, active }: { go: (screen: Screen) => void; active: 'home'|'food'|'shops'|'orders'|'cart' }) {
   // Food and Shops remain commerce sub-flows while sharing the same global navigation pattern.
-  return <BottomNav active={active === 'orders' ? 'orders' : 'home'} go={go} />;
+  return <BottomNav active={active === 'orders' ? 'activity' : 'home'} go={go} />;
 }
 
 export function RestaurantScreen({ data, actions }: { data: AppData; actions: AppActions }) {
@@ -2893,7 +3047,7 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
         </View>
         <Text style={styles.restaurantDetailName}>{restaurant.name}</Text>
         <Text style={styles.restaurantDetailMeta}><Text style={styles.star}>★</Text> {restaurant.rating.toFixed(1)} ({restaurant.reviews})  ·  {restaurant.cuisine}</Text>
-        <Text style={styles.restaurantDetailSub}>{restaurant.eta}  ·  {restaurant.distance}  ·  {restaurant.deliveryFee===0?'Free delivery':`${formatMoney(data.country, restaurant.deliveryFee)} delivery`}</Text>
+        <Text style={styles.restaurantDetailSub}>{restaurant.eta}  ·  {restaurant.distance}  ·  {restaurant.deliveryFee===0?'Free delivery':`${formatMoney(data.country,demandAdjustedDeliveryFee(restaurant.deliveryFee,'food-delivery'))} delivery`}</Text>
         <View style={styles.badgeRow}>{[restaurant.plus?'Kareebu+':'Local favourite','Great reviews','Live order tracking'].map((badge)=><View key={badge} style={styles.badge}><Text style={styles.badgeText}>{badge}</Text></View>)}</View>
         <View style={styles.v30RestaurantInfoStrip}><View><Text style={styles.v30InfoValue}>{restaurant.eta}</Text><Text style={styles.v30InfoLabel}>Delivery</Text></View><View style={styles.v30InfoRule}/><View><Text style={styles.v30InfoValue}>{restaurant.rating.toFixed(1)} ★</Text><Text style={styles.v30InfoLabel}>Rating</Text></View><View style={styles.v30InfoRule}/><View><Text style={styles.v30InfoValue}>{restaurant.distance}</Text><Text style={styles.v30InfoLabel}>Distance</Text></View></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v30MenuCategoryRow}>{categories.map((category,index)=><View key={category} style={[styles.v30MenuCategoryChip,index===0&&styles.v30MenuCategoryChipActive]}><Text style={[styles.v30MenuCategoryText,index===0&&styles.v30MenuCategoryTextActive]}>{category}</Text></View>)}</ScrollView>
@@ -3110,10 +3264,20 @@ export function AccountScreen({ data, actions }: { data: AppData; actions: AppAc
     <ScreenShell>
       <Header title="Account" right={<Pressable onPress={()=>actions.go('settings')}><Ionicons name="settings-outline" size={28} color={COLORS.black}/></Pressable>} />
       <KareebuContextBar label="Your Kareebu+ profile, rewards and preferences" />
-      <ScrollView style={styles.flex} contentContainerStyle={styles.accountScroll}>
-        <Pressable onPress={()=>actions.go('editProfile')} style={styles.accountProfile}><Image source={assets.avatars.account} style={styles.accountAvatar}/><View style={styles.flex}><Text style={styles.accountName}>{data.fullName || 'John Ssekandi'}</Text><Text style={styles.accountPhone}>{dialCodeFor(data.country)} {data.phone || '772 123456'}</Text><Text style={styles.viewProfile}>View & edit profile</Text></View></Pressable>
-        <Pressable onPress={()=>actions.go('membership')} style={styles.blackMembership}><Image source={assets.mark} style={styles.membershipMark}/><Text style={styles.membershipText}>Kareebu Black</Text><Text style={styles.membershipStatus}>Member</Text><Feather name="chevron-right" size={25} color={COLORS.white}/></Pressable>
-        <RoundedCard style={styles.accountMenu}><MenuRow icon="car-outline" label="Your trips" onPress={()=>actions.go('activity')}/><MenuRow icon="receipt-outline" label="Orders & bookings" onPress={()=>actions.go('orders')}/><MenuRow icon="heart-outline" label="Favourites" onPress={()=>actions.go('favourites')}/><MenuRow icon="notifications-outline" label="Notifications" onPress={()=>actions.go('notifications')}/><MenuRow icon="chatbubbles-outline" label="Messages" onPress={()=>actions.go('messages')}/><MenuRow icon="gift-outline" label="Rewards" detail={`${data.rewardPoints.toLocaleString()} points`} onPress={()=>actions.go('rewards')}/><MenuRow icon="pricetag-outline" label="Coupons" onPress={()=>actions.go('coupons')}/><MenuRow icon="people-outline" label="Refer & earn" onPress={()=>actions.go('referral')}/><MenuRow icon="globe-outline" label="Country & city" detail={`${data.city}, ${data.country}`} onPress={()=>{actions.setLocationReturn('account');actions.go('country');}}/><MenuRow icon="location-outline" label="Addresses" onPress={()=>{actions.setLocationReturn('account');actions.go('locationPicker');}}/><MenuRow icon="card-outline" label="Payment methods" onPress={()=>actions.go('wallet')}/><MenuRow icon="help-circle-outline" label="Help & support" onPress={()=>actions.go('support')}/><MenuRow icon="settings-outline" label="Settings" onPress={()=>actions.go('settings')}/></RoundedCard>
+      <ScrollView style={styles.flex} contentContainerStyle={styles.accountScroll} showsVerticalScrollIndicator={false}>
+        <Pressable onPress={()=>actions.go('editProfile')} style={styles.accountProfile}><Image source={assets.avatars.account} style={styles.accountAvatar}/><View style={styles.flex}><Text style={styles.accountName}>{data.fullName || 'John Ssekandi'}</Text><Text style={styles.accountPhone}>{dialCodeFor(data.country)} {data.phone || '772 123456'}</Text><Text style={styles.viewProfile}>Manage profile and personal details</Text></View><Feather name="chevron-right" size={22} color={COLORS.muted}/></Pressable>
+        <View style={styles.uxQuickGrid}>
+          {[
+            ['wallet-outline','Wallet','wallet'],['gift-outline','Rewards','rewards'],['receipt-outline','Orders','orders'],['help-circle-outline','Support','support']
+          ].map(([icon,label,target])=><Pressable key={label} onPress={()=>actions.go(target as Screen)} style={({pressed})=>[styles.uxQuickCard,pressed&&styles.v26CardPressed]}><View style={styles.uxQuickIcon}><Ionicons name={icon as any} size={21} color={COLORS.black}/></View><Text style={styles.uxQuickLabel}>{label}</Text></Pressable>)}
+        </View>
+        <Pressable onPress={()=>actions.go('membership')} style={styles.blackMembership}><Image source={assets.mark} style={styles.membershipMark}/><View style={styles.flex}><Text style={styles.membershipText}>Kareebu Black</Text><Text style={styles.uxMembershipSub}>Priority rides, rewards and member perks</Text></View><Text style={styles.membershipStatus}>Member</Text><Feather name="chevron-right" size={25} color={COLORS.white}/></Pressable>
+        <Text style={styles.uxGroupLabel}>Activity</Text>
+        <RoundedCard style={styles.accountMenu}><MenuRow icon="time-outline" label="Your activity" onPress={()=>actions.go('activity')}/><MenuRow icon="heart-outline" label="Favourites" onPress={()=>actions.go('favourites')}/><MenuRow icon="notifications-outline" label="Notifications" onPress={()=>actions.go('notifications')}/><MenuRow icon="chatbubbles-outline" label="Messages" onPress={()=>actions.go('messages')}/></RoundedCard>
+        <Text style={styles.uxGroupLabel}>Payments & rewards</Text>
+        <RoundedCard style={styles.accountMenu}><MenuRow icon="card-outline" label="Payment methods" onPress={()=>actions.go('paymentMethods')}/><MenuRow icon="pricetag-outline" label="Coupons" onPress={()=>actions.go('coupons')}/><MenuRow icon="people-outline" label="Refer & earn" onPress={()=>actions.go('referral')}/><MenuRow icon="qr-code-outline" label="Kareebu QR" onPress={()=>actions.go('qr')}/></RoundedCard>
+        <Text style={styles.uxGroupLabel}>Preferences</Text>
+        <RoundedCard style={styles.accountMenu}><MenuRow icon="location-outline" label="Addresses" onPress={()=>actions.go('addresses')}/><MenuRow icon="globe-outline" label="Country & city" detail={`${data.city}, ${data.country}`} onPress={()=>{actions.setLocationReturn('account');actions.go('country');}}/><MenuRow icon="business-outline" label="Earn with Kareebu" detail="Store, Captain or courier" onPress={()=>actions.go('partnerRegistration')}/><MenuRow icon="settings-outline" label="Settings" onPress={()=>actions.go('settings')}/></RoundedCard>
       </ScrollView>
       <BottomNav active="account" go={actions.go}/>
     </ScreenShell>
@@ -3121,10 +3285,29 @@ export function AccountScreen({ data, actions }: { data: AppData; actions: AppAc
 }
 
 export function ActivityScreen({ data, actions }: { data: AppData; actions: AppActions }) {
-  const localStores = localeStores(data.country, data.city);
-  const merchant = localStores[0];
+  const [filter,setFilter] = useState<'All'|'Orders'|'Rides'|'Deliveries'|'Services'>('All');
   const otherCity = (countryCities[data.country] ?? []).find((item)=>item!==data.city) ?? data.city;
-  return <ScreenShell><Header title="Activity"/><KareebuContextBar label={`Your Kareebu+ activity in ${data.country}`}/><ScrollView style={styles.flex} contentContainerStyle={styles.genericScroll}><HomeRecentActivityCompact data={data} go={actions.go}/><SectionTitle title="Earlier"/><RoundedCard><MenuRow icon="cube-outline" label={`Parcel to ${otherCity}`} detail={formatMoney(data.country,12000)} onPress={()=>actions.go('orders')}/><MenuRow icon="bag-handle-outline" label={`${merchant?localisedStoreName(merchant,data.country):'Local store'} order`} detail={formatMoney(data.country,48500)} onPress={()=>actions.go('orders')}/></RoundedCard></ScrollView><BottomNav active="activity" go={actions.go}/></ScreenShell>;
+  const restaurantName = localisedRestaurantName(DEMO_RESTAURANTS.find((r)=>r.id===data.lastFoodOrder?.restaurantId) ?? DEMO_RESTAURANTS[0]!, data.country, data.city);
+  const commerceStore = DEMO_SHOPS.find((shop)=>shop.id===data.lastCommerceOrder?.storeId);
+  const service = SERVICE_DEFS.find((item)=>item.id===data.lastServiceBooking?.serviceId);
+  const items: Array<{id:string;kind:'Orders'|'Rides'|'Deliveries'|'Services';icon:keyof typeof Ionicons.glyphMap;title:string;meta:string;amount:string;screen:Screen;status:string}> = [
+    {id:'food',kind:'Orders',icon:'restaurant-outline',title:data.lastFoodOrder?restaurantName:'Cafe Javas',meta:data.lastFoodOrder?'Food order':'Recent food order',amount:formatMoney(data.country,data.lastFoodOrder?.total ?? 37000),screen:data.lastFoodOrder?'orderTracking':'orders',status:data.lastFoodOrder?'Preparing':'Delivered'},
+    {id:'store',kind:'Orders',icon:'bag-handle-outline',title:commerceStore?localisedStoreName(commerceStore,data.country):'Local store',meta:'Shop order',amount:formatMoney(data.country,data.lastCommerceOrder?.total ?? 48500),screen:data.lastCommerceOrder?'commerceOrderSuccess':'orders',status:data.lastCommerceOrder?.status.replace('_',' ') ?? 'Delivered'},
+    {id:'parcel',kind:'Deliveries',icon:'cube-outline',title:`Parcel to ${data.lastParcelOrder?.receiverName || otherCity}`,meta:'Kareebu Collect',amount:formatMoney(data.country,data.lastParcelOrder?.fee ?? 12000),screen:data.lastParcelOrder?'parcelTracking':'parcel',status:data.lastParcelOrder?.status.replace('_',' ') ?? 'In transit'},
+    ...(data.lastRideReceipt?[{id:'ride',kind:'Rides' as const,icon:'car-outline' as const,title:`Ride to ${data.lastRideReceipt.destination}`,meta:`${data.lastRideReceipt.captainName} · ${data.lastRideReceipt.vehicle}`,amount:formatMoney(data.country,data.lastRideReceipt.fare.total),screen:'rideReceipt' as Screen,status:'Completed'}]:[]),
+    ...(data.lastServiceBooking && service?[{id:'service',kind:'Services' as const,icon:'construct-outline' as const,title:service.name,meta:data.lastServiceBooking.providerName,amount:formatMoney(data.country,data.lastServiceBooking.total),screen:'serviceTracking' as Screen,status:data.lastServiceBooking.status.replace('_',' ')}]:[]),
+  ];
+  const visible = filter==='All'?items:items.filter((item)=>item.kind===filter);
+  return <ScreenShell>
+    <Header title="Activity" right={<Pressable onPress={()=>actions.go('notifications')} style={styles.uxHeaderAction}><Ionicons name="notifications-outline" size={21} color={COLORS.black}/></Pressable>}/>
+    <ScrollView style={styles.flex} contentContainerStyle={styles.uxActivityScroll} showsVerticalScrollIndicator={false}>
+      <View style={styles.uxActivityHero}><Text style={styles.uxActivityTitle}>Everything you’ve done with Kareebu+</Text><Text style={styles.uxActivityBody}>Orders, rides, deliveries and bookings in one place.</Text></View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.uxFilterRail}>{(['All','Orders','Rides','Deliveries','Services'] as const).map((item)=><Pressable key={item} onPress={()=>setFilter(item)} style={[styles.uxFilterChip,filter===item&&styles.uxFilterChipActive]}><Text style={[styles.uxFilterText,filter===item&&styles.uxFilterTextActive]}>{item}</Text></Pressable>)}</ScrollView>
+      <View style={styles.uxActivityList}>{visible.map((item)=><Pressable key={item.id} onPress={()=>actions.go(item.screen)} style={({pressed})=>[styles.uxActivityCard,pressed&&styles.v26CardPressed]}><View style={styles.uxActivityIcon}><Ionicons name={item.icon} size={22} color={COLORS.black}/></View><View style={styles.flex}><View style={styles.uxActivityTop}><Text numberOfLines={1} style={styles.uxActivityCardTitle}>{item.title}</Text><Text style={styles.uxActivityAmount}>{item.amount}</Text></View><Text numberOfLines={1} style={styles.uxActivityMeta}>{item.meta}</Text><View style={styles.uxStatusRow}><View style={styles.uxStatusDot}/><Text style={styles.uxStatusText}>{item.status}</Text></View></View><Feather name="chevron-right" size={20} color={COLORS.muted}/></Pressable>)}</View>
+      <Pressable onPress={()=>actions.go('orders')} style={styles.uxSeeAllButton}><Text style={styles.uxSeeAllText}>Open orders & booking tools</Text><Feather name="arrow-right" size={18} color={COLORS.black}/></Pressable>
+    </ScrollView>
+    <BottomNav active="activity" go={actions.go}/>
+  </ScreenShell>;
 }
 
 export function OrdersScreen({ data, actions }: { data: AppData; actions: AppActions }) {
@@ -3139,9 +3322,10 @@ export function OrdersScreen({ data, actions }: { data: AppData; actions: AppAct
   if(data.lastCommerceOrder && commerceStore) cards.push({id:'commerce',icon:assets.service.shops,title:localisedStoreName(commerceStore,data.country),meta:`${data.lastCommerceOrder.itemCount} items · ${data.lastCommerceOrder.status.replace('_',' ')}`,price:formatMoney(data.country,data.lastCommerceOrder.total),screen:'commerceOrderSuccess'});
   if(data.lastParcelOrder) cards.push({id:'parcel',icon:assets.service.send,title:`Parcel to ${data.lastParcelOrder.receiverName || otherCity}`,meta:`${data.lastParcelOrder.parcelType} · ${data.lastParcelOrder.status.replace('_',' ')}`,price:formatMoney(data.country,data.lastParcelOrder.fee),screen:'parcelTracking'});
   else cards.push({id:'parcel-demo',icon:assets.service.send,title:`Parcel to ${otherCity}`,meta:'Documents · In transit',price:formatMoney(data.country,12000),screen:'parcel'});
+  if(data.lastRideReceipt) cards.push({id:'ride',icon:assets.service.rides,title:`Ride to ${data.lastRideReceipt.destination}`,meta:`${data.lastRideReceipt.captainName} · ${data.lastRideReceipt.vehicle}`,price:formatMoney(data.country,data.lastRideReceipt.fare.total),screen:'rideReceipt'});
   if(data.lastRentalBooking && rentalVehicle) cards.push({id:'rental',icon:assets.service.rides,title:rentalVehicle.name,meta:`Vehicle rental · ${data.lastRentalBooking.days} days`,price:formatMoney(data.country,data.lastRentalBooking.total),screen:'rentalTrip'});
   if(data.lastServiceBooking && service) cards.push({id:'service',icon:assets.service.all,title:service.name,meta:`${data.lastServiceBooking.providerName} · ${data.lastServiceBooking.status.replace('_',' ')}`,price:formatMoney(data.country,data.lastServiceBooking.total),screen:'serviceTracking'});
-  return <ScreenShell><Header title="Orders" right={<Pressable onPress={()=>actions.go('notifications')}><Ionicons name="notifications-outline" size={24} color={COLORS.black}/></Pressable>}/><KareebuContextBar label={`Food, shops, parcels, rentals and services · ${data.city}`}/><ScrollView style={styles.flex} contentContainerStyle={styles.genericScroll}>{cards.map((card)=><Pressable key={card.id} onPress={()=>actions.go(card.screen)}><RoundedCard style={styles.orderCard}><Image source={card.icon} style={styles.orderImage}/><View style={styles.flex}><Text style={styles.orderTitle}>{card.title}</Text><Text style={styles.orderMeta}>{card.meta}</Text><Text style={styles.orderPrice}>{card.price}</Text></View><Feather name="chevron-right" size={26}/></RoundedCard></Pressable>)}<SectionTitle title="After your order"/><RoundedCard style={styles.accountMenu}><MenuRow icon="star-outline" label="Rate an experience" onPress={()=>actions.go('reviews')}/><MenuRow icon="return-down-back-outline" label="Request a refund" onPress={()=>actions.go('refunds')}/><MenuRow icon="help-circle-outline" label="Get help" onPress={()=>actions.go('support')}/></RoundedCard></ScrollView><BottomNav active="orders" go={actions.go}/></ScreenShell>;
+  return <ScreenShell><Header title="Orders" right={<Pressable onPress={()=>actions.go('notifications')}><Ionicons name="notifications-outline" size={24} color={COLORS.black}/></Pressable>}/><KareebuContextBar label={`Food, shops, rides, parcels, rentals and services · ${data.city}`}/><ScrollView style={styles.flex} contentContainerStyle={styles.genericScroll}>{cards.map((card)=><Pressable key={card.id} onPress={()=>actions.go(card.screen)}><RoundedCard style={styles.orderCard}><Image source={card.icon} style={styles.orderImage}/><View style={styles.flex}><Text style={styles.orderTitle}>{card.title}</Text><Text style={styles.orderMeta}>{card.meta}</Text><Text style={styles.orderPrice}>{card.price}</Text></View><Feather name="chevron-right" size={26}/></RoundedCard></Pressable>)}<SectionTitle title="More order tools"/><RoundedCard style={styles.accountMenu}><MenuRow icon="search-outline" label="Track a guest order" onPress={()=>actions.go('guestTrackOrder')}/><MenuRow icon="calendar-outline" label="Monthly orders" onPress={()=>actions.go('monthlyOrders')}/><MenuRow icon="repeat-outline" label="My frequently ordered items" onPress={()=>actions.go('myItems')}/><MenuRow icon="document-text-outline" label="View latest order details" onPress={()=>actions.go('orderDetails')}/></RoundedCard><SectionTitle title="After your order"/><RoundedCard style={styles.accountMenu}><MenuRow icon="star-outline" label="Rate an experience" onPress={()=>actions.go('reviews')}/><MenuRow icon="return-down-back-outline" label="Request a refund" onPress={()=>actions.go('refunds')}/><MenuRow icon="help-circle-outline" label="Get help" onPress={()=>actions.go('support')}/></RoundedCard></ScrollView><BottomNav active="activity" go={actions.go}/></ScreenShell>;
 }
 
 export function renderScreen(screen: Screen, data: AppData, actions: AppActions) {
@@ -3156,8 +3340,12 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
   const engagementData = { country:data.country, city:data.city, fullName:data.fullName, email:data.email, notificationsAllowed:data.notificationsAllowed, rewardPoints:data.rewardPoints, favoriteRestaurantCount:data.favoriteRestaurantIds.length, favoriteShopCount:data.favoriteShopIds.length };
   const engagementActions = { go:actions.go, setFullName:actions.setFullName, setEmail:actions.setEmail, setNotificationsAllowed:actions.setNotificationsAllowed, setRewardPoints:actions.setRewardPoints };
   const selectedRide = rideData.find((ride)=>ride.id===data.selectedRide) ?? rideData[0]!;
-  const rideParityData = { country:data.country, city:data.city, selectedRideName:selectedRide.name, baseFare:selectedRide.baseFare, pickup:pickupLabel(data), destination:destinationLabel(data), selectedBidId:data.selectedRideBidId };
+  const rideParityData = { country:data.country, city:data.city, selectedRideName:selectedRide.name, baseFare:selectedRide.baseFare, pickup:pickupLabel(data), destination:destinationLabel(data), selectedBidId:data.selectedRideBidId, selectedVehicleMode:data.selectedVehicleMode };
+  const mobilityData = { country:data.country, city:data.city, selectedVehicleMode:data.selectedVehicleMode, selectedRide:data.selectedRide, selectedRideBidId:data.selectedRideBidId, scheduledTrip:data.scheduledTrip, selectedPaymentLabel:paymentMethodTitle(data.selectedPayment,data.country), pickup:pickupLabel(data), destination:destinationLabel(data), rideProduct:data.rideProduct, ridePriority:data.ridePriority, ridePromoCode:data.ridePromoCode, ridePlan:data.ridePlan, lastRideReceipt:data.lastRideReceipt, member:true, baseFare:selectedRide.baseFare };
+  const mobilityActions = { go:actions.go, selectMode:(mode:VehicleMode)=>selectVehicleMode(actions,mode), selectRide:actions.setSelectedRide, setRideProduct:actions.setRideProduct, setRidePriority:actions.setRidePriority, setRidePromoCode:actions.setRidePromoCode, updateRidePlan:actions.updateRidePlan, setScheduledTrip:actions.setScheduledTrip };
   const rideParityActions = { go:actions.go, selectBid:actions.setSelectedRideBidId };
+  const frontendData = { country:data.country, city:data.city, fullName:data.fullName, email:data.email, walletBalance:data.walletBalance, rewardPoints:data.rewardPoints };
+  const frontendActions = { go:actions.go };
   switch (screen) {
     case 'splash': return <SplashScreen go={actions.go}/>;
     case 'welcome': return <WelcomeScreen go={actions.go} setGuest={actions.setGuest}/>;
@@ -3174,6 +3362,14 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
     case 'assistant': return <KareebuAssistantScreen data={data} actions={actions}/>;
     case 'services': return <AllServicesScreen data={data} actions={actions}/>;
     case 'place': return <GlobalSearchScreen data={data} actions={actions}/>;
+    case 'mobilityHome': return <MobilityHomeScreen data={mobilityData} actions={mobilityActions}/>;
+    case 'rideSchedule': return <RideScheduleScreen data={mobilityData} actions={mobilityActions}/>;
+    case 'workRide': return <WorkRideScreen data={mobilityData} actions={mobilityActions}/>;
+    case 'schoolRun': return <SchoolRunScreen data={mobilityData} actions={mobilityActions}/>;
+    case 'rideFareDetails': return <RideFareDetailsScreen data={mobilityData} actions={mobilityActions}/>;
+    case 'captainProfile': return <CaptainProfileScreen data={mobilityData} actions={mobilityActions}/>;
+    case 'rideHistory': return <RideHistoryScreen data={mobilityData} actions={mobilityActions}/>;
+    case 'rideReceipt': return <RideReceiptScreen data={mobilityData} actions={mobilityActions}/>;
     case 'whereTo': return <WhereToScreen data={data} actions={actions}/>;
     case 'chooseRide': return <ChooseRideScreen data={data} actions={actions}/>;
     case 'rideFareBids': return <RideFareBidsScreen data={rideParityData} actions={rideParityActions}/>;
@@ -3230,11 +3426,57 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
     case 'account': return <AccountScreen data={data} actions={actions}/>;
     case 'activity': return <ActivityScreen data={data} actions={actions}/>;
     case 'orders': return <OrdersScreen data={data} actions={actions}/>;
+    case 'categories': return <CategoriesScreen data={frontendData} actions={frontendActions}/>;
+    case 'categoryItems': return <CategoryItemsScreen data={frontendData} actions={frontendActions}/>;
+    case 'brands': return <BrandsScreen data={frontendData} actions={frontendActions}/>;
+    case 'brandItems': return <BrandItemsScreen data={frontendData} actions={frontendActions}/>;
+    case 'campaigns': return <CampaignsScreen data={frontendData} actions={frontendActions}/>;
+    case 'campaignDetails': return <CampaignDetailsScreen data={frontendData} actions={frontendActions}/>;
+    case 'flashSale': return <FlashSaleScreen data={frontendData} actions={frontendActions}/>;
+    case 'offers': return <OffersScreen data={frontendData} actions={frontendActions}/>;
+    case 'allStores': return <AllStoresScreen data={frontendData} actions={frontendActions}/>;
+    case 'itemViewAll': return <ItemViewAllScreen data={frontendData} actions={frontendActions}/>;
+    case 'searchFilters': return <SearchFiltersScreen data={frontendData} actions={frontendActions}/>;
+    case 'addresses': return <AddressesScreen data={frontendData} actions={frontendActions}/>;
+    case 'addAddress': return <AddAddressScreen data={frontendData} actions={frontendActions}/>;
+    case 'language': return <LanguageScreen data={frontendData} actions={frontendActions}/>;
+    case 'interests': return <InterestsScreen data={frontendData} actions={frontendActions}/>;
+    case 'guestTrackOrder': return <GuestTrackOrderScreen data={frontendData} actions={frontendActions}/>;
+    case 'orderDetails': return <OrderDetailsScreen data={frontendData} actions={frontendActions}/>;
+    case 'monthlyOrders': return <MonthlyOrdersScreen data={frontendData} actions={frontendActions}/>;
+    case 'myItems': return <MyItemsScreen data={frontendData} actions={frontendActions}/>;
+    case 'paymentMethods': return <PaymentMethodsScreen data={frontendData} actions={frontendActions}/>;
+    case 'paymentFailed': return <PaymentFailedScreen data={frontendData} actions={frontendActions}/>;
+    case 'subscriptionPlans': return <SubscriptionPlansScreen data={frontendData} actions={frontendActions}/>;
+    case 'subscriptionResult': return <SubscriptionResultScreen data={frontendData} actions={frontendActions}/>;
+    case 'groceryList': return <GroceryListScreen data={frontendData} actions={frontendActions}/>;
+    case 'medicineList': return <MedicineListScreen data={frontendData} actions={frontendActions}/>;
+    case 'rentalFavourites': return <RentalFavouritesScreen data={frontendData} actions={frontendActions}/>;
+    case 'providerProfile': return <ProviderProfileScreen data={frontendData} actions={frontendActions}/>;
+    case 'rideOffers': return <RideOffersScreen data={frontendData} actions={frontendActions}/>;
+    case 'legal': return <LegalScreen data={frontendData} actions={frontendActions}/>;
+    case 'updateApp': return <UpdateScreen data={frontendData} actions={frontendActions}/>;
+    case 'noInternet': return <NoInternetScreen data={frontendData} actions={frontendActions}/>;
+    case 'qr': return <QrScreen data={frontendData} actions={frontendActions}/>;
+    case 'partnerRegistration': return <PartnerRegistrationScreen data={frontendData} actions={frontendActions}/>;
+    case 'signIn': return <SignInScreen data={frontendData} actions={frontendActions}/>;
+    case 'signUp': return <SignUpScreen data={frontendData} actions={frontendActions}/>;
+    case 'forgotPassword': return <ForgotPasswordScreen data={frontendData} actions={frontendActions}/>;
+    case 'verification': return <VerificationScreen data={frontendData} actions={frontendActions}/>;
+    case 'resetPassword': return <ResetPasswordScreen data={frontendData} actions={frontendActions}/>;
+    case 'globalCart': return <GlobalCartScreen data={frontendData} actions={frontendActions}/>;
+    case 'offlinePayment': return <OfflinePaymentScreen data={frontendData} actions={frontendActions}/>;
+    case 'paymentProcessing': return <PaymentProcessingScreen data={frontendData} actions={frontendActions}/>;
+    case 'ridePayment': return <RidePaymentScreen data={frontendData} actions={frontendActions}/>;
   }
 }
 
 const styles = StyleSheet.create({
   flex:{flex:1}, pressed:{opacity:.62}, rowDivider:{borderBottomWidth:1,borderBottomColor:COLORS.line}, star:{color:COLORS.yellow},
+  uxHeaderAction:{width:40,height:40,borderRadius:20,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center'},uxHomeSectionHeading:{flexDirection:'row',alignItems:'baseline',justifyContent:'space-between',marginBottom:-7},uxHomeSectionTitle:{...TYPE.sectionTitle,color:COLORS.black},uxHomeSectionHint:{...TYPE.caption,color:COLORS.muted},
+  uxQuickGrid:{flexDirection:'row',gap:9},uxQuickCard:{flex:1,minHeight:82,borderRadius:18,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center',gap:7,...SHADOW},uxQuickIcon:{width:36,height:36,borderRadius:12,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},uxQuickLabel:{...TYPE.label,color:COLORS.black,fontWeight:'900'},uxMembershipSub:{...TYPE.caption,color:'rgba(255,255,255,.7)',marginTop:2},uxGroupLabel:{...TYPE.label,color:COLORS.muted,textTransform:'uppercase',letterSpacing:.8,marginTop:5,marginBottom:-4},
+  uxActivityScroll:{paddingHorizontal:18,paddingTop:10,paddingBottom:32,gap:16},uxActivityHero:{borderRadius:24,backgroundColor:COLORS.black,padding:20},uxActivityTitle:{...TYPE.screenTitle,color:COLORS.white,maxWidth:300},uxActivityBody:{...TYPE.body,color:'rgba(255,255,255,.72)',marginTop:7,maxWidth:310},uxFilterRail:{gap:8,paddingRight:12},uxFilterChip:{height:38,borderRadius:19,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,paddingHorizontal:14,alignItems:'center',justifyContent:'center'},uxFilterChipActive:{backgroundColor:COLORS.black,borderColor:COLORS.black},uxFilterText:{...TYPE.small,color:COLORS.black,fontWeight:'700'},uxFilterTextActive:{color:COLORS.white},uxActivityList:{gap:10},uxActivityCard:{minHeight:96,borderRadius:20,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:13,flexDirection:'row',alignItems:'center',gap:11,...SHADOW},uxActivityIcon:{width:46,height:46,borderRadius:15,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center'},uxActivityTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},uxActivityCardTitle:{...TYPE.cardTitle,color:COLORS.black,flex:1},uxActivityAmount:{...TYPE.cardTitle,color:COLORS.black},uxActivityMeta:{...TYPE.small,color:COLORS.muted,marginTop:3},uxStatusRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:7},uxStatusDot:{width:7,height:7,borderRadius:4,backgroundColor:COLORS.green},uxStatusText:{...TYPE.caption,color:COLORS.muted,textTransform:'capitalize'},uxSeeAllButton:{minHeight:54,borderRadius:17,backgroundColor:COLORS.yellow,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16},uxSeeAllText:{...TYPE.action,color:COLORS.black},
+  v41BrowseBlock:{gap:10},v41BrowseHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},v41BrowseTitle:{...TYPE.sectionTitle,color:COLORS.black},v41BrowseAction:{...TYPE.action,color:COLORS.red},v41BrowseRail:{gap:9,paddingRight:12},v41BrowsePill:{minWidth:108,minHeight:62,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:COLORS.white,paddingHorizontal:11,flexDirection:'row',alignItems:'center',gap:8,...SHADOW},v41BrowseIcon:{width:34,height:34,borderRadius:11,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},v41BrowseLabel:{...TYPE.small,fontFamily:FONT.bold,fontWeight:'900',color:COLORS.black},
   globalSearchHeader:{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:18,paddingTop:9,paddingBottom:10,backgroundColor:COLORS.white,borderBottomWidth:1,borderBottomColor:COLORS.line},
   globalSearchBack:{width:42,height:42,borderRadius:21,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center',backgroundColor:COLORS.white},
   globalSearchInputWrap:{flex:1,height:50,borderRadius:16,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:14},
@@ -3255,7 +3497,7 @@ const styles = StyleSheet.create({
   whereScroll:{paddingHorizontal:20,paddingBottom:24,gap:14},routeCard:{zIndex:2,shadowOpacity:.04},routeLineRow:{minHeight:70,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:15},routeDivider:{height:1,backgroundColor:COLORS.line,marginLeft:44,marginRight:15},routeLabel:{...TYPE.caption,color:COLORS.muted},routeValue:{...TYPE.cardTitle,marginTop:2},smallOutlineButton:{borderWidth:1,borderColor:COLORS.line,borderRadius:12,paddingHorizontal:11,paddingVertical:8},smallOutlineText:{...TYPE.label,color:COLORS.black},plusButton:{width:46,height:46,borderWidth:1,borderColor:COLORS.line,borderRadius:14,alignItems:'center',justifyContent:'center'},whereMap:{width:'100%',aspectRatio:1.35,marginTop:-2},suggestedCard:{paddingHorizontal:14,paddingTop:14,shadowOpacity:0},suggestedTitle:{...TYPE.sectionTitle,marginBottom:2},placeRow:{minHeight:70,flexDirection:'row',alignItems:'center',gap:13,borderBottomWidth:1,borderBottomColor:COLORS.line},placeTitle:{...TYPE.cardTitle},placeSubtitle:{...TYPE.small,color:COLORS.muted,marginTop:2},
   rideScroll:{paddingHorizontal:20,paddingBottom:28,gap:13},rideList:{gap:9},rideOption:{minHeight:86,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:14},rideOptionSelected:{borderColor:COLORS.red,borderWidth:1.8,backgroundColor:'#FFF4F1'},rideIcon:{width:58,height:58},rideName:{...TYPE.cardTitle},rideEta:{...TYPE.small,color:COLORS.muted,marginTop:2},rideFare:{...TYPE.cardTitle,color:COLORS.black},rideRadio:{width:25,height:25,borderRadius:13,borderWidth:2,borderColor:COLORS.mutedLight,alignItems:'center',justifyContent:'center'},rideRadioSelected:{backgroundColor:COLORS.red,borderColor:COLORS.red},scheduleCard:{shadowOpacity:0},scheduleRow:{height:66,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:14},scheduleTitle:{...TYPE.cardTitle},scheduleSubtitle:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:3},paymentSummary:{minHeight:66,flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:14,shadowOpacity:0},paymentTitle:{...TYPE.cardTitle},paymentSubtitle:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:2},estimatedLabel:{...TYPE.caption,color:COLORS.muted},estimatedFare:{fontFamily:FONT.bold,fontSize:23,lineHeight:28,fontWeight:'900',color:COLORS.black,marginTop:1},
   confirmScroll:{paddingHorizontal:20,paddingBottom:28,gap:15},confirmRouteCard:{padding:18,shadowOpacity:0},confirmRouteRow:{flexDirection:'row',alignItems:'center',gap:12,minHeight:42},confirmRouteText:{fontFamily:FONT.bold,fontSize:16,fontWeight:'800'},confirmRouteConnector:{width:2,height:20,backgroundColor:COLORS.lineDark,marginLeft:8},confirmRouteMeta:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:10,marginLeft:30},paymentChoices:{paddingHorizontal:14,shadowOpacity:0},paymentChoice:{minHeight:70,flexDirection:'row',alignItems:'center',gap:13,borderBottomWidth:1,borderBottomColor:COLORS.line},paymentChoiceSelected:{},priceTitle:{...TYPE.cardTitle,marginTop:3},priceRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',minHeight:30},priceLabel:{fontFamily:FONT.regular,fontSize:15,color:COLORS.muted},priceValue:{fontFamily:FONT.medium,fontSize:15,color:COLORS.black},totalRow:{borderTopWidth:1,borderTopColor:COLORS.line,marginTop:5,paddingTop:9},totalLabel:{fontFamily:FONT.bold,fontSize:16,fontWeight:'900'},totalValue:{fontFamily:FONT.bold,fontSize:17,fontWeight:'900'},cancelPolicy:{fontFamily:FONT.regular,fontSize:12,color:COLORS.muted,textAlign:'center'},
-  etaText:{fontFamily:FONT.bold,fontSize:17,fontWeight:'900',color:COLORS.red,textAlign:'center',marginBottom:10},driverScroll:{paddingHorizontal:20,paddingBottom:25,gap:13},driverMap:{width:'100%',height:310,borderRadius:22},driverProfile:{minHeight:108,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:14,shadowOpacity:.04},driverAvatar:{width:70,height:70,borderRadius:35},driverName:{fontFamily:FONT.bold,fontSize:21,fontWeight:'900'},driverRating:{fontFamily:FONT.medium,fontSize:15,color:COLORS.muted,marginTop:2},driverMeta:{fontFamily:FONT.regular,fontSize:14,color:COLORS.muted,marginTop:3},circleAction:{width:49,height:49,borderRadius:25,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center'},driverActionGrid:{flexDirection:'row',justifyContent:'space-between'},driverAction:{width:'23%',height:72,borderWidth:1,borderColor:COLORS.line,borderRadius:17,alignItems:'center',justifyContent:'center',gap:6},driverActionLabel:{fontFamily:FONT.regular,fontSize:12,color:COLORS.black},tripScroll:{paddingHorizontal:20,paddingBottom:24,gap:13},tripMap:{width:'100%',height:284,borderRadius:22},tripSummary:{padding:17,shadowOpacity:.04},tripLabel:{fontFamily:FONT.regular,fontSize:17,color:COLORS.muted},tripDestination:{...TYPE.screenTitle,marginTop:4},tripRule:{height:1,backgroundColor:COLORS.line,marginVertical:18},tripStats:{flexDirection:'row',justifyContent:'space-between'},tripStatLabel:{fontFamily:FONT.regular,fontSize:14,color:COLORS.muted},tripStatValue:{fontFamily:FONT.bold,fontSize:18,fontWeight:'900',marginTop:7},tripButtons:{flexDirection:'row',gap:10,marginVertical:22},tripSecondary:{flex:1,height:54,borderWidth:1,borderColor:COLORS.line,borderRadius:16,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8},tripSecondaryText:{fontFamily:FONT.medium,fontSize:14,fontWeight:'700'},
+  etaText:{fontFamily:FONT.bold,fontSize:17,fontWeight:'900',color:COLORS.red,textAlign:'center',marginBottom:10},driverScroll:{paddingHorizontal:20,paddingBottom:25,gap:13},driverMap:{width:'100%',height:310,borderRadius:22},driverProfile:{minHeight:108,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:14,shadowOpacity:.04},driverAvatar:{width:70,height:70,borderRadius:35},driverName:{fontFamily:FONT.bold,fontSize:21,fontWeight:'900'},driverRating:{fontFamily:FONT.medium,fontSize:15,color:COLORS.muted,marginTop:2},driverMeta:{fontFamily:FONT.regular,fontSize:14,color:COLORS.muted,marginTop:3},circleAction:{width:49,height:49,borderRadius:25,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center'},driverActionGrid:{flexDirection:'row',justifyContent:'space-between'},driverAction:{width:'23%',height:72,borderWidth:1,borderColor:COLORS.line,borderRadius:17,alignItems:'center',justifyContent:'center',gap:6},driverActionLabel:{fontFamily:FONT.regular,fontSize:12,color:COLORS.black},captainProfileLink:{height:44,borderRadius:14,borderWidth:1,borderColor:COLORS.line,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6},captainProfileLinkText:{fontFamily:FONT.bold,fontSize:12,fontWeight:'800',color:COLORS.red},ridePriceHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},tripScroll:{paddingHorizontal:20,paddingBottom:24,gap:13},tripMap:{width:'100%',height:284,borderRadius:22},tripSummary:{padding:17,shadowOpacity:.04},tripLabel:{fontFamily:FONT.regular,fontSize:17,color:COLORS.muted},tripDestination:{...TYPE.screenTitle,marginTop:4},tripRule:{height:1,backgroundColor:COLORS.line,marginVertical:18},tripStats:{flexDirection:'row',justifyContent:'space-between'},tripStatLabel:{fontFamily:FONT.regular,fontSize:14,color:COLORS.muted},tripStatValue:{fontFamily:FONT.bold,fontSize:18,fontWeight:'900',marginTop:7},tripButtons:{flexDirection:'row',gap:10,marginVertical:22},tripSecondary:{flex:1,height:54,borderWidth:1,borderColor:COLORS.line,borderRadius:16,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8},tripSecondaryText:{fontFamily:FONT.medium,fontSize:14,fontWeight:'700'},
   completeScroll:{paddingHorizontal:22,paddingBottom:24,alignItems:'stretch',gap:17},completeBadge:{width:112,height:112,borderRadius:56,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center',alignSelf:'center',marginTop:15},completeThankYou:{fontFamily:FONT.bold,fontSize:22,fontWeight:'900',textAlign:'center'},completeRouteCard:{padding:18,gap:12,shadowOpacity:0},completePlace:{flexDirection:'row',alignItems:'center',gap:12},completePlaceText:{fontFamily:FONT.medium,fontSize:16,fontWeight:'700'},completeMeta:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginLeft:29},receiptCard:{padding:18,gap:8,shadowOpacity:0},receiptTitle:{...TYPE.cardTitle,marginBottom:5},paidWith:{flexDirection:'row',alignItems:'center',gap:12,borderTopWidth:1,borderTopColor:COLORS.line,paddingTop:14,marginTop:5},rateScroll:{paddingHorizontal:20,paddingBottom:25,gap:20},rateQuestion:{fontFamily:FONT.bold,fontSize:20,fontWeight:'900',textAlign:'center'},starsRow:{flexDirection:'row',justifyContent:'center',gap:5},rateWord:{fontFamily:FONT.medium,fontSize:15,color:COLORS.muted,textAlign:'center',marginTop:-12},tipCard:{padding:18,shadowOpacity:0},tipTitle:{...TYPE.cardTitle},tipSubtitle:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:3},tipRow:{flexDirection:'row',gap:8,marginVertical:18},tipOption:{flex:1,minHeight:42,borderWidth:1,borderColor:COLORS.line,borderRadius:11,alignItems:'center',justifyContent:'center'},tipOptionSelected:{borderColor:COLORS.red,backgroundColor:'#FFF2F2'},tipOptionText:{fontFamily:FONT.medium,fontSize:12,fontWeight:'700'},tipOptionTextSelected:{color:COLORS.red},
   commerceScroll:{paddingHorizontal:20,paddingBottom:28,gap:20},commerceHeader:{minHeight:60,flexDirection:'row',alignItems:'center'},commerceTitle:{...TYPE.screenTitle,flex:1},commerceLocation:{flexDirection:'row',alignItems:'center',gap:6},commerceLocationText:{...TYPE.bodyStrong},cartButton:{width:42,alignItems:'flex-end'},categoryPanel:{minHeight:116,borderWidth:1,borderColor:COLORS.line,borderRadius:22,flexDirection:'row',alignItems:'center',justifyContent:'space-around',paddingHorizontal:5},categoryItem:{alignItems:'center',gap:8},categoryCircle:{width:49,height:49,borderRadius:25,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center'},categoryLabel:{...TYPE.label},categoryEmoji:{fontSize:24},commercePromo:{width:'100%',height:157,borderRadius:22},restaurantRow:{flexDirection:'row',justifyContent:'space-between'},restaurantCard:{width:'31%'},restaurantImage:{width:'100%',aspectRatio:.76,borderRadius:17},restaurantName:{...TYPE.bodyStrong,marginTop:9},restaurantRating:{...TYPE.small,color:COLORS.muted,marginTop:5},restaurantMeta:{...TYPE.caption,color:COLORS.muted,marginTop:4},bottomNav:{minHeight:78,paddingBottom:8,borderTopWidth:1,borderTopColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',justifyContent:'space-around'},bottomNavItem:{flex:1,alignItems:'center',justifyContent:'center',gap:4},bottomNavLabel:{...TYPE.label,fontFamily:FONT.regular,fontWeight:'400',color:COLORS.muted},bottomNavLabelActive:{color:COLORS.red,fontFamily:FONT.bold,fontWeight:'800'},
   restaurantDetailScroll:{paddingHorizontal:20,paddingBottom:105},restaurantHero:{width:'100%',height:250,borderRadius:24},restaurantDetailName:{...TYPE.screenTitle,marginTop:18},restaurantDetailMeta:{...TYPE.body,color:COLORS.muted,marginTop:7},restaurantDetailSub:{...TYPE.small,color:COLORS.muted,marginTop:5},badgeRow:{flexDirection:'row',gap:8,marginTop:13,marginBottom:25},badge:{borderWidth:1,borderColor:COLORS.line,borderRadius:16,paddingHorizontal:11,paddingVertical:7},badgeText:{...TYPE.label},menuItem:{minHeight:92,flexDirection:'row',alignItems:'center',gap:13,borderBottomWidth:1,borderBottomColor:COLORS.line},menuImage:{width:70,height:70,borderRadius:15},menuName:{...TYPE.cardTitle},menuPrice:{...TYPE.small,color:COLORS.muted,marginTop:5},addButton:{width:38,height:38,borderWidth:1,borderColor:COLORS.line,borderRadius:19,alignItems:'center',justifyContent:'center'},viewCartBar:{position:'absolute',left:20,right:20,bottom:12,height:70,borderRadius:18,backgroundColor:COLORS.black,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:18},viewCartTitle:{...TYPE.bodyStrong,color:COLORS.white},viewCartMeta:{...TYPE.small,color:'#D8D8D8',marginTop:3},cartScroll:{paddingHorizontal:20,paddingBottom:28,gap:18},cartRestaurant:{...TYPE.sectionTitle},cartItem:{minHeight:92,flexDirection:'row',alignItems:'center',gap:12},cartImage:{width:72,height:72,borderRadius:15},quantity:{height:38,borderWidth:1,borderColor:COLORS.line,borderRadius:13,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:9},quantityText:{fontFamily:FONT.bold,fontWeight:'800'},cartTotals:{gap:5},orderTrackingScroll:{paddingHorizontal:20,paddingBottom:24,gap:10},orderId:{...TYPE.cardTitle},orderEta:{...TYPE.cardTitle,color:COLORS.red},orderRestaurant:{...TYPE.small,color:COLORS.muted},orderMap:{width:'100%',height:310,borderRadius:22,marginVertical:10},referralCard:{minHeight:74,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:16,backgroundColor:COLORS.yellowSoft,shadowOpacity:0},referralTitle:{...TYPE.cardTitle},referralBody:{...TYPE.small,color:COLORS.muted,marginTop:3},deliverLabel:{...TYPE.small,color:COLORS.muted,marginTop:-10},deliverRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:-12},deliverAddress:{...TYPE.bodyStrong},storeRow:{flexDirection:'row',justifyContent:'space-between'},storeCard:{width:'23%',alignItems:'center'},storeLogo:{width:'100%',aspectRatio:1,borderWidth:1,borderColor:COLORS.line,borderRadius:18},storeName:{...TYPE.label,marginTop:9},storeRating:{...TYPE.caption,color:COLORS.muted,marginTop:5},
@@ -4290,7 +4532,7 @@ const styles = StyleSheet.create({
   v40RideNativeVehicleXL:{transform:[{scaleX:1.14},{scaleY:1.05}]},
   v40RideName:{fontFamily:FONT.bold,fontSize:17,fontWeight:'900',color:COLORS.black},
   v40RideEta:{fontFamily:FONT.regular,fontSize:12.5,color:COLORS.muted,marginTop:3},
-  v40RideDescription:{fontFamily:FONT.regular,fontSize:9.5,color:COLORS.muted,marginTop:3},
+  v40RideDemand:{fontFamily:FONT.bold,fontSize:11,fontWeight:'800',color:'#9A6400',marginTop:4},v40RideDescription:{fontFamily:FONT.regular,fontSize:9.5,color:COLORS.muted,marginTop:3},
   v40RidePriceWrap:{alignItems:'flex-end',gap:10},
   v40RidePrice:{fontFamily:FONT.bold,fontSize:15.5,fontWeight:'900',color:COLORS.black},
   v40RideRadio:{width:25,height:25,borderRadius:13,borderWidth:1.5,borderColor:COLORS.lineDark,alignItems:'center',justifyContent:'center'},

@@ -185,8 +185,8 @@ export function ServiceTile({
 
 const tabConfig: Record<BottomTab, { label: string; icon: keyof typeof Ionicons.glyphMap; screen: Screen }> = {
   home: { label: 'Home', icon: 'home-outline', screen: 'home' },
+  explore: { label: 'Explore', icon: 'grid-outline', screen: 'services' },
   activity: { label: 'Activity', icon: 'time-outline', screen: 'activity' },
-  orders: { label: 'Orders', icon: 'receipt-outline', screen: 'orders' },
   wallet: { label: 'Wallet', icon: 'wallet-outline', screen: 'wallet' },
   account: { label: 'Account', icon: 'person-outline', screen: 'account' },
 };
@@ -198,8 +198,10 @@ export function BottomNav({ active, go }: { active: BottomTab; go: (screen: Scre
         const item = tabConfig[key];
         const selected = active === key;
         return (
-          <Pressable key={key} onPress={() => go(item.screen)} style={styles.bottomNavItem}>
-            <Ionicons name={selected ? String(item.icon).replace('-outline', '') as keyof typeof Ionicons.glyphMap : item.icon} size={22} color={selected ? COLORS.red : COLORS.muted} />
+          <Pressable key={key} onPress={() => go(item.screen)} style={({ pressed }) => [styles.bottomNavItem, pressed && styles.bottomNavItemPressed]}>
+            <View style={[styles.bottomNavIconBubble, selected && styles.bottomNavIconBubbleActive]}>
+              <Ionicons name={selected ? String(item.icon).replace('-outline', '') as keyof typeof Ionicons.glyphMap : item.icon} size={21} color={selected ? COLORS.white : COLORS.muted} />
+            </View>
             <Text style={[styles.bottomNavLabel, selected && styles.bottomNavLabelActive]}>{item.label}</Text>
           </Pressable>
         );
@@ -272,10 +274,13 @@ const styles = StyleSheet.create({
   serviceIcon: { width: 54, height: 54 },
   serviceLabel: { minHeight: 30, textAlign: 'center', ...TYPE.small, fontFamily: FONT.medium, fontWeight: '700', color: COLORS.black },
   pressed: { opacity: 0.62 },
-  bottomNav: { minHeight: Platform.OS === 'android' ? 64 : 62, paddingTop: 4, paddingBottom: 3, borderTopWidth: 1, borderTopColor: COLORS.line, backgroundColor: COLORS.white, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
-  bottomNavItem: { flex: 1, minHeight: Platform.OS === 'android' ? 54 : 50, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  bottomNavLabel: { ...TYPE.label, fontSize: 11, lineHeight: 14, fontFamily: FONT.regular, fontWeight: '400', color: COLORS.muted },
-  bottomNavLabelActive: { color: COLORS.red, fontFamily: FONT.bold, fontWeight: '800' },
+  bottomNav: { minHeight: Platform.OS === 'android' ? 72 : 68, paddingTop: 7, paddingBottom: 5, borderTopWidth: 1, borderTopColor: COLORS.line, backgroundColor: COLORS.white, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
+  bottomNavItem: { flex: 1, minHeight: Platform.OS === 'android' ? 58 : 54, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  bottomNavItemPressed: { opacity: 0.62 },
+  bottomNavIconBubble: { width: 38, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  bottomNavIconBubbleActive: { backgroundColor: COLORS.black },
+  bottomNavLabel: { ...TYPE.label, fontSize: 10.5, lineHeight: 13, fontFamily: FONT.regular, fontWeight: '500', color: COLORS.muted },
+  bottomNavLabelActive: { color: COLORS.black, fontFamily: FONT.bold, fontWeight: '900' },
   locationDotOuter: { width: 17, height: 17, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   locationDotInner: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.white },
   paymentLogo: { width: 36, height: 36, borderRadius: 9 },

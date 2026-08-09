@@ -47,7 +47,7 @@ const checks = [
   ['nearby driver offers', files.rides, 'Nearby drivers'],
   ['selected driver offer state', files.app, 'selectedRideBidId'],
   ['selected offer affects confirmation fare', files.screens, 'selectedRideOffer(data)'],
-  ['selected driver appears in matched screen', files.screens, 'driverName = offer?.driverName'],
+  ['selected driver appears in matched screen', files.screens, 'driverName = offer?.captainName'],
   ['ride safety toolkit', files.rides, 'Safety toolkit'],
   ['share trip safety action', files.rides, 'Share trip'],
 

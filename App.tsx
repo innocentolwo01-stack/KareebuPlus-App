@@ -3,6 +3,8 @@ import { View } from 'react-native';
 import { AppActions, AppData, renderScreen } from './src/screens';
 import { RideId, Screen } from './src/types';
 import { VehicleMode } from './src/ride/vehicle';
+import { createRidePlan, RidePlan, RideProduct, RideReceipt } from './src/ride/mobility';
+import type { CaptainRideStatus } from './src/ride/captainDriverParity';
 import { PlaceSelection } from './src/places/types';
 import { createFoodCheckoutDraft, FoodCartLine, FoodCheckoutDraft, FoodOrder } from './src/food/types';
 import { createCommerceCheckoutDraft, createParcelDraft, createServiceRequest, CommerceCartLine, CommerceCheckoutDraft, CommerceOrder, ParcelDraft, ParcelOrder, RentalBooking, ServiceBooking, ServiceRequest } from './src/parity/types';
@@ -55,6 +57,12 @@ export default function App() {
   const [parcelDraft, setParcelDraft] = useState<ParcelDraft>(() => createParcelDraft('Kampala'));
   const [lastParcelOrder, setLastParcelOrder] = useState<ParcelOrder | null>(null);
   const [selectedRideBidId, setSelectedRideBidId] = useState<string | null>(null);
+  const [rideProduct, setRideProduct] = useState<RideProduct>('instant');
+  const [ridePriority, setRidePriority] = useState(false);
+  const [ridePromoCode, setRidePromoCode] = useState('');
+  const [ridePlan, setRidePlan] = useState<RidePlan>(() => createRidePlan());
+  const [lastRideReceipt, setLastRideReceipt] = useState<RideReceipt | null>(null);
+  const [captainRideStatus, setCaptainRideStatus] = useState<CaptainRideStatus>('idle');
   const [selectedRentalVehicleId, setSelectedRentalVehicleId] = useState('rav4');
   const [lastRentalBooking, setLastRentalBooking] = useState<RentalBooking | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState('cleaning');
@@ -70,6 +78,14 @@ export default function App() {
   // steps on slower Android emulators and prevents stale transition callbacks.
   const navigate = useCallback((next: Screen) => {
     if (currentScreenRef.current === next) return;
+    // Keep the passenger app aligned with the driver-side lifecycle recovered
+    // from the CabBook donor. Production transitions will come from Kareebu
+    // Captain realtime events; these defaults keep local emulator QA coherent.
+    if (next === 'whereTo') setCaptainRideStatus('idle');
+    if (next === 'ridePayment') setCaptainRideStatus('requested');
+    if (next === 'driver') setCaptainRideStatus((current) => current === 'cancelled' || current === 'rejected' ? current : 'accepted');
+    if (next === 'onTrip') setCaptainRideStatus('ongoing');
+    if (next === 'tripComplete') setCaptainRideStatus('complete');
     currentScreenRef.current = next;
     setScreen(next);
   }, []);
@@ -113,6 +129,12 @@ export default function App() {
     parcelDraft,
     lastParcelOrder,
     selectedRideBidId,
+    rideProduct,
+    ridePriority,
+    ridePromoCode,
+    ridePlan,
+    lastRideReceipt,
+    captainRideStatus,
     selectedRentalVehicleId,
     lastRentalBooking,
     selectedServiceId,
@@ -120,7 +142,7 @@ export default function App() {
     serviceRequest,
     lastServiceBooking,
     rewardPoints,
-  }), [guest, authReturn, locationReturn, country, city, phone, otp, fullName, email, locationAllowed, notificationsAllowed, destinationPlace, deliveryPlace, focusedPlace, selectedVehicleMode, selectedRide, selectedPayment, walletBalance, scheduledTrip, rating, tip, selectedRestaurantId, selectedFoodItemId, foodCartLines, foodCheckout, lastFoodOrder, selectedShopId, shopCategoryPreset, cartQuantities, favoriteRestaurantIds, favoriteShopIds, selectedCommerceProductId, commerceCartLines, commerceCheckout, lastCommerceOrder, parcelDraft, lastParcelOrder, selectedRideBidId, selectedRentalVehicleId, lastRentalBooking, selectedServiceId, selectedProviderId, serviceRequest, lastServiceBooking, rewardPoints]);
+  }), [guest, authReturn, locationReturn, country, city, phone, otp, fullName, email, locationAllowed, notificationsAllowed, destinationPlace, deliveryPlace, focusedPlace, selectedVehicleMode, selectedRide, selectedPayment, walletBalance, scheduledTrip, rating, tip, selectedRestaurantId, selectedFoodItemId, foodCartLines, foodCheckout, lastFoodOrder, selectedShopId, shopCategoryPreset, cartQuantities, favoriteRestaurantIds, favoriteShopIds, selectedCommerceProductId, commerceCartLines, commerceCheckout, lastCommerceOrder, parcelDraft, lastParcelOrder, selectedRideBidId, rideProduct, ridePriority, ridePromoCode, ridePlan, lastRideReceipt, captainRideStatus, selectedRentalVehicleId, lastRentalBooking, selectedServiceId, selectedProviderId, serviceRequest, lastServiceBooking, rewardPoints]);
 
   const actions: AppActions = useMemo(() => ({
     go: navigate,
@@ -195,6 +217,12 @@ export default function App() {
     updateParcelDraft: (patch: Partial<ParcelDraft>) => setParcelDraft((current) => ({ ...current, ...patch })),
     placeParcelOrder: setLastParcelOrder,
     setSelectedRideBidId,
+    setRideProduct,
+    setRidePriority,
+    setRidePromoCode,
+    updateRidePlan: (patch: Partial<RidePlan>) => setRidePlan((current) => ({ ...current, ...patch })),
+    setLastRideReceipt,
+    setCaptainRideStatus,
     selectRentalVehicle: setSelectedRentalVehicleId,
     placeRentalBooking: setLastRentalBooking,
     selectService: (serviceId: string) => { setSelectedServiceId(serviceId); setServiceRequest((current) => ({ ...current, serviceId })); },

@@ -5,16 +5,21 @@ import { Header, PrimaryButton, RoundedCard, ScreenShell, SectionTitle } from '.
 import { formatMoney } from '../locale';
 import { COLORS, FONT, TYPE } from '../theme';
 import type { RideFareBid } from '../parity/types';
+import type { VehicleMode } from './vehicle';
+import { captainOffers } from './mobility';
 
-export type RideParityData={country:string;city:string;selectedRideName:string;baseFare:number;pickup:string;destination:string;selectedBidId:string|null};
+export type RideParityData={country:string;city:string;selectedRideName:string;baseFare:number;pickup:string;destination:string;selectedBidId:string|null;selectedVehicleMode:VehicleMode};
 export type RideParityActions={go:(screen:any)=>void;selectBid:(id:string|null)=>void};
 
 export function RideFareBidsScreen({data,actions}:{data:RideParityData;actions:RideParityActions}){
-  const bids:RideFareBid[]=[
-    {id:'peter',driverName:'Peter',rating:4.9,etaMinutes:3,fare:data.baseFare,vehicle:'Toyota Premio · UAX 321P'},
-    {id:'james',driverName:'James',rating:4.8,etaMinutes:5,fare:Math.max(1000,data.baseFare-700),vehicle:'Toyota Axio · UBE 882K'},
-    {id:'musa',driverName:'Musa',rating:4.7,etaMinutes:2,fare:data.baseFare+900,vehicle:'Toyota Fielder · UBL 221D'},
-  ];
+  const bids:RideFareBid[]=captainOffers(data.baseFare,data.country,data.selectedVehicleMode).map((captain)=>({
+    id:captain.id,
+    driverName:captain.captainName,
+    rating:captain.rating,
+    etaMinutes:captain.etaMinutes,
+    fare:captain.fare,
+    vehicle:`${captain.vehicleMake} ${captain.vehicleModel} · ${captain.registration}`,
+  }));
   const [offer,setOffer]=useState(String(data.baseFare));
   return <ScreenShell><Header title="Driver offers" onBack={()=>actions.go('chooseRide')}/><ScrollView style={styles.flex} contentContainerStyle={styles.scroll}><Text style={styles.title}>Choose your fare</Text><Text style={styles.subtitle}>{data.pickup} → {data.destination}</Text><RoundedCard style={styles.offerCard}><Text style={styles.offerLabel}>Your suggested fare</Text><Text style={styles.offerValue}>{formatMoney(data.country,Number(offer)||data.baseFare)}</Text><View style={styles.offerControls}><Pressable onPress={()=>setOffer(String(Math.max(1000,(Number(offer)||data.baseFare)-500)))} style={styles.circle}><Feather name="minus" size={18}/></Pressable><Text style={styles.offerHint}>Adjust in UGX 500 steps</Text><Pressable onPress={()=>setOffer(String((Number(offer)||data.baseFare)+500))} style={styles.circle}><Feather name="plus" size={18}/></Pressable></View></RoundedCard><SectionTitle title="Nearby drivers"/><View style={styles.list}>{bids.map(b=>{const active=data.selectedBidId===b.id;return <Pressable key={b.id} onPress={()=>actions.selectBid(b.id)} style={[styles.bid,active&&styles.bidActive]}><View style={styles.avatar}><Text style={styles.avatarText}>{b.driverName.slice(0,1)}</Text></View><View style={styles.flex}><Text style={styles.driver}>{b.driverName} · ★ {b.rating}</Text><Text style={styles.meta}>{b.vehicle}</Text><Text style={styles.meta}>{b.etaMinutes} min away</Text></View><View style={{alignItems:'flex-end'}}><Text style={styles.fare}>{formatMoney(data.country,b.fare)}</Text><View style={[styles.radio,active&&styles.radioActive]}>{active?<View style={styles.radioDot}/>:null}</View></View></Pressable>})}</View><PrimaryButton disabled={!data.selectedBidId} label="Continue with driver" onPress={()=>actions.go('confirmBooking')}/><Pressable onPress={()=>actions.go('confirmBooking')}><Text style={styles.link}>Skip offers and use standard matching</Text></Pressable></ScrollView></ScreenShell>
 }
