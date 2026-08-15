@@ -25,10 +25,6 @@ const pharmacyProducts: CommerceProduct[] = [
 ];
 
 const groceryProducts: CommerceProduct[] = [
-  { id:'bananas', name:'Bananas', detail:'400–500 g', description:'Fresh ripe bananas selected for everyday snacking, breakfast and smoothies.', basePrice:4900, category:'Fresh produce', icon:'nutrition-outline', badge:'25% off' },
-  { id:'cucumber', name:'Cucumber', detail:'400–500 g', description:'Fresh crisp cucumber, ideal for salads, sandwiches and everyday meals.', basePrice:5900, category:'Fresh produce', icon:'leaf-outline', badge:'17% off' },
-  { id:'tomatoes', name:'Tomato Round', detail:'500 g', description:'Fresh round tomatoes for salads, sauces, stews and everyday cooking.', basePrice:3700, category:'Fresh produce', icon:'nutrition-outline', badge:'46% off' },
-
   { id:'milk', name:'Fresh milk', detail:'1 litre', description:'Fresh full-cream milk.', basePrice:4500, category:'Dairy', icon:'water-outline', variants:[{id:'1l',label:'1 litre',priceDelta:0},{id:'2l',label:'2 litres',priceDelta:4000}] },
   { id:'bread', name:'Fresh bread', detail:'Family loaf', description:'Soft freshly baked family loaf.', basePrice:5500, category:'Bakery', icon:'restaurant-outline' },
   { id:'rice', name:'Premium rice', detail:'2 kg bag', description:'Long-grain premium rice.', basePrice:16000, category:'Pantry', icon:'basket-outline', variants:[{id:'2kg',label:'2 kg',priceDelta:0},{id:'5kg',label:'5 kg',priceDelta:19000}] },

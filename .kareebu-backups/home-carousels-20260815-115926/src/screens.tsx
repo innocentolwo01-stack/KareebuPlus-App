@@ -110,11 +110,6 @@ function demandAdjustedDeliveryFee(baseFee: number, service: 'food-delivery' | '
 }
 
 import { KareebuServiceCarousel } from './home/KareebuServiceCarousel';
-import { KareebuQuickActionsCarousel } from './home/KareebuQuickActionsCarousel';
-import { KareebuTopPicks } from './home/KareebuTopPicks';
-import { KareebuDineOutSection } from './home/KareebuDineOutSection';
-import { KareebuTopOffers } from './home/KareebuTopOffers';
-import { KareebuRidesHomeScreen } from './ride/kareebuRidesHome';
 export type AppData = {
   guest: boolean;
   authReturn: Screen;
@@ -1871,62 +1866,9 @@ export function HomeScreen({ data, actions }: { data: AppData; actions: AppActio
         <Pressable onPress={() => actions.go('assistant')} style={({pressed})=>[styles.v40AiStrip,pressed&&styles.v26CardPressed]}><View style={styles.v40AiStripIcon}><Ionicons name="sparkles" size={18} color={COLORS.black}/></View><View style={styles.flex}><Text style={styles.v40AiStripTitle}>Ask Kareebu AI</Text><Text style={styles.v40AiStripBody}>Tell me what you need and I’ll recommend the best options nearby.</Text></View><Feather name="chevron-right" size={18} color={COLORS.white}/></Pressable>
 
         <View style={styles.uxHomeSectionHeading}><Text style={styles.uxHomeSectionTitle}>What do you need?</Text><Text style={styles.uxHomeSectionHint}>Everything in one place</Text></View>
-        <View>
-          <KareebuServiceCarousel
-            onOpen={(label, screen) => openService(label, screen)}
-          />
-          <KareebuQuickActionsCarousel
-            onOpen={(label, screen) => openService(label, screen)}
-          />
-          <KareebuTopPicks
-            onOpenProduct={(productId) => {
-              const groceryStore =
-                localeStores(data.country, data.city).find(
-                  (item) => item.category === 'Groceries',
-                ) ??
-                DEMO_SHOPS.find(
-                  (item) => item.category === 'Groceries',
-                );
-
-              if (!groceryStore) {
-                actions.setShopCategoryPreset('Groceries');
-                actions.go('shops');
-                return;
-              }
-
-              actions.selectShop(groceryStore.id);
-              actions.selectCommerceProduct(productId);
-              actions.go('commerceProduct');
-            }}
-          />
-          <KareebuDineOutSection
-            onOpenRestaurant={(restaurantId) => {
-              if ('selectRestaurant' in actions && typeof (actions as any).selectRestaurant === 'function') {
-                (actions as any).selectRestaurant(restaurantId);
-                actions.go('restaurant' as any);
-                return;
-              }
-
-              actions.setShopCategoryPreset('Food');
-              actions.go('food' as any);
-            }}
-            onOpenDineOut={() => {
-              actions.setShopCategoryPreset('Food');
-              actions.go('food' as any);
-            }}
-          />
-          <KareebuTopOffers
-            onOpenOffer={(offerId) => {
-              if (offerId === 'vitamins') {
-                actions.setShopCategoryPreset('Pharmacies' as any);
-                actions.go('shops' as any);
-                return;
-              }
-
-              actions.go('shops' as any);
-            }}
-          />
-        </View>
+        <KareebuServiceCarousel
+          onOpen={(label, screen) => openService(label, screen)}
+        />
 
         <View style={styles.v41BrowseBlock}>
           <View style={styles.v41BrowseHeader}><Text style={styles.v41BrowseTitle}>Explore Kareebu+</Text><Pressable onPress={()=>actions.go('allStores')}><Text style={styles.v41BrowseAction}>See all</Text></Pressable></View>
@@ -3423,10 +3365,7 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
     case 'assistant': return <KareebuAssistantScreen data={data} actions={actions}/>;
     case 'services': return <AllServicesScreen data={data} actions={actions}/>;
     case 'place': return <GlobalSearchScreen data={data} actions={actions}/>;
-    case 'mobilityHome':
-      return mobilityData.selectedVehicleMode === 'BODA'
-        ? <MobilityHomeScreen data={mobilityData} actions={mobilityActions}/>
-        : <KareebuRidesHomeScreen data={mobilityData} actions={mobilityActions}/>;
+    case 'mobilityHome': return <MobilityHomeScreen data={mobilityData} actions={mobilityActions}/>;
     case 'rideSchedule': return <RideScheduleScreen data={mobilityData} actions={mobilityActions}/>;
     case 'workRide': return <WorkRideScreen data={mobilityData} actions={mobilityActions}/>;
     case 'schoolRun': return <SchoolRunScreen data={mobilityData} actions={mobilityActions}/>;

@@ -112,9 +112,6 @@ function demandAdjustedDeliveryFee(baseFee: number, service: 'food-delivery' | '
 import { KareebuServiceCarousel } from './home/KareebuServiceCarousel';
 import { KareebuQuickActionsCarousel } from './home/KareebuQuickActionsCarousel';
 import { KareebuTopPicks } from './home/KareebuTopPicks';
-import { KareebuDineOutSection } from './home/KareebuDineOutSection';
-import { KareebuTopOffers } from './home/KareebuTopOffers';
-import { KareebuRidesHomeScreen } from './ride/kareebuRidesHome';
 export type AppData = {
   guest: boolean;
   authReturn: Screen;
@@ -1899,33 +1896,6 @@ export function HomeScreen({ data, actions }: { data: AppData; actions: AppActio
               actions.go('commerceProduct');
             }}
           />
-          <KareebuDineOutSection
-            onOpenRestaurant={(restaurantId) => {
-              if ('selectRestaurant' in actions && typeof (actions as any).selectRestaurant === 'function') {
-                (actions as any).selectRestaurant(restaurantId);
-                actions.go('restaurant' as any);
-                return;
-              }
-
-              actions.setShopCategoryPreset('Food');
-              actions.go('food' as any);
-            }}
-            onOpenDineOut={() => {
-              actions.setShopCategoryPreset('Food');
-              actions.go('food' as any);
-            }}
-          />
-          <KareebuTopOffers
-            onOpenOffer={(offerId) => {
-              if (offerId === 'vitamins') {
-                actions.setShopCategoryPreset('Pharmacies' as any);
-                actions.go('shops' as any);
-                return;
-              }
-
-              actions.go('shops' as any);
-            }}
-          />
         </View>
 
         <View style={styles.v41BrowseBlock}>
@@ -3423,10 +3393,7 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
     case 'assistant': return <KareebuAssistantScreen data={data} actions={actions}/>;
     case 'services': return <AllServicesScreen data={data} actions={actions}/>;
     case 'place': return <GlobalSearchScreen data={data} actions={actions}/>;
-    case 'mobilityHome':
-      return mobilityData.selectedVehicleMode === 'BODA'
-        ? <MobilityHomeScreen data={mobilityData} actions={mobilityActions}/>
-        : <KareebuRidesHomeScreen data={mobilityData} actions={mobilityActions}/>;
+    case 'mobilityHome': return <MobilityHomeScreen data={mobilityData} actions={mobilityActions}/>;
     case 'rideSchedule': return <RideScheduleScreen data={mobilityData} actions={mobilityActions}/>;
     case 'workRide': return <WorkRideScreen data={mobilityData} actions={mobilityActions}/>;
     case 'schoolRun': return <SchoolRunScreen data={mobilityData} actions={mobilityActions}/>;
