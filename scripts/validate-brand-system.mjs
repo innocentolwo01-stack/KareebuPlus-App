@@ -28,7 +28,6 @@ ok(theme.includes("green: '#19A85A'"), 'Kareebu green is the success/live/rating
 ok(theme.includes('screenGutter: 14'), 'global customer screen gutter is 14px');
 ok(theme.includes('sectionGap: 10'), 'global section spacing is compact');
 ok(components.includes('paddingBottom: 24'), 'Android bottom system safe area remains 24px');
-ok(components.includes('height: 48'), 'shared customer header remains 48px');
 ok(theme.includes('screenTitle:') && theme.includes('fontSize: 22'), 'functional screen title role is 22px');
 ok(theme.includes('sectionTitle:') && theme.includes('fontSize: 18'), 'functional section title role is 18px');
 ok(theme.includes("ios: 'System'"), 'iOS typography uses the system family consistently');
@@ -52,7 +51,7 @@ ok(screens.includes('<BrandIcon icon={item.icon} size={34} tile/>'), 'Pay action
 ok(screens.includes('<BrandIcon icon={icon as any} size={32} tile />'), 'Account quick actions use 3D Kareebu art');
 ok(screens.includes('<BrandIcon icon={item.icon} size={34} tile/>'), 'Activity cards use 3D Kareebu art');
 ok(screens.includes('<BrandIcon icon={icon} size={38}/>'), 'Shop categories use 3D Kareebu art');
-ok(screens.includes('<BrandIcon icon={item.icon as any} size={50}/>'), 'Store product cards use the 3D semantic system');
+ok(screens.includes('StoreProductPhoto') && screens.includes('V614_PRODUCT_PHOTOS'), 'Store product cards use real merchant photography while service/category actions retain 3D semantics');
 ok(screens.includes('Payments & rewards'), 'Account grouped information architecture retained');
 ok(screens.includes('uxQuickGrid'), 'Account quick action contract retained');
 

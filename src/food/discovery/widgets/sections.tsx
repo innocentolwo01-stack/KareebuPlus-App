@@ -106,13 +106,36 @@ function RestaurantMeta({
   return (
     <>
       <Text style={styles.rating}>
-        ★ {restaurant.rating.toFixed(1)} (999+) · {restaurant.eta}{' '}
+        ★ {restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.eta}{' '}
         <Text style={styles.meta}>({restaurant.distance})</Text>
       </Text>
       <Text numberOfLines={1} style={styles.meta}>
-        {restaurant.cuisine} · {restaurant.deliveryLabel}
+        {[restaurant.priceLevel, restaurant.neighborhood, restaurant.cuisine, restaurant.deliveryLabel].filter(Boolean).join(' · ')}
       </Text>
+      {restaurant.featuredDish ? (
+        <Text numberOfLines={1} style={styles.featuredDish}>
+          Known for {restaurant.featuredDish}
+        </Text>
+      ) : null}
     </>
+  );
+}
+
+function FoodRestaurantPhoto({
+  restaurant,
+  style,
+}: {
+  restaurant: FoodHomeRestaurant;
+  style: any;
+}) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <Image
+      source={failed && restaurant.fallbackImage ? restaurant.fallbackImage : restaurant.image}
+      resizeMode="cover"
+      style={style}
+      onError={() => setFailed(true)}
+    />
   );
 }
 
@@ -137,11 +160,7 @@ function LargeRestaurantCard({
       ]}
     >
       <View style={styles.largeImageWrap}>
-        <Image
-          source={restaurant.image}
-          resizeMode="cover"
-          style={styles.largeImage}
-        />
+        <FoodRestaurantPhoto restaurant={restaurant} style={styles.largeImage}/>
 
         {rank ? (
           <Text style={styles.rank}>{rank}</Text>
@@ -371,18 +390,14 @@ function SellerCard({
         pressed && styles.pressed,
       ]}
     >
-      <Image
-        source={restaurant.image}
-        resizeMode="cover"
-        style={styles.sellerImage}
-      />
+      <FoodRestaurantPhoto restaurant={restaurant} style={styles.sellerImage}/>
 
       <View style={styles.sellerCopy}>
         <Text numberOfLines={1} style={styles.sellerName}>
           {restaurant.name}
         </Text>
         <Text style={styles.rating}>
-          ★ {restaurant.rating.toFixed(1)} · {restaurant.eta}
+          ★ {restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.eta}
         </Text>
         <Text numberOfLines={1} style={styles.sellerCuisine}>
           {restaurant.cuisine}
@@ -556,11 +571,7 @@ function NearbyCard({
       ]}
     >
       <View style={styles.nearbyImageWrap}>
-        <Image
-          source={restaurant.image}
-          resizeMode="cover"
-          style={styles.nearbyImage}
-        />
+        <FoodRestaurantPhoto restaurant={restaurant} style={styles.nearbyImage}/>
 
         <Favourite
           active={controller.favouriteIds.includes(restaurant.id)}
@@ -583,7 +594,7 @@ function NearbyCard({
       </View>
 
       <Text style={styles.rating}>
-        ★ {restaurant.rating.toFixed(1)} · {restaurant.eta}
+        ★ {restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.eta}
       </Text>
       <Text numberOfLines={1} style={styles.meta}>
         {restaurant.cuisine}
@@ -818,11 +829,7 @@ function CompactStackedRestaurantCard({
       ]}
     >
       <View style={styles.stackImageWrap}>
-        <Image
-          source={restaurant.image}
-          resizeMode="cover"
-          style={styles.stackImage}
-        />
+        <FoodRestaurantPhoto restaurant={restaurant} style={styles.stackImage}/>
 
         <Favourite
           active={controller.favouriteIds.includes(restaurant.id)}
@@ -854,7 +861,7 @@ function CompactStackedRestaurantCard({
 
         <Text numberOfLines={1} style={styles.stackMeta}>
           <Text style={styles.stackStar}>★</Text>{' '}
-          {restaurant.rating.toFixed(1)} · {restaurant.eta} ·{' '}
+          {restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.eta} ·{' '}
           {restaurant.deliveryLabel}
         </Text>
       </View>
@@ -895,11 +902,7 @@ function InspiredRecommendationList({
           ]}
         >
           <View style={styles.inspiredImageWrap}>
-            <Image
-              source={restaurant.image}
-              resizeMode="cover"
-              style={styles.inspiredImage}
-            />
+            <FoodRestaurantPhoto restaurant={restaurant} style={styles.inspiredImage}/>
             <Favourite
               active={controller.favouriteIds.includes(restaurant.id)}
               onPress={() => controller.actions.toggleFavourite(restaurant.id)}
@@ -926,7 +929,7 @@ function InspiredRecommendationList({
 
             <Text numberOfLines={1} style={styles.inspiredMeta}>
               <Text style={styles.stackStar}>★</Text>{' '}
-              {restaurant.rating.toFixed(1)} · {restaurant.eta} ·{' '}
+              {restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.eta} ·{' '}
               {restaurant.deliveryLabel}
             </Text>
 
@@ -1263,11 +1266,7 @@ export function AllRestaurantsEnhanced({
               ]}
             >
               <View style={styles.allReferenceImageWrap}>
-                <Image
-                  source={restaurant.image}
-                  resizeMode="cover"
-                  style={styles.allReferenceImage}
-                />
+                <FoodRestaurantPhoto restaurant={restaurant} style={styles.allReferenceImage}/>
 
                 <Favourite
                   active={controller.favouriteIds.includes(restaurant.id)}
@@ -1299,7 +1298,7 @@ export function AllRestaurantsEnhanced({
 
                 <Text numberOfLines={1} style={styles.allReferenceMeta}>
                   <Text style={styles.stackStar}>★</Text>{' '}
-                  {restaurant.rating.toFixed(1)} · {restaurant.eta} ·{' '}
+                  {restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.eta} ·{' '}
                   {restaurant.deliveryLabel}
                 </Text>
 
@@ -1355,6 +1354,7 @@ export const styles = StyleSheet.create({
   plusMarkText:{fontSize:11,lineHeight:13,fontWeight:'900',color:COLORS.yellow},
   rating:{marginTop:4,color:COLORS.green,...TYPE.small,fontWeight:'800'},
   meta:{color:COLORS.muted,...TYPE.small,fontWeight:'500'},
+  featuredDish:{color:COLORS.black,...TYPE.caption,fontWeight:'700',marginTop:3},
 
   promoRail:{paddingLeft:16,paddingRight:22,paddingVertical:16,gap:14},
   promoCard:{height:112,borderRadius:15,overflow:'hidden',backgroundColor:COLORS.yellowWash},

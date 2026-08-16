@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Image,
   Pressable,
@@ -74,6 +74,18 @@ function FavouriteButton({
   );
 }
 
+function SurfaceRestaurantPhoto({ restaurant }: { restaurant: FoodHomeRestaurant }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <Image
+      source={failed && restaurant.fallbackImage ? restaurant.fallbackImage : restaurant.image}
+      resizeMode="cover"
+      style={styles.restaurantImage}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function RestaurantRow({
   restaurant,
   controller,
@@ -86,7 +98,7 @@ function RestaurantRow({
       onPress={() => controller.actions.openRestaurant(restaurant.id)}
       style={({ pressed }) => [styles.restaurantRow, pressed && styles.pressed]}
     >
-      <Image source={restaurant.image} resizeMode="cover" style={styles.restaurantImage} />
+      <SurfaceRestaurantPhoto restaurant={restaurant} />
 
       <View style={styles.restaurantCopy}>
         <View style={styles.restaurantNameRow}>
@@ -94,10 +106,10 @@ function RestaurantRow({
           <Text numberOfLines={1} style={styles.restaurantName}>{restaurant.name}</Text>
         </View>
         <Text numberOfLines={1} style={styles.restaurantMeta}>
-          ★ {restaurant.rating.toFixed(1)} · {restaurant.eta} · {restaurant.distance}
+          ★ {restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.eta} · {restaurant.distance}
         </Text>
         <Text numberOfLines={1} style={styles.restaurantMeta}>
-          {restaurant.cuisine} · {restaurant.deliveryLabel}
+          {[restaurant.priceLevel, restaurant.neighborhood, restaurant.cuisine, restaurant.deliveryLabel].filter(Boolean).join(' · ')}
         </Text>
         {restaurant.offer ? <Text numberOfLines={1} style={styles.offer}>{restaurant.offer}</Text> : null}
       </View>

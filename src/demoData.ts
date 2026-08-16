@@ -17,6 +17,10 @@ export type DemoRestaurant = {
   name: string;
   cuisine: string;
   image: FoodImageKey;
+  photoUrl?: string;
+  neighborhood?: string;
+  priceLevel?: '$' | '$$' | '$$$';
+  featuredDish?: string;
   rating: number;
   reviews: string;
   eta: string;
@@ -78,7 +82,38 @@ function menuWithPrefix(prefix: string, base: DemoMenuItem[]): DemoMenuItem[] {
   return base.map((item) => ({ ...item, id: `${prefix}-${item.id}` }));
 }
 
-export const DEMO_RESTAURANTS: DemoRestaurant[] = [
+// Real editorial photography used for the prototype merchant surfaces.
+// These are representative food/retail photographs, not claims that the photo
+// was taken inside the named merchant. Merchant identity remains in the listing
+// name/logo while Kareebu+ uses real photography for a production-quality feel.
+const REAL_RESTAURANT_PHOTOS = {
+  cafe: 'https://images.unsplash.com/photo-1563722897-e6dac3cec340?auto=format&fit=crop&w=1200&q=82',
+  chicken: 'https://images.unsplash.com/photo-1567121938596-6d9d015d348b?auto=format&fit=crop&w=1200&q=82',
+  pizza: 'https://images.unsplash.com/photo-1705537748124-926009973f94?auto=format&fit=crop&w=1200&q=82',
+  noodles: 'https://images.unsplash.com/photo-1664079555522-e3c96c0242f0?auto=format&fit=crop&w=1200&q=82',
+  burger: 'https://images.unsplash.com/photo-1768204039115-34f404d3a59d?auto=format&fit=crop&w=1200&q=82',
+  african: 'https://images.unsplash.com/photo-1665333048952-a3ee97714c6b?auto=format&fit=crop&w=1200&q=82',
+  coffee: 'https://images.unsplash.com/photo-1769138885048-4f91ed2353a0?auto=format&fit=crop&w=1200&q=82',
+  healthy: 'https://images.unsplash.com/photo-1574400901674-b28bb483afc3?auto=format&fit=crop&w=1200&q=82',
+  dessert: 'https://images.unsplash.com/photo-1768203628150-0f4acfda2201?auto=format&fit=crop&w=1200&q=82',
+} as const;
+
+const RESTAURANT_LISTING_META: Partial<Record<string, Partial<DemoRestaurant>>> = {
+  'cafe-javas': { photoUrl: REAL_RESTAURANT_PHOTOS.cafe, neighborhood: 'Kampala', priceLevel: '$$', featuredDish: 'Javas Big Breakfast' },
+  'chicken-tonight': { photoUrl: REAL_RESTAURANT_PHOTOS.chicken, neighborhood: 'Kampala', priceLevel: '$$', featuredDish: 'Flame-grilled chicken' },
+  'pizza-inn': { photoUrl: REAL_RESTAURANT_PHOTOS.pizza, neighborhood: 'Kampala', priceLevel: '$$', featuredDish: 'BBQ Chicken Pizza' },
+  'tamarind-thai': { photoUrl: REAL_RESTAURANT_PHOTOS.noodles, neighborhood: 'Kampala', priceLevel: '$$$', featuredDish: 'Thai noodles' },
+  'rolex-stop': { photoUrl: REAL_RESTAURANT_PHOTOS.burger, neighborhood: 'Kampala', priceLevel: '$', featuredDish: 'Breakfast Rolex' },
+  'kampala-grill': { photoUrl: REAL_RESTAURANT_PHOTOS.african, neighborhood: 'Kampala', priceLevel: '$$$', featuredDish: 'Grilled local favourites' },
+  'java-house': { photoUrl: REAL_RESTAURANT_PHOTOS.coffee, neighborhood: 'Kampala', priceLevel: '$$', featuredDish: 'Coffee & breakfast' },
+  'urban-bowl': { photoUrl: REAL_RESTAURANT_PHOTOS.healthy, neighborhood: 'Kampala', priceLevel: '$$', featuredDish: 'Fresh bowls & salads' },
+  'kampala-bites': { photoUrl: REAL_RESTAURANT_PHOTOS.african, neighborhood: 'Kampala', priceLevel: '$$', featuredDish: 'Local favourites' },
+  'sweet-tooth': { photoUrl: REAL_RESTAURANT_PHOTOS.dessert, neighborhood: 'Kampala', priceLevel: '$$', featuredDish: 'Desserts & iced coffee' },
+  'roast-rhyme': { photoUrl: REAL_RESTAURANT_PHOTOS.chicken, neighborhood: 'Kampala', priceLevel: '$$$', featuredDish: 'Chargrilled chicken' },
+  'smokery': { photoUrl: REAL_RESTAURANT_PHOTOS.burger, neighborhood: 'Kampala', priceLevel: '$$$', featuredDish: 'BBQ & burgers' },
+};
+
+export const DEMO_RESTAURANTS: DemoRestaurant[] = ([
   { id:'cafe-javas', name:'Café Javas', cuisine:'Café · Burgers · Local favourites', image:'cafeJavas', rating:4.7, reviews:'2.4k', eta:'20–30 min', deliveryFee:2000, distance:'1.3 km', offer:'30% off selected meals', plus:true, categories:['Burgers','Local dishes','Coffee','Desserts'], menu:javasMenu },
   { id:'chicken-tonight', name:'Chicken Tonight', cuisine:'Chicken · Grills · Fast food', image:'chickenTonight', rating:4.6, reviews:'1.9k', eta:'18–28 min', deliveryFee:2500, distance:'1.8 km', offer:'Free delivery over UGX 35,000', plus:true, categories:['Chicken','Grills','Healthy'], menu:chickenMenu },
   { id:'pizza-inn', name:'Pizza Inn', cuisine:'Pizza · Wings · Desserts', image:'cafeJavas', rating:4.5, reviews:'3.1k', eta:'25–35 min', deliveryFee:3000, distance:'2.4 km', offer:'25% off pizzas', categories:['Pizza','Desserts'], menu:pizzaMenu },
@@ -91,12 +126,19 @@ export const DEMO_RESTAURANTS: DemoRestaurant[] = [
   { id:'sweet-tooth', name:'Sweet Tooth', cuisine:'Desserts · Ice cream · Coffee', image:'tamaraThai', rating:4.7, reviews:'710', eta:'15–25 min', deliveryFee:2000, distance:'1.2 km', offer:'2 desserts for UGX 20,000', categories:['Desserts','Coffee'], menu:menuWithPrefix('sweet', javasMenu.slice(9)) },
   { id:'roast-rhyme', name:'Roast & Rhyme', cuisine:'Grills · Chicken · Local favourites', image:'chickenTonight', rating:4.7, reviews:'1.3k', eta:'22–32 min', deliveryFee:2500, distance:'2.2 km', offer:'20% off selected grills', plus:true, categories:['Chicken','Grills','Local dishes'], menu:menuWithPrefix('roast', chickenMenu) },
   { id:'smokery', name:'The Smokery', cuisine:'BBQ · Burgers · Grills', image:'chickenTonight', rating:4.8, reviews:'880', eta:'25–38 min', deliveryFee:3000, distance:'2.9 km', offer:'Free delivery over UGX 45,000', categories:['Burgers','Chicken','Grills'], menu:menuWithPrefix('smokery', [...chickenMenu.slice(0,8), ...javasMenu.slice(3,6)]) },
-];
+] as DemoRestaurant[]).map((restaurant) => ({
+  ...restaurant,
+  ...(RESTAURANT_LISTING_META[restaurant.id] ?? {}),
+}));
 
 export type DemoShop = {
   id: string;
   name: string;
   category: string;
+  photoUrl?: string;
+  reviews?: string;
+  location?: string;
+  inventoryHint?: string;
   rating: number;
   eta: string;
   minOrder: number;
@@ -106,7 +148,38 @@ export type DemoShop = {
   tone: 'black' | 'yellow' | 'red';
 };
 
-export const DEMO_SHOPS: DemoShop[] = [
+const REAL_SHOP_PHOTOS = {
+  grocery: 'https://images.unsplash.com/photo-1670684684445-a4504dca0bbc?auto=format&fit=crop&w=1200&q=82',
+  produce: 'https://images.unsplash.com/photo-1775830443507-2a047e6eb49a?auto=format&fit=crop&w=1200&q=82',
+  pharmacy: 'https://images.unsplash.com/photo-1696861286643-341a8d7a79e9?auto=format&fit=crop&w=1200&q=82',
+  electronics: 'https://images.unsplash.com/photo-1641440615796-5302077ce9fe?auto=format&fit=crop&w=1200&q=82',
+  pets: 'https://images.unsplash.com/photo-1722336131103-cfaa6461e8d6?auto=format&fit=crop&w=1200&q=82',
+  beauty: 'https://images.unsplash.com/photo-1757800946096-b3f14edd6809?auto=format&fit=crop&w=1200&q=82',
+  home: 'https://images.unsplash.com/photo-1770385605649-11de1a033064?auto=format&fit=crop&w=1200&q=82',
+} as const;
+
+function realShopPhoto(shop: DemoShop): string {
+  if (shop.category === 'Pharmacy' || shop.category === 'Nutrition' || shop.category === 'Eye care') return REAL_SHOP_PHOTOS.pharmacy;
+  if (shop.category === 'Electronics' || shop.category === 'Marketplace') return REAL_SHOP_PHOTOS.electronics;
+  if (shop.category === 'Beauty') return REAL_SHOP_PHOTOS.beauty;
+  if (shop.category === 'Pets') return REAL_SHOP_PHOTOS.pets;
+  if (shop.category === 'Home') return REAL_SHOP_PHOTOS.home;
+  return ['quality', 'village-tz', 'quickmart'].includes(shop.id) ? REAL_SHOP_PHOTOS.produce : REAL_SHOP_PHOTOS.grocery;
+}
+
+function shopInventoryHint(shop: DemoShop): string {
+  if (shop.category === 'Pharmacy') return 'Health, wellness & personal care';
+  if (shop.category === 'Groceries') return 'Fresh food, pantry & household';
+  if (shop.category === 'Electronics' || shop.category === 'Marketplace') return 'Phones, accessories & everyday tech';
+  if (shop.category === 'Beauty') return 'Skincare, haircare & beauty';
+  if (shop.category === 'Pets') return 'Pet food, care & accessories';
+  if (shop.category === 'Home') return 'Homeware, cleaning & essentials';
+  if (shop.category === 'Nutrition') return 'Sports nutrition & wellness';
+  if (shop.category === 'Eye care') return 'Eye care & contact lens essentials';
+  return shop.deal;
+}
+
+export const DEMO_SHOPS: DemoShop[] = ([
   { id:'goodlife', name:'Goodlife Pharmacy', category:'Pharmacy', rating:4.8, eta:'12–20 min', minOrder:20000, deliveryFee:0, deal:'Kareebu+ wellness delivery', icon:'medical', tone:'black' },
   { id:'carrefour', name:'Carrefour Uganda', category:'Groceries', rating:4.7, eta:'25–35 min', minOrder:25000, deliveryFee:2500, deal:'Groceries, fresh food & household', icon:'cart', tone:'red' },
   { id:'capital', name:'Capital Shoppers', category:'Groceries', rating:4.7, eta:'20–30 min', minOrder:25000, deliveryFee:2000, deal:'Groceries & household shopping', icon:'cart', tone:'red' },
@@ -136,7 +209,13 @@ export const DEMO_SHOPS: DemoShop[] = [
   { id:'shoppers-tz', name:'Shoppers Supermarket', category:'Groceries', rating:4.7, eta:'25–40 min', minOrder:15000, deliveryFee:3000, deal:'Groceries, fresh foods & household', icon:'cart', tone:'red' },
   { id:'village-tz', name:'Village Supermarket', category:'Groceries', rating:4.8, eta:'25–40 min', minOrder:20000, deliveryFee:3500, deal:'Fine foods, fresh produce & home', icon:'cart', tone:'black' },
   { id:'breeze-tz', name:'Breeze Pharmacy', category:'Pharmacy', rating:4.7, eta:'20–35 min', minOrder:15000, deliveryFee:2500, deal:'Health, wellness & personal care', icon:'medical', tone:'yellow' },
-];
+] as DemoShop[]).map((shop, index) => ({
+  ...shop,
+  photoUrl: realShopPhoto(shop),
+  reviews: `${Math.max(240, 480 + index * 73).toLocaleString('en-US')}`,
+  location: shop.id.endsWith('-tz') ? 'Dar es Salaam' : ['naivas', 'quickmart'].includes(shop.id) ? 'Nairobi' : 'Kampala',
+  inventoryHint: shopInventoryHint(shop),
+}));
 
 export type DemoPromotion = {
   id: string;

@@ -10,6 +10,7 @@ import {
   Pressable,
   ScrollView,
   Share,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +18,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, MarkerAnimated, Polyline, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import {
@@ -1583,6 +1585,196 @@ function PopularStoreLogo({ store }: { store: DemoShop }) {
   return <View style={styles.v35FallbackStoreLogo}><Ionicons name={shopIconName(store.icon)} size={25} color={COLORS.black}/><Text numberOfLines={1} style={styles.v35FallbackStoreText}>{store.name}</Text></View>;
 }
 
+function ResilientMerchantPhoto({
+  uri,
+  fallback,
+  style,
+}: {
+  uri: string | undefined;
+  fallback: ImageSourcePropType;
+  style: any;
+}) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <Image
+      source={!failed && uri ? { uri } : fallback}
+      resizeMode="cover"
+      style={style}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function RestaurantPhoto({ restaurant, style }: { restaurant: DemoRestaurant; style: any }) {
+  return (
+    <ResilientMerchantPhoto
+      uri={restaurant.photoUrl}
+      fallback={assets.food[restaurant.image]}
+      style={style}
+    />
+  );
+}
+
+function ShopPhoto({ store, style, logo = true }: { store: DemoShop; style: any; logo?: boolean }) {
+  return (
+    <View style={[style, styles.realShopPhotoFrame]}>
+      <ResilientMerchantPhoto
+        uri={store.photoUrl}
+        fallback={assets.service.shops}
+        style={StyleSheet.absoluteFill}
+      />
+      <View pointerEvents="none" style={styles.realShopPhotoShade}/>
+      {logo ? <View style={styles.realShopLogoBadge}><PopularStoreLogo store={store}/></View> : null}
+    </View>
+  );
+}
+
+function RestaurantIdentityLogo({ restaurant }: { restaurant: DemoRestaurant }) {
+  const [failed, setFailed] = useState(false);
+  const domainById: Partial<Record<string, string>> = {
+    'cafe-javas': 'cafejavas.co.ug',
+    'chicken-tonight': 'chickentonight.ug',
+    'pizza-inn': 'pizzainn.com',
+    'java-house': 'javahouseafrica.com',
+  };
+  const domain = domainById[restaurant.id];
+
+  if (domain && !failed) {
+    return (
+      <Image
+        source={{ uri: `https://www.google.com/s2/favicons?sz=256&domain_url=https://${domain}` }}
+        resizeMode="contain"
+        style={styles.v614MerchantLogoImage}
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  const id = restaurant.id.toLowerCase();
+  const palette = id.includes('cafe-javas')
+    ? { background: '#F4C72D', foreground: '#221A0D', label: 'JAVAS' }
+    : id.includes('chicken-tonight')
+      ? { background: '#E53C46', foreground: '#FFFFFF', label: 'CHICKEN\nTONIGHT' }
+      : id.includes('pizza-inn')
+        ? { background: '#139B62', foreground: '#FFFFFF', label: 'PIZZA\nINN' }
+        : id.includes('java-house')
+          ? { background: '#64271F', foreground: '#FFFFFF', label: 'JAVA\nHOUSE' }
+          : id.includes('tamarind')
+            ? { background: '#1D734C', foreground: '#FFFFFF', label: 'TAMARIND' }
+            : id.includes('roast-rhyme')
+              ? { background: '#151515', foreground: '#FFC400', label: 'ROAST &\nRHYME' }
+              : id.includes('smokery')
+                ? { background: '#292421', foreground: '#FFFFFF', label: 'SMOKERY' }
+                : id.includes('urban-bowl')
+                  ? { background: '#DFF4DD', foreground: '#1D6137', label: 'URBAN\nBOWL' }
+                  : id.includes('sweet-tooth')
+                    ? { background: '#FFE1EA', foreground: '#8C3153', label: 'SWEET\nTOOTH' }
+                    : { background: COLORS.yellow, foreground: COLORS.black, label: restaurant.name.split(' ').slice(0, 2).join('\n').toUpperCase() };
+
+  return (
+    <View style={[styles.v614RestaurantLogoFallback, { backgroundColor: palette.background }]}>
+      <Text
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        minimumFontScale={0.58}
+        style={[styles.v614RestaurantLogoFallbackText, { color: palette.foreground }]}
+      >
+        {palette.label}
+      </Text>
+    </View>
+  );
+}
+
+function MerchantRatingPanel({ rating, reviews }: { rating: number; reviews: string }) {
+  return (
+    <View style={styles.v614RatingPanel}>
+      <View style={styles.v614RatingTop}>
+        <Text style={styles.v614RatingScore}>★ {rating.toFixed(1)}</Text>
+      </View>
+      <View style={styles.v614RatingBottom}>
+        <Text style={styles.v614RatingCount}>{reviews}</Text>
+        <Text style={styles.v614RatingLabel}>ratings</Text>
+      </View>
+    </View>
+  );
+}
+
+const V614_DISH_PHOTOS = {
+  chicken: 'https://images.unsplash.com/photo-1567121938596-6d9d015d348b?auto=format&fit=crop&w=700&q=88',
+  pizza: 'https://images.unsplash.com/photo-1705537748124-926009973f94?auto=format&fit=crop&w=700&q=88',
+  burger: 'https://images.unsplash.com/photo-1768204039115-34f404d3a59d?auto=format&fit=crop&w=700&q=88',
+  healthy: 'https://images.unsplash.com/photo-1574400901674-b28bb483afc3?auto=format&fit=crop&w=700&q=88',
+  dessert: 'https://images.unsplash.com/photo-1768203628150-0f4acfda2201?auto=format&fit=crop&w=700&q=88',
+  coffee: 'https://images.unsplash.com/photo-1769138885048-4f91ed2353a0?auto=format&fit=crop&w=700&q=88',
+  african: 'https://images.unsplash.com/photo-1665333048952-a3ee97714c6b?auto=format&fit=crop&w=700&q=88',
+  noodles: 'https://images.unsplash.com/photo-1664079555522-e3c96c0242f0?auto=format&fit=crop&w=700&q=88',
+} as const;
+
+function dishPhotoUri(item: DemoMenuItem, restaurant: DemoRestaurant) {
+  const haystack = `${item.name} ${item.category} ${item.description}`.toLowerCase();
+  if (haystack.includes('pizza')) return V614_DISH_PHOTOS.pizza;
+  if (haystack.includes('chicken') || haystack.includes('wing')) return V614_DISH_PHOTOS.chicken;
+  if (haystack.includes('burger') || haystack.includes('sandwich') || haystack.includes('wrap')) return V614_DISH_PHOTOS.burger;
+  if (haystack.includes('salad') || haystack.includes('healthy') || haystack.includes('bowl')) return V614_DISH_PHOTOS.healthy;
+  if (haystack.includes('cake') || haystack.includes('dessert') || haystack.includes('brownie') || haystack.includes('cheesecake')) return V614_DISH_PHOTOS.dessert;
+  if (haystack.includes('coffee') || haystack.includes('latte') || haystack.includes('juice') || haystack.includes('drink')) return V614_DISH_PHOTOS.coffee;
+  if (haystack.includes('thai') || haystack.includes('noodle') || haystack.includes('curry')) return V614_DISH_PHOTOS.noodles;
+  return restaurant.photoUrl ?? V614_DISH_PHOTOS.african;
+}
+
+function RestaurantDishPhoto({
+  item,
+  restaurant,
+}: {
+  item: DemoMenuItem;
+  restaurant: DemoRestaurant;
+}) {
+  return (
+    <ResilientMerchantPhoto
+      uri={dishPhotoUri(item, restaurant)}
+      fallback={assets.food[item.image]}
+      style={styles.v614MenuPhoto}
+    />
+  );
+}
+
+const V614_PRODUCT_PHOTOS = {
+  pharmacy: 'https://images.unsplash.com/photo-1696861286643-341a8d7a79e9?auto=format&fit=crop&w=700&q=88',
+  grocery: 'https://images.unsplash.com/photo-1775830443507-2a047e6eb49a?auto=format&fit=crop&w=700&q=88',
+  electronics: 'https://images.unsplash.com/photo-1641440615796-5302077ce9fe?auto=format&fit=crop&w=700&q=88',
+  beauty: 'https://images.unsplash.com/photo-1757800946096-b3f14edd6809?auto=format&fit=crop&w=700&q=88',
+  pet: 'https://images.unsplash.com/photo-1722336131103-cfaa6461e8d6?auto=format&fit=crop&w=700&q=88',
+  home: 'https://images.unsplash.com/photo-1770385605649-11de1a033064?auto=format&fit=crop&w=700&q=88',
+  retail: 'https://images.unsplash.com/photo-1670684684445-a4504dca0bbc?auto=format&fit=crop&w=700&q=88',
+} as const;
+
+function productPhotoUri(store: DemoShop, item: { name: string; category: string; detail: string }) {
+  const haystack = `${store.category} ${item.category} ${item.name} ${item.detail}`.toLowerCase();
+  if (haystack.includes('pharmacy') || haystack.includes('medicine') || haystack.includes('vitamin') || haystack.includes('wellness')) return V614_PRODUCT_PHOTOS.pharmacy;
+  if (haystack.includes('electronic') || haystack.includes('phone') || haystack.includes('charger') || haystack.includes('earbud') || haystack.includes('speaker')) return V614_PRODUCT_PHOTOS.electronics;
+  if (haystack.includes('beauty') || haystack.includes('skin') || haystack.includes('personal care')) return V614_PRODUCT_PHOTOS.beauty;
+  if (haystack.includes('pet')) return V614_PRODUCT_PHOTOS.pet;
+  if (haystack.includes('home') || haystack.includes('household')) return V614_PRODUCT_PHOTOS.home;
+  if (haystack.includes('grocery') || haystack.includes('food') || haystack.includes('milk') || haystack.includes('bread') || haystack.includes('rice') || haystack.includes('fruit')) return V614_PRODUCT_PHOTOS.grocery;
+  return V614_PRODUCT_PHOTOS.retail;
+}
+
+function StoreProductPhoto({
+  store,
+  item,
+}: {
+  store: DemoShop;
+  item: { name: string; category: string; detail: string };
+}) {
+  return (
+    <ResilientMerchantPhoto
+      uri={productPhotoUri(store, item)}
+      fallback={assets.service.shops}
+      style={styles.v614ProductPhoto}
+    />
+  );
+}
+
 function HomeShopSection({ data, actions }: { data: AppData; actions: AppActions }) {
   const items = localeStores(data.country, data.city);
   return (
@@ -1591,11 +1783,11 @@ function HomeShopSection({ data, actions }: { data: AppData; actions: AppActions
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.homeStoreList}>
         {items.map((store) => (
           <Pressable key={store.id} onPress={() => { actions.selectShop(store.id); actions.go('shop'); }} style={({ pressed }) => [styles.homeStoreCard, styles.v35HomeStoreCard, pressed && styles.v26CardPressed]}>
-            <View style={styles.v35StoreLogoArea}><PopularStoreLogo store={store} /></View>
+            <ShopPhoto store={store} style={styles.v35StorePhotoArea}/>
             <Text numberOfLines={2} style={[styles.homeStoreName, styles.v35HomeStoreName]}>{localisedStoreName(store, data.country)}</Text>
-            <Text numberOfLines={1} style={styles.v27HomeStoreType}>{store.category}</Text>
-            <Text style={styles.homeStoreMeta}><Text style={styles.star}>★</Text> {store.rating.toFixed(1)} · {store.eta}</Text>
-            <Text numberOfLines={1} style={styles.v30StoreDeal}>{store.deal}</Text>
+            <Text numberOfLines={1} style={styles.v27HomeStoreType}>{store.category} · {store.location ?? data.city}</Text>
+            <Text style={styles.homeStoreMeta}><Text style={styles.star}>★</Text> {store.rating.toFixed(1)} ({store.reviews ?? 'New'}) · {store.eta}</Text>
+            <Text numberOfLines={1} style={styles.v30StoreDeal}>{store.inventoryHint ?? store.deal}</Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -1797,8 +1989,8 @@ function HomeRealBrands({ data, actions }: { data: AppData; actions: AppActions 
       <View style={styles.v34BrandList}>
         {brands.map((store) => (
           <Pressable key={store.id} onPress={() => { actions.selectShop(store.id); actions.go('shop'); }} style={({pressed}) => [styles.v34BrandTile,{width:brandWidth},pressed&&styles.v26CardPressed]}>
-            <View style={styles.v34BrandLogoWrap}><PopularStoreLogo store={store}/></View>
-            <Text numberOfLines={1} style={styles.v34BrandEta}>{store.eta}</Text>
+            <ShopPhoto store={store} style={styles.v34BrandPhoto}/>
+            <Text numberOfLines={1} style={styles.v34BrandEta}>★ {store.rating.toFixed(1)} · {store.eta}</Text>
           </Pressable>
         ))}
       </View>
@@ -1816,7 +2008,7 @@ function HomeRecentActivityCompact({ data, go }: { data: AppData; go: (screen: S
     <View>
       <View style={styles.v31SectionRow}><Text style={styles.v34SectionTitle}>Recent activity</Text><TextButton label="See all" onPress={() => go('activity')} color={COLORS.red}/></View>
       <Pressable onPress={() => go('orders')} style={({pressed}) => [styles.v34RecentCard,pressed&&styles.v26CardPressed]}>
-        <View style={styles.v34RecentBrand}><PopularStoreLogo store={recentStore}/></View>
+        <ShopPhoto store={recentStore} style={styles.v34RecentPhoto}/>
         <View style={styles.v34RecentCopy}>
           <Text numberOfLines={1} style={styles.v34RecentTitle}>{localisedStoreName(recentStore, data.country)}</Text>
           <Text numberOfLines={1} style={styles.v34RecentMeta}>{recentStore.category} · Delivered</Text>
@@ -1875,7 +2067,7 @@ function V40NewFinds({ data, actions }: { data: AppData; actions: AppActions }) 
     <View>
       <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>New finds up to <Text style={styles.v40AccentText}>30% off</Text></Text><Text style={styles.v40SectionSub}>Discover more, spend less</Text></View><TextButton label="See all" onPress={()=>actions.go('shops')} color={COLORS.red}/></View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FindsRow}>
-        {stores.map((store)=><Pressable key={store.id} onPress={()=>{actions.selectShop(store.id);actions.go('shop')}} style={({pressed})=>[styles.v40FindCard,pressed&&styles.v26CardPressed]}><View style={styles.v40FindLogo}><PopularStoreLogo store={store}/></View><Text numberOfLines={1} style={styles.v40FindName}>{localisedStoreName(store,data.country)}</Text><Text style={styles.v40FindMeta}>★ {store.rating.toFixed(1)} · {store.eta}</Text><Text style={[styles.v40FindDelivery,store.deliveryFee===0&&styles.v40FindDeliveryFree]}>{store.deliveryFee===0?`${formatMoney(data.country,0)} delivery`:`${formatMoney(data.country,demandAdjustedDeliveryFee(store.deliveryFee,'store-delivery'))} delivery`}</Text></Pressable>)}
+        {stores.map((store)=><Pressable key={store.id} onPress={()=>{actions.selectShop(store.id);actions.go('shop')}} style={({pressed})=>[styles.v40FindCard,pressed&&styles.v26CardPressed]}><ShopPhoto store={store} style={styles.v40FindPhoto}/><Text numberOfLines={1} style={styles.v40FindName}>{localisedStoreName(store,data.country)}</Text><Text style={styles.v40FindMeta}>★ {store.rating.toFixed(1)} ({store.reviews ?? 'New'}) · {store.eta}</Text><Text style={[styles.v40FindDelivery,store.deliveryFee===0&&styles.v40FindDeliveryFree]}>{store.deliveryFee===0?'Free delivery':`${formatMoney(data.country,demandAdjustedDeliveryFee(store.deliveryFee,'store-delivery'))} delivery`}</Text></Pressable>)}
       </ScrollView>
     </View>
   );
@@ -1886,7 +2078,7 @@ function V40PopularStores({ data, actions }: { data: AppData; actions: AppAction
   return (
     <View>
       <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>Popular stores</Text><Text style={styles.v40SectionSub}>Around {data.city}</Text></View><TextButton label="See all" onPress={()=>actions.go('shops')} color={COLORS.red}/></View>
-      <View style={styles.v40PopularStoreList}>{stores.map((store)=><Pressable key={store.id} onPress={()=>{actions.selectShop(store.id);actions.go('shop')}} style={({pressed})=>[styles.v40PopularStoreRow,pressed&&styles.v26CardPressed]}><View style={styles.v40PopularStoreLogo}><PopularStoreLogo store={store}/></View><View style={styles.flex}><Text numberOfLines={1} style={styles.v40PopularStoreName}>{localisedStoreName(store,data.country)}</Text><Text numberOfLines={1} style={styles.v40PopularStoreMeta}>{store.category} · {store.eta} · {store.deliveryFee===0?`${formatMoney(data.country,0)} delivery`:`${formatMoney(data.country,demandAdjustedDeliveryFee(store.deliveryFee,'store-delivery'))} delivery`}</Text></View><View style={styles.v40PopularStoreRight}><Text style={styles.v40PopularStoreRating}>★ {store.rating.toFixed(1)}</Text><Text numberOfLines={1} style={styles.v40PopularStoreDeal}>{store.deal}</Text></View></Pressable>)}</View>
+      <View style={styles.v40PopularStoreList}>{stores.map((store)=><Pressable key={store.id} onPress={()=>{actions.selectShop(store.id);actions.go('shop')}} style={({pressed})=>[styles.v40PopularStoreRow,pressed&&styles.v26CardPressed]}><ShopPhoto store={store} style={styles.v40PopularStorePhoto}/><View style={styles.flex}><Text numberOfLines={1} style={styles.v40PopularStoreName}>{localisedStoreName(store,data.country)}</Text><Text numberOfLines={1} style={styles.v40PopularStoreMeta}>{store.category} · {store.location ?? data.city} · {store.eta}</Text><Text numberOfLines={1} style={styles.v40PopularStoreInventory}>{store.inventoryHint ?? store.deal}</Text></View><View style={styles.v40PopularStoreRight}><Text style={styles.v40PopularStoreRating}>★ {store.rating.toFixed(1)} ({store.reviews ?? 'New'})</Text><Text numberOfLines={1} style={styles.v40PopularStoreDeal}>{store.deliveryFee===0?'Free delivery':store.deal}</Text></View></Pressable>)}</View>
     </View>
   );
 }
@@ -1897,7 +2089,7 @@ function V40WeekendPicks({ data, actions }: { data: AppData; actions: AppActions
     <View style={styles.v40WeekendPanel}>
       <View style={styles.v40WeekendLead}><Text style={styles.v40WeekendTitle}>Weekend{`
 `}<Text style={styles.v40AccentText}>picks</Text></Text><Text style={styles.v40WeekendBody}>Great deals. Delivered fast.</Text><Pressable onPress={()=>actions.go('food')} style={styles.v40WeekendCta}><Text style={styles.v40WeekendCtaText}>See offers</Text><Feather name="arrow-right" size={14} color={COLORS.red}/></Pressable></View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40WeekendCards}>{picks.map((restaurant,index)=><Pressable key={restaurant.id} onPress={()=>{actions.selectRestaurant(restaurant.id);actions.go('restaurant')}} style={styles.v40WeekendCard}><Text style={styles.v40WeekendOffer}>{index===2?'Free delivery':`${30-index*5}% off`}</Text><Text numberOfLines={1} style={styles.v40WeekendRestaurant}>{localisedRestaurantName(restaurant,data.country,data.city)}</Text><Image source={assets.food[restaurant.image]} style={styles.v40WeekendImage} resizeMode="cover"/></Pressable>)}</ScrollView>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40WeekendCards}>{picks.map((restaurant,index)=><Pressable key={restaurant.id} onPress={()=>{actions.selectRestaurant(restaurant.id);actions.go('restaurant')}} style={styles.v40WeekendCard}><Text style={styles.v40WeekendOffer}>{index===2?'Free delivery':`${30-index*5}% off`}</Text><Text numberOfLines={1} style={styles.v40WeekendRestaurant}>{localisedRestaurantName(restaurant,data.country,data.city)}</Text><RestaurantPhoto restaurant={restaurant} style={styles.v40WeekendImage}/></Pressable>)}</ScrollView>
     </View>
   );
 }
@@ -2317,33 +2509,155 @@ export function StorefrontScreen({ data, actions }: { data: AppData; actions: Ap
   const local = localeStores(data.country, data.city);
   const store = local.find((item)=>item.id===data.selectedShopId) ?? local[0] ?? DEMO_SHOPS[0]!;
   const [query,setQuery]=useState('');
+  const [category,setCategory]=useState('All');
   const favorite=data.favoriteShopIds.includes(store.id);
   const allProducts=commerceProductsFor(store);
-  const products=allProducts.filter((item)=>!query.trim()||`${item.name} ${item.detail} ${item.category}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const categories=Array.from(new Set(allProducts.map((item)=>item.category)));
+  const searchRef=useRef<TextInput>(null);
+  const insets=useSafeAreaInsets();
+  const { height }=useWindowDimensions();
+  const heroHeight=Math.max(455,Math.min(555,height*0.59));
+  const storeName=localisedStoreName(store,data.country);
   const lines=data.commerceCartLines.filter((line)=>line.storeId===store.id);
   const count=lines.reduce((sum,line)=>sum+line.quantity,0);
   const total=lines.reduce((sum,line)=>sum+line.unitPrice*line.quantity,0);
-  const categories=Array.from(new Set(allProducts.map((item)=>item.category)));
-  const [category,setCategory]=useState('All');
-  const filtered=products.filter((item)=>category==='All'||item.category===category);
+  const term=query.trim().toLowerCase();
+  const filtered=allProducts.filter((item)=>{
+    const matchesCategory=category==='All'||item.category===category;
+    const matchesQuery=!term||`${item.name} ${item.detail} ${item.category} ${item.brand ?? ''}`.toLowerCase().includes(term);
+    return matchesCategory&&matchesQuery;
+  });
+
   return (
-    <ScreenShell>
-      <Header onBack={()=>actions.go('shops')} right={<View style={{flexDirection:'row',gap:7}}><Pressable onPress={()=>actions.go('shopHelp')} style={styles.v30HeaderHeart}><Ionicons name="help-circle-outline" size={21} color={COLORS.black}/></Pressable><Pressable onPress={()=>actions.toggleFavoriteShop(store.id)} style={styles.v30HeaderHeart}><Ionicons name={favorite?'heart':'heart-outline'} size={23} color={favorite?COLORS.red:COLORS.black}/></Pressable></View>}/>
-      <ScrollView style={styles.flex} contentContainerStyle={styles.v38StorefrontScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <View style={styles.v38StorefrontHero}>
-          <View style={styles.v38StorefrontLogo}><PopularStoreLogo store={store}/></View>
-          <Text style={styles.v38StorefrontName}>{localisedStoreName(store,data.country)}</Text>
-          <Text style={styles.v38StorefrontMeta}>{store.category} · {store.rating.toFixed(1)} ★ · {store.eta}</Text>
-          <View style={styles.v38StorefrontDeal}><Ionicons name="pricetag-outline" size={16} color={COLORS.red}/><Text style={styles.v38StorefrontDealText}>{store.deal}</Text></View>
+    <View style={styles.v614MerchantScreen}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content"/>
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={{paddingBottom:count>0?128+insets.bottom:36+insets.bottom}}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={[styles.v614Hero,{height:heroHeight}]}>
+          <ShopPhoto store={store} style={styles.v614HeroPhoto} logo={false}/>
+          <View pointerEvents="none" style={styles.v614HeroShade}/>
+          <View style={[styles.v614TopBar,{top:Math.max(insets.top,18)+14}]}>
+            <Pressable onPress={()=>actions.go('shops')} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Back">
+              <Feather name="arrow-left" size={28} color={COLORS.black}/>
+            </Pressable>
+            <View style={styles.v614TopButtonGroup}>
+              <Pressable onPress={()=>Share.share({message:`${storeName} on Kareebu+ · ${store.category}`})} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Share store">
+                <Feather name="share-2" size={22} color={COLORS.black}/>
+              </Pressable>
+              <Pressable onPress={()=>actions.toggleFavoriteShop(store.id)} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Favourite store">
+                <Ionicons name={favorite?'heart':'heart-outline'} size={27} color={favorite?COLORS.red:COLORS.black}/>
+              </Pressable>
+              <Pressable onPress={()=>searchRef.current?.focus()} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Search store">
+                <Feather name="search" size={25} color={COLORS.black}/>
+              </Pressable>
+            </View>
+          </View>
         </View>
-        <View style={styles.v25SearchBar}><Feather name="search" size={21} color={COLORS.black}/><TextInput value={query} onChangeText={setQuery} placeholder={`Search ${localisedStoreName(store,data.country)}`} placeholderTextColor={COLORS.mutedLight} style={styles.v30CommerceSearchInput}/>{query?<Pressable onPress={()=>setQuery('')}><Ionicons name="close-circle" size={20} color={COLORS.muted}/></Pressable>:null}</View>
-        <View style={styles.v38StorefrontInfoRow}><View><Text style={styles.v38StorefrontInfoLabel}>Delivery</Text><Text style={styles.v38StorefrontInfoValue}>{store.deliveryFee===0?'Free':formatMoney(data.country,demandAdjustedDeliveryFee(store.deliveryFee,'store-delivery'))}</Text></View><View><Text style={styles.v38StorefrontInfoLabel}>Minimum</Text><Text style={styles.v38StorefrontInfoValue}>{formatMoney(data.country,store.minOrder)}</Text></View><View><Text style={styles.v38StorefrontInfoLabel}>Location</Text><Text style={styles.v38StorefrontInfoValue}>{data.city}</Text></View></View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingRight:12}}>{['All',...categories].map((item)=><FilterChip key={item} label={item} active={category===item} onPress={()=>setCategory(item)}/>)}</ScrollView>
-        <SectionTitle title="Popular products" />
-        <View style={styles.v38ProductGrid}>{filtered.map((item)=>{const qty=lines.filter((line)=>line.productId===item.id).reduce((sum,line)=>sum+line.quantity,0);return <Pressable key={item.id} onPress={()=>{actions.selectCommerceProduct(item.id);actions.go('commerceProduct')}} style={styles.v38ProductCard}><View style={styles.v38ProductVisual}><BrandIcon icon={item.icon as any} size={50}/>{item.badge?<View style={{position:'absolute',top:7,left:7,backgroundColor:COLORS.yellow,borderRadius:8,paddingHorizontal:7,paddingVertical:4}}><Text style={{fontFamily:FONT.bold,fontSize:9,fontWeight:'900'}}>{item.badge}</Text></View>:null}</View><Text numberOfLines={2} style={styles.v38ProductName}>{item.name}</Text><Text numberOfLines={1} style={styles.v38ProductDetail}>{item.detail}</Text><Text style={styles.v38ProductPrice}>{formatMoney(data.country,item.basePrice)}</Text><View style={[styles.v38ProductAdd,{backgroundColor:qty?COLORS.black:COLORS.yellow}]}><Text style={[styles.v38ProductAddText,!qty&&{color:COLORS.black}]}>{qty?`${qty} in basket`:'Choose'}</Text></View></Pressable>})}</View>
+
+        <View style={styles.v614Sheet}>
+          <View style={styles.v614LogoCard}>
+            <PopularStoreLogo store={store}/>
+          </View>
+
+          <View style={styles.v614IdentityRow}>
+            <View style={styles.v614IdentityCopy}>
+              <Text numberOfLines={2} style={styles.v614MerchantName}>{storeName}</Text>
+              <View style={styles.v614CategoryLine}>
+                <View style={styles.v614PartnerBadge}><Text style={styles.v614PartnerBadgeText}>K+</Text></View>
+                <Text numberOfLines={2} style={styles.v614CategoryText}>{store.category}, {store.inventoryHint ?? 'Everyday essentials'}</Text>
+              </View>
+              <Text style={styles.v614LocationText}>{store.location ?? data.city} ({store.eta})</Text>
+            </View>
+            <MerchantRatingPanel rating={store.rating} reviews={store.reviews ?? 'New'}/>
+          </View>
+
+          <View style={styles.v614Hairline}/>
+
+          <View style={styles.v614PlainInfoRow}>
+            <View style={styles.v614PlainInfoIcon}><Ionicons name="bicycle-outline" size={20} color={COLORS.black}/></View>
+            <View style={styles.flex}>
+              <Text style={styles.v614PlainInfoTitle}>{store.eta} delivery</Text>
+              <Text style={styles.v614PlainInfoMeta}>{store.deliveryFee===0?'Free delivery':`${formatMoney(data.country,demandAdjustedDeliveryFee(store.deliveryFee,'store-delivery'))} delivery`} · Minimum {formatMoney(data.country,store.minOrder)}</Text>
+            </View>
+            <Feather name="chevron-right" size={20} color={COLORS.muted}/>
+          </View>
+
+          <View style={styles.v614PlainInfoRow}>
+            <View style={styles.v614PlainInfoIcon}><Ionicons name="pricetag-outline" size={20} color={COLORS.black}/></View>
+            <View style={styles.flex}>
+              <Text style={styles.v614PlainInfoTitle}>Offers from {storeName}</Text>
+              <Text style={styles.v614PlainInfoMeta}>{store.deal}</Text>
+            </View>
+          </View>
+
+          <View style={styles.v614SearchBox}>
+            <Feather name="search" size={21} color={COLORS.black}/>
+            <TextInput
+              ref={searchRef}
+              value={query}
+              onChangeText={setQuery}
+              placeholder={`Search ${storeName}`}
+              placeholderTextColor={COLORS.mutedLight}
+              style={styles.v614SearchInput}
+            />
+            {query?<Pressable onPress={()=>setQuery('')} hitSlop={8}><Ionicons name="close-circle" size={20} color={COLORS.muted}/></Pressable>:null}
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v614TabRail}>
+            {['All',...categories].map((item)=>(
+              <Pressable key={item} onPress={()=>setCategory(item)} style={[styles.v614Tab,category===item&&styles.v614TabActive]}>
+                <Text style={[styles.v614TabText,category===item&&styles.v614TabTextActive]}>{item}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+
+          <View style={styles.v614SectionHeader}>
+            <Text style={styles.v614SectionTitle}>Products</Text>
+            <Text style={styles.v614SectionCount}>{filtered.length} items</Text>
+          </View>
+
+          <View style={styles.v614ProductList}>
+            {filtered.map((item)=>{
+              const qty=lines.filter((line)=>line.productId===item.id).reduce((sum,line)=>sum+line.quantity,0);
+              return (
+                <Pressable
+                  key={item.id}
+                  onPress={()=>{actions.selectCommerceProduct(item.id);actions.go('commerceProduct')}}
+                  style={({pressed})=>[styles.v614ProductRow,pressed&&styles.v614RowPressed]}
+                >
+                  <View style={styles.v614ProductCopy}>
+                    {item.badge?<Text style={styles.v614ItemBadge}>{item.badge}</Text>:null}
+                    <Text numberOfLines={2} style={styles.v614ItemName}>{item.name}</Text>
+                    <Text numberOfLines={2} style={styles.v614ItemDescription}>{item.detail}{item.brand?` · ${item.brand}`:''}</Text>
+                    <Text style={styles.v614ItemPrice}>{formatMoney(data.country,item.basePrice)}</Text>
+                    {typeof item.rating==='number'?<Text style={styles.v614ItemRating}>★ {item.rating.toFixed(1)}{typeof item.reviewCount==='number'?` · ${item.reviewCount} reviews`:''}</Text>:null}
+                  </View>
+                  <View style={styles.v614ProductVisual}>
+                    <StoreProductPhoto store={store} item={item}/>
+                    <View style={[styles.v614AddButton,qty>0&&styles.v614AddButtonActive]}>
+                      <Text style={[styles.v614AddButtonText,qty>0&&styles.v614AddButtonTextActive]}>{qty>0?qty:'+'}</Text>
+                    </View>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
       </ScrollView>
-      {count>0?<Pressable onPress={()=>actions.go('commerceCart')} style={styles.v38StoreBasketBar}><View style={styles.v38StoreBasketCount}><Text style={styles.v38StoreBasketCountText}>{count}</Text></View><Text style={styles.v38StoreBasketLabel}>View basket</Text><Text style={styles.v38StoreBasketTotal}>{formatMoney(data.country,total)}</Text><Feather name="chevron-right" size={21} color={COLORS.white}/></Pressable>:null}
-    </ScreenShell>
+
+      {count>0?(
+        <Pressable onPress={()=>actions.go('commerceCart')} style={[styles.v614BasketBar,{bottom:Math.max(8,insets.bottom+6)}]}>
+          <View style={styles.v614BasketCount}><Text style={styles.v614BasketCountText}>{count}</Text></View>
+          <View style={styles.flex}><Text style={styles.v614BasketTitle}>View basket</Text><Text style={styles.v614BasketMeta}>{storeName}</Text></View>
+          <Text style={styles.v614BasketTotal}>{formatMoney(data.country,total)}</Text>
+          <Feather name="chevron-right" size={21} color={COLORS.white}/>
+        </Pressable>
+      ):null}
+    </View>
   );
 }
 
@@ -3125,8 +3439,12 @@ export function FoodScreen({
     cuisine: restaurant.cuisine,
     categories: restaurant.categories,
     rating: restaurant.rating,
+    reviews: restaurant.reviews,
     eta: restaurant.eta,
     distance: restaurant.distance,
+    ...(restaurant.neighborhood ? { neighborhood: restaurant.neighborhood } : {}),
+    ...(restaurant.priceLevel ? { priceLevel: restaurant.priceLevel } : {}),
+    ...(restaurant.featuredDish ? { featuredDish: restaurant.featuredDish } : {}),
     deliveryLabel:
       restaurant.deliveryFee === 0
         ? 'Free delivery'
@@ -3139,7 +3457,8 @@ export function FoodScreen({
           )} delivery`,
     offer: restaurant.offer ? String(restaurant.offer) : null,
     plus: restaurant.plus === true,
-    image: assets.food[restaurant.image],
+    image: restaurant.photoUrl ? { uri: restaurant.photoUrl } : assets.food[restaurant.image],
+    fallbackImage: assets.food[restaurant.image],
     menu: restaurant.menu.map((item) => ({
       id: item.id,
       name: item.name,
@@ -3207,81 +3526,151 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
     const searchMatches = !query || `${item.name} ${item.description} ${item.category}`.toLowerCase().includes(query);
     return categoryMatches && searchMatches;
   });
-  const visibleCategories = activeMenuCategory === 'All' ? categories : [activeMenuCategory];
+  const insets=useSafeAreaInsets();
+  const { height }=useWindowDimensions();
+  const heroHeight=Math.max(455,Math.min(555,height*0.59));
+  const menuSearchRef=useRef<TextInput>(null);
+  const restaurantName=localisedRestaurantName(restaurant,data.country,data.city);
+  const deliveryLabel=restaurant.deliveryFee===0?'Free delivery':`${formatMoney(data.country,demandAdjustedDeliveryFee(restaurant.deliveryFee,'food-delivery'))} delivery`;
 
   return (
-    <ScreenShell>
-      <Header
-        onBack={() => actions.go('food')}
-        right={
-          <View style={styles.v33RestaurantHeaderActions}>
-            <Pressable
-              onPress={() => Share.share({ message: `${restaurant.name} on Kareebu+ · ${restaurant.cuisine}` })}
-              style={styles.v30HeaderHeart}
-            >
-              <Feather name="share-2" size={20} color={COLORS.black} />
+    <View style={styles.v614MerchantScreen}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content"/>
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={{paddingBottom:cartCount>0?128+insets.bottom:36+insets.bottom}}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={[styles.v614Hero,{height:heroHeight}]}>
+          <RestaurantPhoto restaurant={restaurant} style={styles.v614HeroPhoto}/>
+          <View pointerEvents="none" style={styles.v614HeroShade}/>
+          <View style={[styles.v614TopBar,{top:Math.max(insets.top,18)+14}]}>
+            <Pressable onPress={()=>actions.go('food')} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Back">
+              <Feather name="arrow-left" size={28} color={COLORS.black}/>
             </Pressable>
-            <Pressable onPress={() => actions.toggleFavoriteRestaurant(restaurant.id)} style={styles.v30HeaderHeart}>
-              <Ionicons name={favorite?'heart':'heart-outline'} size={25} color={favorite?COLORS.red:COLORS.black} />
-            </Pressable>
+            <View style={styles.v614TopButtonGroup}>
+              <Pressable onPress={()=>Share.share({message:`${restaurantName} on Kareebu+ · ${restaurant.cuisine}`})} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Share restaurant">
+                <Feather name="share-2" size={22} color={COLORS.black}/>
+              </Pressable>
+              <Pressable onPress={()=>actions.toggleFavoriteRestaurant(restaurant.id)} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Favourite restaurant">
+                <Ionicons name={favorite?'heart':'heart-outline'} size={27} color={favorite?COLORS.red:COLORS.black}/>
+              </Pressable>
+              <Pressable onPress={()=>menuSearchRef.current?.focus()} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Search menu">
+                <Feather name="search" size={25} color={COLORS.black}/>
+              </Pressable>
+            </View>
           </View>
-        }
-      />
-      <ScrollView style={styles.flex} contentContainerStyle={styles.restaurantDetailScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <View style={styles.v30RestaurantHeroWrap}>
-          <Image source={assets.food[restaurant.image]} style={styles.restaurantHero} />
-          <View style={styles.v30RestaurantHeroBadge}><Image source={assets.mark} style={styles.v30RestaurantHeroMark}/><Text style={styles.v30RestaurantHeroBadgeText}>Kareebu+ partner</Text></View>
-          {restaurant.offer ? <View style={styles.v30RestaurantOfferBadge}><Text style={styles.v30RestaurantOfferBadgeText}>{restaurant.offer}</Text></View> : null}
-        </View>
-        <Text style={styles.restaurantDetailName}>{restaurant.name}</Text>
-        <Text style={styles.restaurantDetailMeta}><Text style={styles.star}>★</Text> {restaurant.rating.toFixed(1)} ({restaurant.reviews})  ·  {restaurant.cuisine}</Text>
-        <Text style={styles.restaurantDetailSub}>{restaurant.eta}  ·  {restaurant.distance}  ·  {restaurant.deliveryFee===0?'Free delivery':`${formatMoney(data.country,demandAdjustedDeliveryFee(restaurant.deliveryFee,'food-delivery'))} delivery`}</Text>
-        <View style={styles.badgeRow}>{[restaurant.plus?'Kareebu+':'Local favourite','Great reviews','Live order tracking'].map((badge)=><View key={badge} style={styles.badge}><Text style={styles.badgeText}>{badge}</Text></View>)}</View>
-        <View style={styles.v30RestaurantInfoStrip}><View><Text style={styles.v30InfoValue}>{restaurant.eta}</Text><Text style={styles.v30InfoLabel}>Delivery</Text></View><View style={styles.v30InfoRule}/><View><Text style={styles.v30InfoValue}>{restaurant.rating.toFixed(1)} ★</Text><Text style={styles.v30InfoLabel}>Rating</Text></View><View style={styles.v30InfoRule}/><View><Text style={styles.v30InfoValue}>{restaurant.distance}</Text><Text style={styles.v30InfoLabel}>Distance</Text></View></View>
-        <View style={styles.v30RestaurantActionRail}>
-          <Pressable onPress={()=>actions.go('foodSchedule')} style={styles.v30RestaurantAction}><Ionicons name="calendar-outline" size={17} color={COLORS.black}/><Text style={styles.v30RestaurantActionText}>Schedule</Text></Pressable>
-          <Pressable onPress={()=>actions.go('foodSearch')} style={styles.v30RestaurantAction}><Ionicons name="search-outline" size={17} color={COLORS.black}/><Text style={styles.v30RestaurantActionText}>Search Food</Text></Pressable>
-          <Pressable onPress={()=>actions.go('support')} style={styles.v30RestaurantAction}><Ionicons name="help-circle-outline" size={17} color={COLORS.black}/><Text style={styles.v30RestaurantActionText}>Help</Text></Pressable>
         </View>
 
-        <View style={styles.v33MenuSearch}>
-          <Feather name="search" size={19} color={COLORS.muted}/>
-          <TextInput
-            value={menuQuery}
-            onChangeText={setMenuQuery}
-            placeholder={`Search ${restaurant.name}`}
-            placeholderTextColor={COLORS.muted}
-            style={styles.v33MenuSearchInput}
-          />
-          {menuQuery ? <Pressable onPress={()=>setMenuQuery('')} hitSlop={8}><Feather name="x-circle" size={18} color={COLORS.muted}/></Pressable> : null}
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v30MenuCategoryRow}>
-          {['All', ...categories].map((category)=><Pressable key={category} onPress={()=>setActiveMenuCategory(category)} style={[styles.v30MenuCategoryChip,activeMenuCategory===category&&styles.v30MenuCategoryChipActive]}><Text style={[styles.v30MenuCategoryText,activeMenuCategory===category&&styles.v30MenuCategoryTextActive]}>{category}</Text></Pressable>)}
-        </ScrollView>
-
-        {visibleMenu.length === 0 ? (
-          <View style={styles.v33MenuEmpty}>
-            <Feather name="search" size={28} color={COLORS.muted}/>
-            <Text style={styles.v33MenuEmptyTitle}>No matching dishes</Text>
-            <Text style={styles.v33MenuEmptyBody}>Try another search or menu category.</Text>
+        <View style={styles.v614Sheet}>
+          <View style={styles.v614LogoCard}>
+            <RestaurantIdentityLogo restaurant={restaurant}/>
           </View>
-        ) : visibleCategories.map((category) => {
-          const categoryItems = visibleMenu.filter((item)=>item.category===category);
-          if (!categoryItems.length) return null;
-          return (
-            <View key={category} style={styles.v30MenuSection}>
-              <View style={styles.v30MenuSectionHeading}><Text style={styles.v30MenuSectionTitle}>{category}</Text><Text style={styles.v30MenuSectionCount}>{categoryItems.length} items</Text></View>
-              {categoryItems.map((item) => {
-                const quantity = itemQuantity(item.id);
-                return <Pressable key={item.id} onPress={()=>openItem(item)} style={({pressed})=>[styles.v30MenuItem,pressed&&styles.v26CardPressed]}><View style={styles.v30MenuCopy}><View style={styles.v30MenuNameRow}><Text style={styles.menuName}>{item.name}</Text>{item.popular?<View style={styles.v30PopularPill}><Text style={styles.v30PopularPillText}>Popular</Text></View>:null}</View><Text numberOfLines={2} style={styles.v30MenuDescription}>{item.description}</Text><Text style={styles.v30MenuPrice}>{formatMoney(data.country, item.price)}</Text>{item.badge?<Text style={styles.v30MenuBadgeText}>{item.badge}</Text>:null}</View><View style={styles.v30MenuVisualWrap}><Image source={assets.food[item.image]} style={styles.v30MenuImage}/><View style={[styles.v30MenuAddButton,quantity>0&&{backgroundColor:COLORS.black,borderColor:COLORS.black}]}>{quantity>0?<Text style={{color:COLORS.white,fontFamily:FONT.bold,fontWeight:'900'}}>{quantity}</Text>:<Feather name="plus" size={20} color={COLORS.red}/>}</View></View></Pressable>;
+
+          <View style={styles.v614IdentityRow}>
+            <View style={styles.v614IdentityCopy}>
+              <Text numberOfLines={2} style={styles.v614MerchantName}>{restaurantName}</Text>
+              <View style={styles.v614CategoryLine}>
+                <View style={styles.v614PartnerBadge}><Text style={styles.v614PartnerBadgeText}>K+</Text></View>
+                <Text numberOfLines={2} style={styles.v614CategoryText}>{restaurant.cuisine}</Text>
+              </View>
+              <Text style={styles.v614LocationText}>{restaurant.neighborhood ?? data.city} ({restaurant.distance})</Text>
+            </View>
+            <MerchantRatingPanel rating={restaurant.rating} reviews={restaurant.reviews}/>
+          </View>
+
+          <View style={styles.v614Hairline}/>
+
+          <View style={styles.v614PlainInfoRow}>
+            <View style={styles.v614PlainInfoIcon}><Ionicons name="bicycle-outline" size={20} color={COLORS.black}/></View>
+            <View style={styles.flex}>
+              <Text style={styles.v614PlainInfoTitle}>{restaurant.eta} delivery</Text>
+              <Text style={styles.v614PlainInfoMeta}>{deliveryLabel} · {restaurant.priceLevel ?? '$$'}</Text>
+            </View>
+            <Feather name="chevron-right" size={20} color={COLORS.muted}/>
+          </View>
+
+          {restaurant.offer?(
+            <View style={styles.v614PlainInfoRow}>
+              <View style={styles.v614PlainInfoIcon}><Ionicons name="pricetag-outline" size={20} color={COLORS.black}/></View>
+              <View style={styles.flex}>
+                <Text style={styles.v614PlainInfoTitle}>Offers</Text>
+                <Text style={styles.v614PlainInfoMeta}>{restaurant.offer}</Text>
+              </View>
+            </View>
+          ):null}
+
+          <View style={styles.v614SearchBox}>
+            <Feather name="search" size={21} color={COLORS.black}/>
+            <TextInput
+              ref={menuSearchRef}
+              value={menuQuery}
+              onChangeText={setMenuQuery}
+              placeholder={`Search ${restaurant.name}`}
+              placeholderTextColor={COLORS.muted}
+              style={styles.v614SearchInput}
+            />
+            {menuQuery?<Pressable onPress={()=>setMenuQuery('')} hitSlop={8}><Feather name="x-circle" size={19} color={COLORS.muted}/></Pressable>:null}
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v614TabRail}>
+            {['All', ...categories].map((category)=>(
+              <Pressable key={category} onPress={()=>setActiveMenuCategory(category)} style={[styles.v614Tab,activeMenuCategory===category&&styles.v614TabActive]}>
+                <Text style={[styles.v614TabText,activeMenuCategory===category&&styles.v614TabTextActive]}>{category}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+
+          <View style={styles.v614SectionHeader}>
+            <Text style={styles.v614SectionTitle}>Menu</Text>
+            <Text style={styles.v614SectionCount}>{visibleMenu.length} items</Text>
+          </View>
+
+          {visibleMenu.length===0?(
+            <View style={styles.v614EmptyState}>
+              <Feather name="search" size={28} color={COLORS.muted}/>
+              <Text style={styles.v614EmptyTitle}>No matching dishes</Text>
+              <Text style={styles.v614EmptyBody}>Try another search or menu category.</Text>
+            </View>
+          ):(
+            <View style={styles.v614MenuList}>
+              {visibleMenu.map((item)=>{
+                const quantity=itemQuantity(item.id);
+                return (
+                  <Pressable key={item.id} onPress={()=>openItem(item)} style={({pressed})=>[styles.v614MenuRow,pressed&&styles.v614RowPressed]}>
+                    <View style={styles.v614MenuCopy}>
+                      {item.badge?<Text style={styles.v614ItemBadge}>{item.badge}</Text>:null}
+                      <View style={styles.v614ItemNameRow}>
+                        <Text numberOfLines={2} style={styles.v614ItemName}>{item.name}</Text>
+                        {item.popular?<View style={styles.v614PopularDot}><Text style={styles.v614PopularDotText}>Popular</Text></View>:null}
+                      </View>
+                      <Text numberOfLines={2} style={styles.v614ItemDescription}>{item.description}</Text>
+                      <Text style={styles.v614ItemPrice}>{formatMoney(data.country,item.price)}</Text>
+                    </View>
+                    <View style={styles.v614MenuVisual}>
+                      <RestaurantDishPhoto item={item} restaurant={restaurant}/>
+                      <View style={[styles.v614AddButton,quantity>0&&styles.v614AddButtonActive]}>
+                        <Text style={[styles.v614AddButtonText,quantity>0&&styles.v614AddButtonTextActive]}>{quantity>0?quantity:'+'}</Text>
+                      </View>
+                    </View>
+                  </Pressable>
+                );
               })}
             </View>
-          );
-        })}
+          )}
+        </View>
       </ScrollView>
-      {cartCount > 0 ? <Pressable onPress={()=>actions.go('cart')} style={styles.viewCartBar}><View style={styles.v30CartCountBubble}><Text style={styles.v30CartCountText}>{cartCount}</Text></View><View style={styles.flex}><Text style={styles.viewCartTitle}>View cart</Text><Text style={styles.viewCartMeta}>{restaurant.name}</Text></View><View style={styles.v30CartBarRight}><Text style={styles.v30CartBarTotal}>{formatMoney(data.country, cartTotal)}</Text><Feather name="chevron-right" size={21} color={COLORS.white}/></View></Pressable> : null}
-    </ScreenShell>
+
+      {cartCount>0?(
+        <Pressable onPress={()=>actions.go('cart')} style={[styles.v614BasketBar,{bottom:Math.max(8,insets.bottom+6)}]}>
+          <View style={styles.v614BasketCount}><Text style={styles.v614BasketCountText}>{cartCount}</Text></View>
+          <View style={styles.flex}><Text style={styles.v614BasketTitle}>View cart</Text><Text style={styles.v614BasketMeta}>{restaurantName}</Text></View>
+          <Text style={styles.v614BasketTotal}>{formatMoney(data.country,cartTotal)}</Text>
+          <Feather name="chevron-right" size={21} color={COLORS.white}/>
+        </Pressable>
+      ):null}
+    </View>
   );
 }
 
@@ -3389,12 +3778,12 @@ export function ShopsScreen({ data, actions }: { data: AppData; actions: AppActi
         <PromoDots count={4}/>
 
         <View style={styles.v40SectionHeader}><Text style={styles.v40SectionTitle}>{activeCategory==='Pharmacy'?'Top pharmacy brands near you':activeCategory==='All'?'Top stores near you':`Top ${activeCategory.toLowerCase()} stores`}</Text><TextButton label="See all" onPress={()=>setActiveFilter('All stores')} color={COLORS.red}/></View>
-        {activeCategory==='Pharmacy' ? <View style={styles.v40PharmacyGrid}>{topStores.map((shop)=><Pressable key={shop.id} onPress={()=>{actions.selectShop(shop.id);actions.go('shop')}} style={styles.v40PharmacyBrandCard}><View style={styles.v40PharmacyBrandLogo}><PopularStoreLogo store={shop}/></View><Text numberOfLines={1} style={styles.v40PharmacyBrandEta}>{shop.eta}</Text></Pressable>)}</View> : <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40TopShopRow}>{topStores.map((shop)=><Pressable key={shop.id} onPress={()=>{actions.selectShop(shop.id);actions.go('shop')}} style={styles.v40TopShopCard}><View style={styles.v40TopShopLogo}><PopularStoreLogo store={shop}/></View><Text numberOfLines={2} style={styles.v40TopShopName}>{localisedStoreName(shop,data.country)}</Text><Text style={styles.v40TopShopEta}>{shop.eta}</Text></Pressable>)}</ScrollView>}
+        {activeCategory==='Pharmacy' ? <View style={styles.v40PharmacyGrid}>{topStores.map((shop)=><Pressable key={shop.id} onPress={()=>{actions.selectShop(shop.id);actions.go('shop')}} style={styles.v40PharmacyBrandCard}><ShopPhoto store={shop} style={styles.v40PharmacyBrandPhoto}/><Text numberOfLines={1} style={styles.v40PharmacyBrandName}>{localisedStoreName(shop,data.country)}</Text><Text numberOfLines={1} style={styles.v40PharmacyBrandEta}>★ {shop.rating.toFixed(1)} · {shop.eta}</Text></Pressable>)}</View> : <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40TopShopRow}>{topStores.map((shop)=><Pressable key={shop.id} onPress={()=>{actions.selectShop(shop.id);actions.go('shop')}} style={styles.v40TopShopCard}><ShopPhoto store={shop} style={styles.v40TopShopPhoto}/><Text numberOfLines={2} style={styles.v40TopShopName}>{localisedStoreName(shop,data.country)}</Text><Text style={styles.v40TopShopEta}>★ {shop.rating.toFixed(1)} · {shop.eta}</Text></Pressable>)}</ScrollView>}
 
         <Text style={styles.v40BrowseTitle}>{activeCategory==='Pharmacy'?'Browse pharmacies':'Browse stores'}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FilterRow}>{['Offers','Free delivery','Under 30 mins','Rating 4.7+'].map((filter)=><FilterChip key={filter} label={filter} active={activeFilter===filter} onPress={()=>setActiveFilter(activeFilter===filter?'All stores':filter)}/>)}</ScrollView>
 
-        <View style={styles.v40ShopList}>{filtered.map((shop)=>{const favorite=data.favoriteShopIds.includes(shop.id);return <Pressable key={shop.id} onPress={()=>{actions.selectShop(shop.id);actions.go('shop')}} style={({pressed})=>[styles.v40ShopRow,pressed&&styles.v26CardPressed]}><View style={styles.v40ShopRowLogo}><PopularStoreLogo store={shop}/></View><View style={styles.flex}><View style={styles.v40ShopNameRow}><Text numberOfLines={1} style={styles.v40ShopName}>{localisedStoreName(shop,data.country)}</Text><Text style={styles.v40ShopRating}>{shop.rating.toFixed(1)} <Text style={styles.star}>★</Text></Text></View><Text style={styles.v40ShopMeta}>{shop.eta} · Minimum order {formatMoney(data.country,shop.minOrder)}</Text><View style={styles.v40ShopBadges}><View style={styles.v40ShopDeal}><Ionicons name="pricetag-outline" size={12} color={COLORS.black}/><Text numberOfLines={1} style={styles.v40ShopDealText}>{shop.deal}</Text></View>{shop.deliveryFee===0?<View style={styles.v40ShopFree}><Ionicons name="bicycle-outline" size={12} color={COLORS.green}/><Text style={styles.v40ShopFreeText}>FREE DELIVERY</Text></View>:null}</View></View><Pressable onPress={()=>actions.toggleFavoriteShop(shop.id)} style={styles.v40ShopHeart}><Ionicons name={favorite?'heart':'heart-outline'} size={21} color={favorite?COLORS.red:COLORS.muted}/></Pressable></Pressable>})}</View>
+        <View style={styles.v40ShopList}>{filtered.map((shop)=>{const favorite=data.favoriteShopIds.includes(shop.id);return <Pressable key={shop.id} onPress={()=>{actions.selectShop(shop.id);actions.go('shop')}} style={({pressed})=>[styles.v40ShopRow,pressed&&styles.v26CardPressed]}><ShopPhoto store={shop} style={styles.v40ShopRowPhoto}/><View style={styles.flex}><View style={styles.v40ShopNameRow}><Text numberOfLines={1} style={styles.v40ShopName}>{localisedStoreName(shop,data.country)}</Text><Text style={styles.v40ShopRating}>{shop.rating.toFixed(1)} <Text style={styles.star}>★</Text></Text></View><Text numberOfLines={1} style={styles.v40ShopCategoryMeta}>{shop.category} · {shop.location ?? data.city} · {shop.reviews ?? 'New'} reviews</Text><Text style={styles.v40ShopMeta}>{shop.eta} · Minimum {formatMoney(data.country,shop.minOrder)} · {shop.deliveryFee===0?'Free delivery':`${formatMoney(data.country,demandAdjustedDeliveryFee(shop.deliveryFee,'store-delivery'))} delivery`}</Text><View style={styles.v40ShopBadges}><View style={styles.v40ShopDeal}><Ionicons name="pricetag-outline" size={12} color={COLORS.black}/><Text numberOfLines={1} style={styles.v40ShopDealText}>{shop.deal}</Text></View></View></View><Pressable onPress={()=>actions.toggleFavoriteShop(shop.id)} style={styles.v40ShopHeart}><Ionicons name={favorite?'heart':'heart-outline'} size={21} color={favorite?COLORS.red:COLORS.muted}/></Pressable></Pressable>})}</View>
         {filtered.length===0?<RoundedCard style={styles.v30EmptyState}><Ionicons name="bag-handle-outline" size={32} color={COLORS.muted}/><Text style={styles.v30EmptyTitle}>No stores match</Text><Text style={styles.v30EmptyBody}>Try another category, filter or search.</Text></RoundedCard>:null}
       </ScrollView>
       <FoodBottomNav go={actions.go} active="shops" />
@@ -3808,7 +4197,7 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
 }
 
 const styles = StyleSheet.create({
-  flex:{flex:1}, pressed:{opacity:.62}, rowDivider:{borderBottomWidth:1,borderBottomColor:COLORS.line}, star:{color:COLORS.yellow},
+  flex:{flex:1}, pressed:{opacity:.62}, rowDivider:{borderBottomWidth:1,borderBottomColor:COLORS.line}, star:{color:COLORS.yellow},realShopPhotoFrame:{overflow:'hidden',backgroundColor:COLORS.surfaceStrong,position:'relative'},realShopPhotoShade:{...StyleSheet.absoluteFill,backgroundColor:'rgba(0,0,0,.06)'},realShopLogoBadge:{position:'absolute',left:6,bottom:6,width:42,height:30,borderRadius:9,backgroundColor:'rgba(255,255,255,.96)',alignItems:'center',justifyContent:'center',paddingHorizontal:4,overflow:'hidden',borderWidth:1,borderColor:'rgba(255,255,255,.9)'},
   payHubScroll:{paddingHorizontal:14,paddingTop:8,paddingBottom:24,gap:13},
   payHubBalanceCard:{borderRadius:18,backgroundColor:COLORS.black,padding:15,gap:13},payHubBalanceTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},payHubLabel:{...TYPE.label,color:COLORS.yellow,letterSpacing:.9},payHubBalance:{...TYPE.display,fontWeight:'900',color:COLORS.white,marginTop:4},payHubMeta:{...TYPE.caption,color:'rgba(255,255,255,.62)',marginTop:3},payHubMark:{width:38,height:38},payHubAdd:{alignSelf:'flex-start',height:34,borderRadius:11,backgroundColor:COLORS.yellow,flexDirection:'row',alignItems:'center',gap:5,paddingHorizontal:10},payHubAddText:{...TYPE.label,color:COLORS.black},
   payHubGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},payHubAction:{width:'23.2%',minHeight:78,borderRadius:14,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center',gap:6},payHubActionIcon:{width:38,height:38,borderRadius:12,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center'},payHubActionLabel:{...TYPE.caption,color:COLORS.black,fontWeight:'800',textAlign:'center'},payHubSectionHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:1},payHubSectionTitle:{...TYPE.sectionTitle,color:COLORS.black},payHubMenu:{shadowOpacity:0},payHubPromoRail:{gap:8,paddingRight:14},payHubPromo:{width:146,minHeight:108,borderRadius:15,padding:12,justifyContent:'flex-end'},payHubPromoTitle:{...TYPE.cardTitle,color:COLORS.black,marginTop:13},payHubPromoBody:{...TYPE.caption,color:COLORS.muted,marginTop:2},
@@ -3843,14 +4232,14 @@ const styles = StyleSheet.create({
   etaText:{fontFamily:FONT.bold,fontSize:17,fontWeight:'900',color:COLORS.red,textAlign:'center',marginBottom:10},driverScroll:{paddingHorizontal:14,paddingBottom:25,gap:13},driverMap:{width:'100%',height:310,borderRadius:22},driverProfile:{minHeight:108,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:14,shadowOpacity:.04},driverAvatar:{width:70,height:70,borderRadius:35},driverName:{fontFamily:FONT.bold,fontSize:21,fontWeight:'900'},driverRating:{fontFamily:FONT.medium,fontSize:15,color:COLORS.muted,marginTop:2},driverMeta:{fontFamily:FONT.regular,fontSize:14,color:COLORS.muted,marginTop:3},circleAction:{width:49,height:49,borderRadius:25,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center'},driverActionGrid:{flexDirection:'row',justifyContent:'space-between'},driverAction:{width:'23%',height:72,borderWidth:1,borderColor:COLORS.line,borderRadius:17,alignItems:'center',justifyContent:'center',gap:6},driverActionLabel:{fontFamily:FONT.regular,fontSize:12,color:COLORS.black},captainProfileLink:{height:44,borderRadius:14,borderWidth:1,borderColor:COLORS.line,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6},captainProfileLinkText:{fontFamily:FONT.bold,fontSize:12,fontWeight:'800',color:COLORS.red},ridePriceHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},tripScroll:{paddingHorizontal:14,paddingBottom:24,gap:13},tripMap:{width:'100%',height:284,borderRadius:22},tripSummary:{padding:17,shadowOpacity:.04},tripLabel:{fontFamily:FONT.regular,fontSize:17,color:COLORS.muted},tripDestination:{...TYPE.screenTitle,marginTop:4},tripRule:{height:1,backgroundColor:COLORS.line,marginVertical:18},tripStats:{flexDirection:'row',justifyContent:'space-between'},tripStatLabel:{fontFamily:FONT.regular,fontSize:14,color:COLORS.muted},tripStatValue:{fontFamily:FONT.bold,fontSize:18,fontWeight:'900',marginTop:7},tripButtons:{flexDirection:'row',gap:10,marginVertical:22},tripSecondary:{flex:1,height:54,borderWidth:1,borderColor:COLORS.line,borderRadius:16,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8},tripSecondaryText:{fontFamily:FONT.medium,fontSize:14,fontWeight:'700'},
   completeScroll:{paddingHorizontal:14,paddingBottom:24,alignItems:'stretch',gap:17},completeBadge:{width:112,height:112,borderRadius:56,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center',alignSelf:'center',marginTop:15},completeThankYou:{fontFamily:FONT.bold,fontSize:22,fontWeight:'900',textAlign:'center'},completeRouteCard:{padding:18,gap:12,shadowOpacity:0},completePlace:{flexDirection:'row',alignItems:'center',gap:12},completePlaceText:{fontFamily:FONT.medium,fontSize:16,fontWeight:'700'},completeMeta:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginLeft:29},receiptCard:{padding:18,gap:8,shadowOpacity:0},receiptTitle:{...TYPE.cardTitle,marginBottom:5},paidWith:{flexDirection:'row',alignItems:'center',gap:12,borderTopWidth:1,borderTopColor:COLORS.line,paddingTop:14,marginTop:5},rateScroll:{paddingHorizontal:14,paddingBottom:25,gap:12},rateQuestion:{fontFamily:FONT.bold,fontSize:20,fontWeight:'900',textAlign:'center'},starsRow:{flexDirection:'row',justifyContent:'center',gap:5},rateWord:{fontFamily:FONT.medium,fontSize:15,color:COLORS.muted,textAlign:'center',marginTop:-12},tipCard:{padding:18,shadowOpacity:0},tipTitle:{...TYPE.cardTitle},tipSubtitle:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:3},tipRow:{flexDirection:'row',gap:8,marginVertical:18},tipOption:{flex:1,minHeight:42,borderWidth:1,borderColor:COLORS.line,borderRadius:11,alignItems:'center',justifyContent:'center'},tipOptionSelected:{borderColor:COLORS.red,backgroundColor:'#FFF2F2'},tipOptionText:{fontFamily:FONT.medium,fontSize:12,fontWeight:'700'},tipOptionTextSelected:{color:COLORS.red},
   commerceScroll:{paddingHorizontal:14,paddingBottom:28,gap:12},commerceHeader:{minHeight:60,flexDirection:'row',alignItems:'center'},commerceTitle:{...TYPE.screenTitle,flex:1},commerceLocation:{flexDirection:'row',alignItems:'center',gap:6},commerceLocationText:{...TYPE.bodyStrong},cartButton:{width:42,alignItems:'flex-end'},categoryPanel:{minHeight:116,borderWidth:1,borderColor:COLORS.line,borderRadius:22,flexDirection:'row',alignItems:'center',justifyContent:'space-around',paddingHorizontal:5},categoryItem:{alignItems:'center',gap:8},categoryCircle:{width:49,height:49,borderRadius:25,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center'},categoryLabel:{...TYPE.label},categoryEmoji:{fontSize:24},commercePromo:{width:'100%',height:157,borderRadius:22},restaurantRow:{flexDirection:'row',justifyContent:'space-between'},restaurantCard:{width:'31%'},restaurantImage:{width:'100%',aspectRatio:.76,borderRadius:17},restaurantName:{...TYPE.bodyStrong,marginTop:9},restaurantRating:{...TYPE.small,color:COLORS.muted,marginTop:5},restaurantMeta:{...TYPE.caption,color:COLORS.muted,marginTop:4},bottomNav:{minHeight:78,paddingBottom:8,borderTopWidth:1,borderTopColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',justifyContent:'space-around'},bottomNavItem:{flex:1,alignItems:'center',justifyContent:'center',gap:4},bottomNavLabel:{...TYPE.label,fontFamily:FONT.regular,fontWeight:'400',color:COLORS.muted},bottomNavLabelActive:{color:COLORS.red,fontFamily:FONT.bold,fontWeight:'800'},
-  restaurantDetailScroll:{paddingHorizontal:14,paddingBottom:82},restaurantHero:{width:'100%',height:190,borderRadius:18},restaurantDetailName:{...TYPE.screenTitle,marginTop:11},restaurantDetailMeta:{...TYPE.small,color:COLORS.muted,marginTop:4},restaurantDetailSub:{...TYPE.small,color:COLORS.muted,marginTop:3},badgeRow:{flexDirection:'row',gap:6,marginTop:9,marginBottom:14},badge:{borderWidth:1,borderColor:COLORS.line,borderRadius:13,paddingHorizontal:9,paddingVertical:5},badgeText:{...TYPE.label},menuItem:{minHeight:78,flexDirection:'row',alignItems:'center',gap:10,borderBottomWidth:1,borderBottomColor:COLORS.line},menuImage:{width:60,height:60,borderRadius:13},menuName:{...TYPE.cardTitle},menuPrice:{...TYPE.small,color:COLORS.muted,marginTop:5},addButton:{width:34,height:34,borderWidth:1,borderColor:COLORS.line,borderRadius:17,alignItems:'center',justifyContent:'center'},viewCartBar:{position:'absolute',left:14,right:14,bottom:8,height:58,borderRadius:15,backgroundColor:COLORS.black,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:14},viewCartTitle:{...TYPE.bodyStrong,color:COLORS.white},viewCartMeta:{...TYPE.small,color:'#D8D8D8',marginTop:3},cartScroll:{paddingHorizontal:14,paddingBottom:22,gap:12},cartRestaurant:{...TYPE.sectionTitle},cartItem:{minHeight:78,flexDirection:'row',alignItems:'center',gap:10},cartImage:{width:60,height:60,borderRadius:13},quantity:{height:38,borderWidth:1,borderColor:COLORS.line,borderRadius:13,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:9},quantityText:{fontFamily:FONT.bold,fontWeight:'800'},cartTotals:{gap:5},orderTrackingScroll:{paddingHorizontal:14,paddingBottom:20,gap:9},orderId:{...TYPE.cardTitle},orderEta:{...TYPE.cardTitle,color:COLORS.red},orderRestaurant:{...TYPE.small,color:COLORS.muted},orderMap:{width:'100%',height:230,borderRadius:18,marginVertical:7},referralCard:{minHeight:74,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:16,backgroundColor:COLORS.yellowSoft,shadowOpacity:0},referralTitle:{...TYPE.cardTitle},referralBody:{...TYPE.small,color:COLORS.muted,marginTop:3},deliverLabel:{...TYPE.small,color:COLORS.muted,marginTop:-10},deliverRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:-12},deliverAddress:{...TYPE.bodyStrong},storeRow:{flexDirection:'row',justifyContent:'space-between'},storeCard:{width:'23%',alignItems:'center'},storeLogo:{width:'100%',aspectRatio:1,borderWidth:1,borderColor:COLORS.line,borderRadius:18},storeName:{...TYPE.label,marginTop:9},storeRating:{...TYPE.caption,color:COLORS.muted,marginTop:5},
+  restaurantDetailScroll:{paddingHorizontal:14,paddingBottom:82},restaurantHero:{width:'100%',height:228,borderRadius:18},restaurantDetailName:{...TYPE.screenTitle,marginTop:11},restaurantDetailMeta:{...TYPE.small,color:COLORS.muted,marginTop:4},restaurantDetailSub:{...TYPE.small,color:COLORS.muted,marginTop:3},restaurantFeaturedDish:{...TYPE.bodyStrong,color:COLORS.black,marginTop:7},badgeRow:{flexDirection:'row',gap:6,marginTop:9,marginBottom:14},badge:{borderWidth:1,borderColor:COLORS.line,borderRadius:13,paddingHorizontal:9,paddingVertical:5},badgeText:{...TYPE.label},menuItem:{minHeight:78,flexDirection:'row',alignItems:'center',gap:10,borderBottomWidth:1,borderBottomColor:COLORS.line},menuImage:{width:60,height:60,borderRadius:13},menuName:{...TYPE.cardTitle},menuPrice:{...TYPE.small,color:COLORS.muted,marginTop:5},addButton:{width:34,height:34,borderWidth:1,borderColor:COLORS.line,borderRadius:17,alignItems:'center',justifyContent:'center'},viewCartBar:{position:'absolute',left:14,right:14,bottom:8,height:58,borderRadius:15,backgroundColor:COLORS.black,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:14},viewCartTitle:{...TYPE.bodyStrong,color:COLORS.white},viewCartMeta:{...TYPE.small,color:'#D8D8D8',marginTop:3},cartScroll:{paddingHorizontal:14,paddingBottom:22,gap:12},cartRestaurant:{...TYPE.sectionTitle},cartItem:{minHeight:78,flexDirection:'row',alignItems:'center',gap:10},cartImage:{width:60,height:60,borderRadius:13},quantity:{height:38,borderWidth:1,borderColor:COLORS.line,borderRadius:13,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:9},quantityText:{fontFamily:FONT.bold,fontWeight:'800'},cartTotals:{gap:5},orderTrackingScroll:{paddingHorizontal:14,paddingBottom:20,gap:9},orderId:{...TYPE.cardTitle},orderEta:{...TYPE.cardTitle,color:COLORS.red},orderRestaurant:{...TYPE.small,color:COLORS.muted},orderMap:{width:'100%',height:230,borderRadius:18,marginVertical:7},referralCard:{minHeight:74,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:16,backgroundColor:COLORS.yellowSoft,shadowOpacity:0},referralTitle:{...TYPE.cardTitle},referralBody:{...TYPE.small,color:COLORS.muted,marginTop:3},deliverLabel:{...TYPE.small,color:COLORS.muted,marginTop:-10},deliverRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:-12},deliverAddress:{...TYPE.bodyStrong},storeRow:{flexDirection:'row',justifyContent:'space-between'},storeCard:{width:'23%',alignItems:'center'},storeLogo:{width:'100%',aspectRatio:1,borderWidth:1,borderColor:COLORS.line,borderRadius:18},storeName:{...TYPE.label,marginTop:9},storeRating:{...TYPE.caption,color:COLORS.muted,marginTop:5},
   parcelScroll:{paddingHorizontal:14,paddingBottom:22,gap:12},segmented:{height:46,borderWidth:1,borderColor:COLORS.line,borderRadius:14,flexDirection:'row',padding:3},segment:{flex:1,borderRadius:11,alignItems:'center',justifyContent:'center'},segmentActive:{backgroundColor:COLORS.white,...SHADOW},segmentText:{fontFamily:FONT.medium,fontSize:13,color:COLORS.muted},segmentTextActive:{color:COLORS.black,fontWeight:'800'},parcelCard:{minHeight:82,flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:13,shadowOpacity:0},parcelIcon:{width:38,alignItems:'center'},parcelLabel:{fontFamily:FONT.regular,fontSize:12,color:COLORS.muted},parcelValue:{fontFamily:FONT.bold,fontSize:15,fontWeight:'800',marginTop:3},parcelDetail:{fontFamily:FONT.regular,fontSize:11,color:COLORS.muted,marginTop:2},parcelEstimate:{fontFamily:FONT.regular,fontSize:12,color:COLORS.muted,textAlign:'center'},
   walletScroll:{paddingHorizontal:14,paddingBottom:25,gap:12},walletCard:{height:210,borderRadius:22,backgroundColor:'#151515',padding:22,overflow:'hidden'},walletCardLabel:{fontFamily:FONT.regular,fontSize:17,color:COLORS.white},walletBalance:{...TYPE.display,color:COLORS.white,marginTop:10},walletCardSub:{fontFamily:FONT.regular,fontSize:17,color:COLORS.white,marginTop:5},topUpButton:{width:110,height:48,borderRadius:14,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center',marginTop:17},topUpText:{fontFamily:FONT.bold,fontSize:16,fontWeight:'900'},walletCardMark:{position:'absolute',right:18,bottom:16,width:50,height:50},walletActions:{flexDirection:'row',justifyContent:'space-between'},walletAction:{width:'24%',alignItems:'center',gap:8},walletActionLabel:{fontFamily:FONT.regular,fontSize:12,color:COLORS.muted,textAlign:'center'},walletSectionTitle:{...TYPE.sectionTitle},walletSectionHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},walletPayments:{paddingHorizontal:15,shadowOpacity:0},walletPayment:{minHeight:74,flexDirection:'row',alignItems:'center',gap:13,borderBottomWidth:1,borderBottomColor:COLORS.line},walletPaymentTitle:{...TYPE.cardTitle},walletPaymentSub:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:3},walletRadio:{width:27,height:27,borderRadius:14,borderWidth:2,borderColor:COLORS.mutedLight,alignItems:'center',justifyContent:'center'},walletRadioSelected:{backgroundColor:COLORS.yellow,borderColor:COLORS.yellow},businessCard:{minHeight:75,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:16,shadowOpacity:0},businessIcon:{width:42,height:42,borderRadius:11,backgroundColor:COLORS.green,alignItems:'center',justifyContent:'center'},businessText:{flex:1,fontFamily:FONT.bold,fontSize:16,fontWeight:'800'},
   accountScroll:{paddingHorizontal:14,paddingBottom:25,gap:12},accountProfile:{minHeight:86,flexDirection:'row',alignItems:'center',gap:12,paddingVertical:6},accountAvatar:{width:72,height:72,borderRadius:36},accountName:{...TYPE.screenTitle},accountPhone:{...TYPE.body,color:COLORS.muted,marginTop:5},viewProfile:{...TYPE.action,color:COLORS.red,marginTop:8},blackMembership:{height:72,borderRadius:16,backgroundColor:'#171717',flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:16},membershipMark:{width:38,height:38},membershipText:{flex:1,...TYPE.cardTitle,color:COLORS.white},membershipStatus:{...TYPE.small,color:COLORS.white},accountMenu:{shadowOpacity:.04},guestAccount:{flex:1,paddingHorizontal:14,alignItems:'center',justifyContent:'center',gap:12},guestAvatar:{width:92,height:92,borderRadius:46,backgroundColor:COLORS.surfaceStrong,alignItems:'center',justifyContent:'center'},guestAccountTitle:{...TYPE.screenTitle,textAlign:'center'},guestAccountText:{...TYPE.body,color:COLORS.muted,textAlign:'center',marginBottom:10},genericScroll:{padding:14,gap:12},orderCard:{minHeight:88,flexDirection:'row',alignItems:'center',gap:14,paddingHorizontal:15,shadowOpacity:0},orderImage:{width:62,height:62,borderRadius:14},orderTitle:{...TYPE.cardTitle},orderMeta:{...TYPE.small,color:COLORS.muted,marginTop:5},orderPrice:{...TYPE.bodyStrong,marginTop:5},
 
   homeStoreList:{gap:10,paddingRight:8},homeStoreCard:{width:142,borderWidth:1,borderColor:COLORS.line,borderRadius:17,backgroundColor:COLORS.white,padding:10,...SHADOW},homeStoreName:{...TYPE.cardTitle,marginTop:8},homeStoreMeta:{...TYPE.caption,color:COLORS.muted,marginTop:4},
   v35PopularStoresHeader:{flexDirection:'row',alignItems:'flex-end',justifyContent:'space-between',marginTop:4,marginBottom:12},v35PopularStoresTitle:{...TYPE.sectionTitle,color:COLORS.black},v35PopularStoresLocale:{...TYPE.caption,color:COLORS.muted,marginTop:2},
-  v35HomeStoreCard:{width:154,minHeight:192,padding:12},v35StoreLogoArea:{height:52,borderRadius:13,backgroundColor:COLORS.white,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center',paddingHorizontal:8},v35StoreBrandImage:{width:'100%',height:34},v35HomeStoreName:{fontSize:15,lineHeight:18,minHeight:36,marginTop:9},
+  v35HomeStoreCard:{width:166,minHeight:218,padding:9},v35StoreLogoArea:{height:52,borderRadius:13,backgroundColor:COLORS.white,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center',paddingHorizontal:8},v35StorePhotoArea:{height:92,width:'100%',borderRadius:13},v35StoreBrandImage:{width:'100%',height:34},v35HomeStoreName:{fontSize:15,lineHeight:18,minHeight:36,marginTop:9},
   v35CapitalLogo:{width:'100%',flexDirection:'row',alignItems:'center',justifyContent:'center',gap:4},v35CapitalLogoText:{fontFamily:FONT.bold,fontSize:14,fontWeight:'900',color:'#E1282D',letterSpacing:.2},
   v35QualityLogo:{width:'100%',flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,backgroundColor:'#60358E',borderRadius:9,paddingVertical:7,paddingHorizontal:8},v35QualityQ:{fontFamily:FONT.bold,fontSize:20,fontWeight:'900',color:COLORS.white},v35QualityText:{fontFamily:FONT.bold,fontSize:12,fontWeight:'900',color:COLORS.white,letterSpacing:.5},
   v35KareebuStoreLogo:{flexDirection:'row',alignItems:'center',gap:6},v35KareebuStoreMark:{width:26,height:26},v35KareebuStoreText:{fontFamily:FONT.bold,fontSize:12,fontWeight:'900',color:COLORS.black,letterSpacing:1.4},v35FallbackStoreLogo:{width:'100%',flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5},v35FallbackStoreText:{maxWidth:88,...TYPE.caption,fontWeight:'800',color:COLORS.black},
@@ -4448,12 +4837,12 @@ const styles = StyleSheet.create({
   // v3.4 approved Big brands + Recent activity reference match.
   v34SectionTitle:{fontFamily:FONT.bold,fontSize:16,lineHeight:20,fontWeight:'900',letterSpacing:-.15,color:COLORS.black},
   v34BrandList:{flexDirection:'row',alignItems:'stretch',justifyContent:'space-between',gap:8},
-  v34BrandTile:{height:78,borderRadius:13,borderWidth:1,borderColor:'#ECEBE8',backgroundColor:'#FFFFFF',alignItems:'center',justifyContent:'center',paddingHorizontal:5,paddingVertical:8,...SHADOW},
+  v34BrandTile:{height:104,borderRadius:13,borderWidth:1,borderColor:'#ECEBE8',backgroundColor:'#FFFFFF',padding:5,...SHADOW},v34BrandPhoto:{width:'100%',height:72,borderRadius:10},
   v34BrandLogoWrap:{width:'100%',height:33,alignItems:'center',justifyContent:'center',marginBottom:7},
   v34BrandLogo:{width:'92%',height:'100%'},
   v34BrandEta:{fontFamily:FONT.regular,fontSize:9,lineHeight:12,color:'#404247',textAlign:'center'},
-  v34RecentCard:{height:76,borderRadius:14,borderWidth:1,borderColor:'#ECEBE8',backgroundColor:'#FFFFFF',flexDirection:'row',alignItems:'center',paddingLeft:8,paddingRight:7,gap:8,overflow:'hidden',...SHADOW},
-  v34RecentBrand:{width:46,height:46,borderRadius:12,borderWidth:1,borderColor:'#ECEBE8',backgroundColor:'#FFFFFF',alignItems:'center',justifyContent:'center',padding:5},
+  v34RecentCard:{height:86,borderRadius:14,borderWidth:1,borderColor:'#ECEBE8',backgroundColor:'#FFFFFF',flexDirection:'row',alignItems:'center',paddingLeft:7,paddingRight:7,gap:8,overflow:'hidden',...SHADOW},
+  v34RecentBrand:{width:46,height:46,borderRadius:12,borderWidth:1,borderColor:'#ECEBE8',backgroundColor:'#FFFFFF',alignItems:'center',justifyContent:'center',padding:5},v34RecentPhoto:{width:72,height:66,borderRadius:11},
   v34RecentBrandLogo:{width:'100%',height:'100%'},
   v34RecentCopy:{flex:1,minWidth:82},
   v34RecentTitle:{fontFamily:FONT.bold,fontSize:10.5,lineHeight:14,fontWeight:'800',color:COLORS.black},
@@ -4648,10 +5037,10 @@ const styles = StyleSheet.create({
   v38ServiceTitle:{fontFamily:FONT.bold,fontSize:16,lineHeight:20,fontWeight:'900',color:COLORS.black},
   v38ServiceBody:{fontFamily:FONT.regular,fontSize:11.5,lineHeight:16,color:COLORS.muted,minHeight:34,marginTop:4,marginBottom:6},
   v38StorefrontScroll:{paddingHorizontal:14,paddingBottom:118,gap:15},
-  v38StorefrontHero:{alignItems:'center',paddingTop:2,paddingBottom:5},
+  v38StorefrontHero:{paddingTop:2,paddingBottom:5},v38StorefrontCover:{height:176,width:'100%',borderRadius:18},v38StorefrontIdentity:{flexDirection:'row',alignItems:'center',gap:10,marginTop:10},
   v38StorefrontLogo:{width:92,height:58,borderRadius:16,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center',padding:8},
-  v38StorefrontName:{fontFamily:FONT.bold,fontSize:21,lineHeight:25,fontWeight:'900',color:COLORS.black,textAlign:'center',marginTop:9},
-  v38StorefrontMeta:{fontFamily:FONT.regular,fontSize:12.5,lineHeight:17,color:COLORS.muted,marginTop:4},
+  v38StorefrontName:{fontFamily:FONT.bold,fontSize:20,lineHeight:24,fontWeight:'900',color:COLORS.black},
+  v38StorefrontMeta:{fontFamily:FONT.regular,fontSize:11.5,lineHeight:16,color:COLORS.muted,marginTop:3},v38StorefrontInventory:{...TYPE.small,color:COLORS.black,marginTop:8},
   v38StorefrontDeal:{minHeight:32,borderRadius:16,backgroundColor:'#FFF4F1',flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:10,marginTop:9},
   v38StorefrontDealText:{fontFamily:FONT.bold,fontSize:11.5,lineHeight:15,fontWeight:'800',color:COLORS.red},
   v38StorefrontInfoRow:{minHeight:70,borderRadius:18,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',justifyContent:'space-around',paddingHorizontal:8},
@@ -4809,19 +5198,19 @@ const styles = StyleSheet.create({
   v40SectionSub:{fontFamily:FONT.regular,fontSize:10.5,lineHeight:14,color:COLORS.muted,marginTop:2},
   v40AccentText:{color:COLORS.red},
   v40FindsRow:{gap:9,paddingRight:8},
-  v40FindCard:{width:104,minHeight:122,borderRadius:14,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:9,alignItems:'center'},
+  v40FindCard:{width:132,minHeight:164,borderRadius:14,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:7},v40FindPhoto:{width:'100%',height:82,borderRadius:11},
   v40FindLogo:{height:47,width:'100%',alignItems:'center',justifyContent:'center'},
-  v40FindName:{fontFamily:FONT.bold,fontSize:11,fontWeight:'800',color:COLORS.black,marginTop:5,maxWidth:'100%'},
+  v40FindName:{fontFamily:FONT.bold,fontSize:11.5,fontWeight:'900',color:COLORS.black,marginTop:7,maxWidth:'100%'},
   v40FindMeta:{fontFamily:FONT.regular,fontSize:9,lineHeight:12,color:COLORS.muted,marginTop:4},
   v40FindDelivery:{fontFamily:FONT.medium,fontSize:8.8,lineHeight:12,color:COLORS.muted,marginTop:3},
   v40FindDeliveryFree:{color:'#197842'},
   v40PopularStoreList:{borderRadius:14,borderWidth:1,borderColor:COLORS.line,overflow:'hidden',backgroundColor:COLORS.white},
-  v40PopularStoreRow:{minHeight:60,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:10,paddingVertical:8,borderBottomWidth:1,borderBottomColor:COLORS.line},
+  v40PopularStoreRow:{minHeight:82,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:9,paddingVertical:8,borderBottomWidth:1,borderBottomColor:COLORS.line},v40PopularStorePhoto:{width:84,height:64,borderRadius:12},
   v40PopularStoreLogo:{width:48,height:48,borderRadius:13,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center',overflow:'hidden'},
   v40PopularStoreName:{fontFamily:FONT.bold,fontSize:12.5,fontWeight:'900',color:COLORS.black},
-  v40PopularStoreMeta:{fontFamily:FONT.regular,fontSize:9.5,lineHeight:13,color:COLORS.muted,marginTop:3},
-  v40PopularStoreRight:{maxWidth:120,alignItems:'flex-end'},
-  v40PopularStoreRating:{fontFamily:FONT.bold,fontSize:10.5,fontWeight:'800',color:COLORS.black},
+  v40PopularStoreMeta:{fontFamily:FONT.regular,fontSize:9.5,lineHeight:13,color:COLORS.muted,marginTop:3},v40PopularStoreInventory:{fontFamily:FONT.medium,fontSize:9.5,lineHeight:13,color:COLORS.black,marginTop:3},
+  v40PopularStoreRight:{maxWidth:112,alignItems:'flex-end'},
+  v40PopularStoreRating:{fontFamily:FONT.bold,fontSize:9.5,fontWeight:'800',color:COLORS.black},
   v40PopularStoreDeal:{fontFamily:FONT.medium,fontSize:8.5,lineHeight:11,color:COLORS.black,backgroundColor:'#FFF4D9',borderRadius:7,paddingHorizontal:6,paddingVertical:3,marginTop:5,maxWidth:120},
   v40WeekendPanel:{minHeight:154,borderRadius:16,backgroundColor:'#FFF4E5',padding:12,flexDirection:'row',gap:8,overflow:'hidden'},
   v40WeekendLead:{width:92,justifyContent:'center'},
@@ -4969,22 +5358,22 @@ const styles = StyleSheet.create({
   v40ShopHeroFree:{position:'absolute',right:8,top:8,height:28,borderRadius:9,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:4,paddingHorizontal:7},
   v40ShopHeroFreeText:{fontFamily:FONT.bold,fontSize:8.5,fontWeight:'900',color:COLORS.red},
   v40PharmacyGrid:{marginHorizontal:18,flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:9},
-  v40PharmacyBrandCard:{width:'31.5%',height:91,borderRadius:15,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center',padding:7},
+  v40PharmacyBrandCard:{width:'31.5%',minHeight:132,borderRadius:15,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:6},v40PharmacyBrandPhoto:{width:'100%',height:72,borderRadius:11},v40PharmacyBrandName:{fontFamily:FONT.bold,fontSize:9.5,lineHeight:12,fontWeight:'900',color:COLORS.black,marginTop:6},
   v40PharmacyBrandLogo:{height:49,width:'100%',alignItems:'center',justifyContent:'center'},
   v40PharmacyBrandEta:{fontFamily:FONT.regular,fontSize:9.5,color:COLORS.muted,marginTop:4},
   v40TopShopRow:{gap:9,paddingHorizontal:14},
-  v40TopShopCard:{width:106,height:120,borderRadius:16,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:8,alignItems:'center'},
+  v40TopShopCard:{width:132,minHeight:162,borderRadius:16,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:7},v40TopShopPhoto:{width:'100%',height:88,borderRadius:12},
   v40TopShopLogo:{height:50,width:'100%',alignItems:'center',justifyContent:'center'},
-  v40TopShopName:{fontFamily:FONT.bold,fontSize:10.5,lineHeight:13,fontWeight:'800',color:COLORS.black,textAlign:'center',marginTop:4},
+  v40TopShopName:{fontFamily:FONT.bold,fontSize:10.5,lineHeight:13,fontWeight:'900',color:COLORS.black,marginTop:6},
   v40TopShopEta:{fontFamily:FONT.regular,fontSize:9,color:COLORS.muted,marginTop:4},
   v40BrowseTitle:{fontFamily:FONT.bold,fontSize:17,fontWeight:'900',color:COLORS.black,marginHorizontal:18},
-  v40ShopList:{marginHorizontal:18,borderRadius:18,borderWidth:1,borderColor:COLORS.line,overflow:'hidden',backgroundColor:COLORS.white},
-  v40ShopRow:{minHeight:84,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:10,paddingVertical:9,borderBottomWidth:1,borderBottomColor:COLORS.line},
+  v40ShopList:{marginHorizontal:14,borderRadius:18,borderWidth:1,borderColor:COLORS.line,overflow:'hidden',backgroundColor:COLORS.white},
+  v40ShopRow:{minHeight:112,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:9,paddingVertical:9,borderBottomWidth:1,borderBottomColor:COLORS.line},v40ShopRowPhoto:{width:104,height:88,borderRadius:13},
   v40ShopRowLogo:{width:58,height:58,borderRadius:14,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center',overflow:'hidden'},
   v40ShopNameRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:6},
   v40ShopName:{flex:1,fontFamily:FONT.bold,fontSize:13,fontWeight:'900',color:COLORS.black},
   v40ShopRating:{fontFamily:FONT.bold,fontSize:10.5,fontWeight:'800',color:COLORS.black},
-  v40ShopMeta:{fontFamily:FONT.regular,fontSize:9.5,lineHeight:13,color:COLORS.muted,marginTop:3},
+  v40ShopCategoryMeta:{fontFamily:FONT.medium,fontSize:9.5,lineHeight:13,color:COLORS.black,marginTop:3},v40ShopMeta:{fontFamily:FONT.regular,fontSize:9.5,lineHeight:13,color:COLORS.muted,marginTop:3},
   v40ShopBadges:{flexDirection:'row',alignItems:'center',gap:6,marginTop:6},
   v40ShopDeal:{maxWidth:'70%',height:25,borderRadius:8,backgroundColor:'#E8FB4A',flexDirection:'row',alignItems:'center',gap:4,paddingHorizontal:7},
   v40ShopDealText:{flexShrink:1,fontFamily:FONT.bold,fontSize:8.5,fontWeight:'800',color:COLORS.black},
@@ -5038,5 +5427,131 @@ const styles = StyleSheet.create({
   foodParityDishRail:{gap:11,paddingRight:8},foodParityDishCard:{width:148,borderWidth:1,borderColor:COLORS.line,borderRadius:17,backgroundColor:COLORS.white,padding:9},foodParityDishImage:{width:'100%',height:105,borderRadius:13,backgroundColor:COLORS.surfaceStrong},foodParityDishName:{fontFamily:FONT.bold,fontSize:13,fontWeight:'800',lineHeight:17,color:COLORS.black,marginTop:8},foodParityDishPrice:{fontFamily:FONT.bold,fontSize:12.5,fontWeight:'900',color:COLORS.black,marginTop:5},foodParityDishStore:{...TYPE.caption,color:COLORS.muted,marginTop:3},foodParityDishBadge:{position:'absolute',left:7,top:7,borderRadius:9,backgroundColor:COLORS.red,paddingHorizontal:7,paddingVertical:4},foodParityDishBadgeText:{fontFamily:FONT.bold,fontSize:8.5,fontWeight:'900',color:COLORS.white},
   foodParityQuickRail:{gap:10,paddingRight:8},foodParityQuickCard:{width:230,minHeight:66,borderRadius:17,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12},foodParityQuickIcon:{width:39,height:39,borderRadius:13,backgroundColor:'#FFF0EE',alignItems:'center',justifyContent:'center'},foodParityQuickName:{...TYPE.cardTitle,color:COLORS.black},foodParityQuickMeta:{...TYPE.caption,color:COLORS.muted,marginTop:3},
   foodParityLastOrder:{minHeight:82,borderRadius:18,backgroundColor:'#FFF8E6',borderWidth:1,borderColor:'#F3E6B4',flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:14},foodParityLastOrderIcon:{width:42,height:42,borderRadius:14,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},foodParityLastOrderEyebrow:{...TYPE.caption,color:COLORS.muted},foodParityLastOrderTitle:{...TYPE.cardTitle,color:COLORS.black,marginTop:2},foodParityLastOrderMeta:{...TYPE.caption,color:COLORS.red,marginTop:3,fontWeight:'800'},foodParityExploreHeader:{marginTop:3},
+
+
+  // Kareebu+ v6.13 merchant-profile detail system. Screenshot reference:
+  // edge-to-edge hero, floating utility controls, overlapping merchant mark,
+  // large identity hierarchy and compact rating panel shared by Food + Shops.
+  v613MerchantScreen:{flex:1,backgroundColor:COLORS.white},
+  v613MerchantScroll:{backgroundColor:COLORS.white},
+  v613MerchantHero:{width:'100%',position:'relative',backgroundColor:COLORS.surfaceStrong,overflow:'hidden'},
+  v613MerchantHeroPhoto:{...StyleSheet.absoluteFill,width:'100%',height:'100%'},
+  v613MerchantHeroShade:{...StyleSheet.absoluteFill,backgroundColor:'rgba(0,0,0,.035)'},
+  v613MerchantTopActions:{position:'absolute',left:14,right:14,flexDirection:'row',alignItems:'center',justifyContent:'space-between',zIndex:20},
+  v613MerchantTopActionsRight:{flexDirection:'row',alignItems:'center',gap:9},
+  v613FloatingAction:{width:50,height:50,borderRadius:13,backgroundColor:'rgba(255,255,255,.97)',borderWidth:1,borderColor:'rgba(0,0,0,.08)',alignItems:'center',justifyContent:'center',shadowColor:'#000',shadowOffset:{width:0,height:3},shadowOpacity:.15,shadowRadius:7,elevation:5},
+  v613FloatingActionPressed:{opacity:.72,transform:[{scale:.97}]},
+  v613MerchantSheet:{backgroundColor:COLORS.white,paddingHorizontal:14,paddingBottom:22},
+  v613MerchantLogoCard:{width:88,height:88,borderRadius:15,backgroundColor:COLORS.white,borderWidth:1,borderColor:'#E5E6E7',alignItems:'center',justifyContent:'center',padding:8,marginTop:-50,marginBottom:12,zIndex:15,shadowColor:'#000',shadowOffset:{width:0,height:3},shadowOpacity:.12,shadowRadius:7,elevation:5,overflow:'hidden'},
+  v613RestaurantLogoMark:{width:'100%',height:'100%',borderRadius:10,alignItems:'center',justifyContent:'center',paddingHorizontal:5},
+  v613RestaurantLogoText:{fontFamily:FONT.bold,fontSize:15,lineHeight:16,fontWeight:'900',textAlign:'center',letterSpacing:-.25},
+  v613MerchantHeadlineRow:{flexDirection:'row',alignItems:'flex-start',gap:12,minHeight:112},
+  v613MerchantHeadlineCopy:{flex:1,paddingRight:2},
+  v613MerchantName:{fontFamily:FONT.bold,fontSize:29,lineHeight:33,fontWeight:'900',letterSpacing:-.7,color:COLORS.black},
+  v613MerchantCategoryRow:{flexDirection:'row',alignItems:'center',gap:7,marginTop:8,paddingRight:4},
+  v613MerchantPartnerMark:{height:27,minWidth:36,borderRadius:7,backgroundColor:COLORS.green,alignItems:'center',justifyContent:'center',paddingHorizontal:7},
+  v613MerchantPartnerText:{fontFamily:FONT.bold,fontSize:12,fontWeight:'900',color:COLORS.white},
+  v613MerchantCategory:{flex:1,fontFamily:FONT.medium,fontSize:14.5,lineHeight:19,fontWeight:'700',color:'#737578'},
+  v613MerchantLocation:{fontFamily:FONT.regular,fontSize:13.5,lineHeight:18,color:'#7B7D80',marginTop:8},
+  v613RatingPanel:{width:78,borderRadius:13,borderWidth:1,borderColor:'#E5E8E7',backgroundColor:COLORS.white,overflow:'hidden'},
+  v613RatingTop:{height:42,backgroundColor:COLORS.greenSoft,alignItems:'center',justifyContent:'center'},
+  v613RatingScore:{fontFamily:FONT.bold,fontSize:17,fontWeight:'900',color:COLORS.green},
+  v613RatingBottom:{minHeight:58,alignItems:'center',justifyContent:'center',paddingVertical:7},
+  v613RatingCount:{fontFamily:FONT.bold,fontSize:14,fontWeight:'900',color:'#77797C'},
+  v613RatingLabel:{fontFamily:FONT.regular,fontSize:12.5,color:'#85878A',marginTop:2},
+  v613MerchantDivider:{height:1,backgroundColor:COLORS.line,marginTop:4},
+  v613MerchantDeal:{minHeight:44,borderRadius:13,backgroundColor:COLORS.yellowSoft,flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:12,marginTop:12},
+  v613MerchantDealText:{flex:1,...TYPE.small,color:COLORS.black,fontWeight:'800'},
+  v613InfoStrip:{minHeight:68,borderRadius:15,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',justifyContent:'space-around',paddingHorizontal:8,marginTop:12},
+  v613InfoCell:{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:3},
+  v613InfoValue:{fontFamily:FONT.bold,fontSize:12.5,lineHeight:16,fontWeight:'900',color:COLORS.black,textAlign:'center'},
+  v613InfoLabel:{fontFamily:FONT.regular,fontSize:10.5,lineHeight:14,color:COLORS.muted,textAlign:'center',marginTop:3},
+  v613InfoRule:{width:1,height:34,backgroundColor:COLORS.lineDark},
+  v613QuickActionRail:{flexDirection:'row',gap:8,marginTop:10},
+  v613QuickAction:{flex:1,height:42,borderRadius:13,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:7,borderWidth:1,borderColor:COLORS.line},
+  v613QuickActionText:{fontFamily:FONT.bold,fontSize:11.5,fontWeight:'800',color:COLORS.black},
+  v613KnownFor:{...TYPE.bodyStrong,color:COLORS.black,marginTop:11},
+  v613MerchantSearch:{height:48,borderWidth:1,borderColor:COLORS.line,borderRadius:15,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',gap:9,paddingHorizontal:12,marginTop:14,marginBottom:12},
+  v613MerchantSearchInput:{flex:1,...TYPE.body,color:COLORS.black,paddingVertical:0},
+  v613CategoryRail:{gap:8,paddingBottom:10,paddingRight:12},
+
+
+  // Kareebu+ V6.14 — hard merchant-profile rebuild from the supplied reference.
+  // Nothing in RestaurantScreen / StorefrontScreen below the hero uses the old
+  // v30 restaurant-card or v38 storefront-grid visual systems.
+  v614MerchantScreen:{flex:1,backgroundColor:COLORS.white},
+  v614Hero:{width:'100%',position:'relative',backgroundColor:'#E6E6E6',overflow:'hidden'},
+  v614HeroPhoto:{...StyleSheet.absoluteFill,width:'100%',height:'100%'},
+  v614HeroShade:{...StyleSheet.absoluteFill,backgroundColor:'rgba(0,0,0,.018)'},
+  v614TopBar:{position:'absolute',left:18,right:18,flexDirection:'row',alignItems:'center',justifyContent:'space-between',zIndex:30},
+  v614TopButtonGroup:{flexDirection:'row',gap:10},
+  v614TopButton:{width:56,height:56,borderRadius:12,backgroundColor:'rgba(255,255,255,.985)',borderWidth:1,borderColor:'rgba(0,0,0,.12)',alignItems:'center',justifyContent:'center',shadowColor:'#000',shadowOffset:{width:0,height:3},shadowOpacity:.16,shadowRadius:6,elevation:7},
+  v614TopButtonPressed:{opacity:.72,transform:[{scale:.97}]},
+  v614Sheet:{backgroundColor:COLORS.white,paddingHorizontal:18,paddingBottom:28},
+  v614LogoCard:{width:104,height:104,borderRadius:14,backgroundColor:COLORS.white,borderWidth:1,borderColor:'#E3E4E5',alignItems:'center',justifyContent:'center',padding:7,marginTop:-62,marginBottom:15,zIndex:20,shadowColor:'#000',shadowOffset:{width:0,height:3},shadowOpacity:.11,shadowRadius:5,elevation:5,overflow:'hidden'},
+  v614MerchantLogoImage:{width:'88%',height:'88%'},
+  v614RestaurantLogoFallback:{width:'100%',height:'100%',borderRadius:9,alignItems:'center',justifyContent:'center',paddingHorizontal:6},
+  v614RestaurantLogoFallbackText:{fontFamily:FONT.bold,fontSize:16,lineHeight:17,fontWeight:'900',textAlign:'center',letterSpacing:-.3},
+  v614IdentityRow:{flexDirection:'row',alignItems:'flex-start',gap:14,minHeight:123,paddingBottom:12},
+  v614IdentityCopy:{flex:1,paddingRight:2},
+  v614MerchantName:{fontFamily:FONT.bold,fontSize:31,lineHeight:35,fontWeight:'900',letterSpacing:-.9,color:'#2A2A2A'},
+  v614CategoryLine:{flexDirection:'row',alignItems:'center',gap:8,marginTop:10,paddingRight:2},
+  v614PartnerBadge:{height:27,minWidth:39,borderRadius:6,backgroundColor:'#087F69',alignItems:'center',justifyContent:'center',paddingHorizontal:7},
+  v614PartnerBadgeText:{fontFamily:FONT.bold,fontSize:12,fontWeight:'900',color:COLORS.white},
+  v614CategoryText:{flex:1,fontFamily:FONT.medium,fontSize:14.5,lineHeight:20,fontWeight:'700',color:'#77797B'},
+  v614LocationText:{fontFamily:FONT.regular,fontSize:14,lineHeight:19,color:'#7B7D80',marginTop:9},
+  v614RatingPanel:{width:84,borderRadius:13,borderWidth:1,borderColor:'#E1E6E4',backgroundColor:COLORS.white,overflow:'hidden',marginTop:-2},
+  v614RatingTop:{height:47,backgroundColor:'#F0F5F3',alignItems:'center',justifyContent:'center'},
+  v614RatingScore:{fontFamily:FONT.bold,fontSize:17,fontWeight:'900',color:'#079982'},
+  v614RatingBottom:{minHeight:65,alignItems:'center',justifyContent:'center',paddingVertical:8},
+  v614RatingCount:{fontFamily:FONT.bold,fontSize:15,fontWeight:'900',color:'#77797B'},
+  v614RatingLabel:{fontFamily:FONT.regular,fontSize:13,color:'#85878A',marginTop:3},
+  v614Hairline:{height:1,backgroundColor:'#E8E8E8',marginHorizontal:-18},
+  v614PlainInfoRow:{minHeight:64,flexDirection:'row',alignItems:'center',gap:11,borderBottomWidth:1,borderBottomColor:'#EEEEEE',paddingVertical:11},
+  v614PlainInfoIcon:{width:36,height:36,borderRadius:18,backgroundColor:'#F5F5F5',alignItems:'center',justifyContent:'center'},
+  v614PlainInfoTitle:{fontFamily:FONT.bold,fontSize:14.5,lineHeight:18,fontWeight:'800',color:COLORS.black},
+  v614PlainInfoMeta:{fontFamily:FONT.regular,fontSize:12.5,lineHeight:17,color:COLORS.muted,marginTop:3},
+  v614SearchBox:{height:50,borderRadius:12,borderWidth:1,borderColor:'#D8DADB',backgroundColor:'#F7F7F7',flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:13,marginTop:18},
+  v614SearchInput:{flex:1,fontFamily:FONT.regular,fontSize:14.5,color:COLORS.black,paddingVertical:0},
+  v614TabRail:{gap:8,paddingTop:14,paddingBottom:8,paddingRight:16},
+  v614Tab:{height:38,borderRadius:19,paddingHorizontal:15,backgroundColor:'#F2F2F2',alignItems:'center',justifyContent:'center'},
+  v614TabActive:{backgroundColor:COLORS.black},
+  v614TabText:{fontFamily:FONT.medium,fontSize:12.5,fontWeight:'700',color:'#555'},
+  v614TabTextActive:{color:COLORS.white},
+  v614SectionHeader:{flexDirection:'row',alignItems:'baseline',justifyContent:'space-between',paddingTop:17,paddingBottom:4},
+  v614SectionTitle:{fontFamily:FONT.bold,fontSize:22,lineHeight:27,fontWeight:'900',letterSpacing:-.35,color:COLORS.black},
+  v614SectionCount:{fontFamily:FONT.regular,fontSize:12.5,color:COLORS.muted},
+  v614MenuList:{marginTop:3},
+  v614MenuRow:{minHeight:132,flexDirection:'row',gap:13,paddingVertical:16,borderBottomWidth:1,borderBottomColor:'#ECECEC'},
+  v614MenuCopy:{flex:1,paddingRight:3,justifyContent:'center'},
+  v614ItemNameRow:{flexDirection:'row',alignItems:'center',gap:7},
+  v614ItemName:{flexShrink:1,fontFamily:FONT.bold,fontSize:15.5,lineHeight:20,fontWeight:'900',color:COLORS.black},
+  v614PopularDot:{borderRadius:7,backgroundColor:COLORS.yellowSoft,paddingHorizontal:6,paddingVertical:3},
+  v614PopularDotText:{fontFamily:FONT.bold,fontSize:9.5,fontWeight:'900',color:COLORS.black},
+  v614ItemBadge:{alignSelf:'flex-start',fontFamily:FONT.bold,fontSize:10.5,lineHeight:14,fontWeight:'900',color:'#B02620',marginBottom:4},
+  v614ItemDescription:{fontFamily:FONT.regular,fontSize:12.5,lineHeight:17,color:'#77797B',marginTop:5},
+  v614ItemPrice:{fontFamily:FONT.bold,fontSize:13.5,lineHeight:18,fontWeight:'900',color:COLORS.black,marginTop:8},
+  v614ItemRating:{fontFamily:FONT.medium,fontSize:11.5,lineHeight:15,fontWeight:'700',color:'#797B7E',marginTop:5},
+  v614MenuVisual:{width:118,height:102,borderRadius:12,overflow:'visible',alignSelf:'center',position:'relative'},
+  v614MenuPhoto:{width:'100%',height:'100%',borderRadius:12,backgroundColor:'#EEE'},
+  v614ProductList:{marginTop:3},
+  v614ProductRow:{minHeight:142,flexDirection:'row',gap:13,paddingVertical:16,borderBottomWidth:1,borderBottomColor:'#ECECEC'},
+  v614ProductCopy:{flex:1,paddingRight:3,justifyContent:'center'},
+  v614ProductVisual:{width:118,height:108,borderRadius:12,overflow:'visible',alignSelf:'center',position:'relative'},
+  v614ProductPhoto:{width:'100%',height:'100%',borderRadius:12,backgroundColor:'#EEE'},
+  v614AddButton:{position:'absolute',right:8,bottom:-10,minWidth:38,height:32,borderRadius:9,backgroundColor:COLORS.white,borderWidth:1,borderColor:'#D8D8D8',alignItems:'center',justifyContent:'center',paddingHorizontal:10,shadowColor:'#000',shadowOffset:{width:0,height:2},shadowOpacity:.1,shadowRadius:4,elevation:3},
+  v614AddButtonActive:{backgroundColor:COLORS.black,borderColor:COLORS.black},
+  v614AddButtonText:{fontFamily:FONT.bold,fontSize:19,lineHeight:21,fontWeight:'900',color:COLORS.black},
+  v614AddButtonTextActive:{fontSize:13,color:COLORS.white},
+  v614RowPressed:{opacity:.72},
+  v614EmptyState:{minHeight:180,alignItems:'center',justifyContent:'center',paddingHorizontal:22},
+  v614EmptyTitle:{fontFamily:FONT.bold,fontSize:16,fontWeight:'900',color:COLORS.black,marginTop:9},
+  v614EmptyBody:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,textAlign:'center',marginTop:5},
+  v614BasketBar:{position:'absolute',left:14,right:14,minHeight:62,borderRadius:16,backgroundColor:COLORS.black,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:13,shadowColor:'#000',shadowOffset:{width:0,height:4},shadowOpacity:.22,shadowRadius:9,elevation:8},
+  v614BasketCount:{width:32,height:32,borderRadius:9,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},
+  v614BasketCountText:{fontFamily:FONT.bold,fontSize:13,fontWeight:'900',color:COLORS.black},
+  v614BasketTitle:{fontFamily:FONT.bold,fontSize:14,fontWeight:'900',color:COLORS.white},
+  v614BasketMeta:{fontFamily:FONT.regular,fontSize:10.5,color:'#C8C8C8',marginTop:2},
+  v614BasketTotal:{fontFamily:FONT.bold,fontSize:13,fontWeight:'900',color:COLORS.white},
 
 });

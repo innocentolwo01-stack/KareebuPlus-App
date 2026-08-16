@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -21,6 +21,7 @@ type Restaurant = {
   cuisine: string;
   deliveryFee: string;
   offer?: string;
+  photoUrl: string;
   image: ImageSourcePropType;
 };
 
@@ -28,8 +29,17 @@ type Editorial = {
   id: string;
   title: string;
   subtitle: string;
+  photoUrl: string;
   image: ImageSourcePropType;
 };
+
+const REAL_DINEOUT_PHOTOS = {
+  cafe: 'https://images.unsplash.com/photo-1563722897-e6dac3cec340?auto=format&fit=crop&w=1400&q=82',
+  african: 'https://images.unsplash.com/photo-1665333048952-a3ee97714c6b?auto=format&fit=crop&w=1400&q=82',
+  grill: 'https://images.unsplash.com/photo-1567121938596-6d9d015d348b?auto=format&fit=crop&w=1400&q=82',
+  coffee: 'https://images.unsplash.com/photo-1769138885048-4f91ed2353a0?auto=format&fit=crop&w=1400&q=82',
+  dining: 'https://images.unsplash.com/photo-1705537748124-926009973f94?auto=format&fit=crop&w=1400&q=82',
+} as const;
 
 const RESTAURANTS: Restaurant[] = [
   {
@@ -37,11 +47,12 @@ const RESTAURANTS: Restaurant[] = [
     restaurantId: 'kampala-bistro',
     name: 'Kampala Bistro',
     rating: '4.7',
-    reviews: '999+',
+    reviews: '1.8k',
     eta: '20–30 mins',
     distance: '2.8 km',
     cuisine: 'Ugandan · East African',
     deliveryFee: 'UGX 2,000',
+    photoUrl: REAL_DINEOUT_PHOTOS.cafe,
     image: require('../../assets/kareebu-plus/dineout/restaurant-kampala-bistro.jpg'),
   },
   {
@@ -49,12 +60,13 @@ const RESTAURANTS: Restaurant[] = [
     restaurantId: 'kololo-kitchen',
     name: 'Kololo Kitchen',
     rating: '4.8',
-    reviews: '999+',
+    reviews: '1.2k',
     eta: '25–35 mins',
     distance: '3.6 km',
     cuisine: 'African · Grill',
     deliveryFee: 'UGX 2,500',
     offer: '20% off',
+    photoUrl: REAL_DINEOUT_PHOTOS.african,
     image: require('../../assets/kareebu-plus/dineout/restaurant-kololo-kitchen.jpg'),
   },
   {
@@ -62,11 +74,12 @@ const RESTAURANTS: Restaurant[] = [
     restaurantId: 'acacia-grill',
     name: 'Acacia Grill',
     rating: '4.8',
-    reviews: '500+',
+    reviews: '760',
     eta: '20–30 mins',
     distance: '4.1 km',
     cuisine: 'Grill · Continental',
     deliveryFee: 'UGX 3,000',
+    photoUrl: REAL_DINEOUT_PHOTOS.grill,
     image: require('../../assets/kareebu-plus/dineout/restaurant-acacia-grill.jpg'),
   },
 ];
@@ -76,15 +89,29 @@ const EDITORIAL: Editorial[] = [
     id: 'peaceful-retreats',
     title: 'Peaceful retreats',
     subtitle: 'Cafés and quiet corners worth slowing down for.',
+    photoUrl: REAL_DINEOUT_PHOTOS.coffee,
     image: require('../../assets/kareebu-plus/dineout/editorial-peaceful-retreats.jpg'),
   },
   {
     id: 'weekend-dining',
     title: 'Weekend dining',
     subtitle: 'Great food and easy plans for the weekend.',
+    photoUrl: REAL_DINEOUT_PHOTOS.dining,
     image: require('../../assets/kareebu-plus/dineout/editorial-weekend-dining.jpg'),
   },
 ];
+
+function RealDineOutPhoto({ url, fallback, style }: { url: string; fallback: ImageSourcePropType; style: any }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <Image
+      source={failed ? fallback : { uri: url }}
+      resizeMode="cover"
+      style={style}
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 export function KareebuDineOutSection({
   onOpenRestaurant,
@@ -132,9 +159,9 @@ export function KareebuDineOutSection({
           pressed && styles.pressed,
         ]}
       >
-        <Image
-          source={require('../../assets/kareebu-plus/dineout/dineout-hero.jpg')}
-          resizeMode="cover"
+        <RealDineOutPhoto
+          url={REAL_DINEOUT_PHOTOS.cafe}
+          fallback={require('../../assets/kareebu-plus/dineout/dineout-hero.jpg')}
           style={styles.hero}
         />
       </Pressable>
@@ -161,11 +188,7 @@ export function KareebuDineOutSection({
             ]}
           >
             <View style={styles.restaurantImageFrame}>
-              <Image
-                source={item.image}
-                resizeMode="cover"
-                style={styles.restaurantImage}
-              />
+              <RealDineOutPhoto url={item.photoUrl} fallback={item.image} style={styles.restaurantImage}/>
 
               {item.offer ? (
                 <View style={styles.offerBadge}>
@@ -226,11 +249,7 @@ export function KareebuDineOutSection({
               pressed && styles.pressed,
             ]}
           >
-            <Image
-              source={item.image}
-              resizeMode="cover"
-              style={styles.editorialImage}
-            />
+            <RealDineOutPhoto url={item.photoUrl} fallback={item.image} style={styles.editorialImage}/>
             <View style={styles.editorialShade} />
 
             <View style={styles.editorialTopBadge}>

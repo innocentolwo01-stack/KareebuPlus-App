@@ -17,7 +17,9 @@
     "validate:captain": "node scripts/validate-cabbook-driver-integration.mjs",
     "validate:uxui": "node scripts/validate-uxui.mjs",
     "validate:demand": "node scripts/validate-demand-pricing.mjs",
-    "validate:brand": "node scripts/validate-brand-system.mjs"
+    "validate:brand": "node scripts/validate-brand-system.mjs",
+    "validate:merchant-media": "node scripts/validate-real-merchant-media.mjs",
+    "validate:merchant-profile": "node scripts/validate-merchant-profile-v614.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",

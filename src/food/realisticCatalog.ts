@@ -111,6 +111,10 @@ function branchFrom(
   deliveryFee: number,
   offer: string,
 ): DemoRestaurant {
+  const branchNeighborhood = name.includes('·')
+    ? name.split('·')[1]?.trim() || parent.neighborhood
+    : parent.neighborhood;
+
   return {
     ...parent,
     id,
@@ -119,6 +123,7 @@ function branchFrom(
     distance,
     deliveryFee,
     offer,
+    ...(branchNeighborhood ? { neighborhood: branchNeighborhood } : {}),
     menu: parent.menu.map((item) => ({ ...item, id: `${id}-${item.id}` })),
   };
 }

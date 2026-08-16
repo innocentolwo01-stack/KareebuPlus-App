@@ -17,12 +17,17 @@ export type FoodHomeRestaurant = {
   cuisine: string;
   categories: string[];
   rating: number;
+  reviews: string;
   eta: string;
   distance: string;
+  neighborhood?: string;
+  priceLevel?: '$' | '$$' | '$$$';
+  featuredDish?: string;
   deliveryLabel: string;
   offer: string | null;
   plus: boolean;
   image: ImageSourcePropType;
+  fallbackImage?: ImageSourcePropType;
   menu: FoodHomeMenuItem[];
 };
 
