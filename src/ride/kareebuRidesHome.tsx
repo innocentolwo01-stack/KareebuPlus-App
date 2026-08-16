@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
+import { COLORS, TYPE } from '../theme';
 
 import { ScreenShell } from '../components';
 import type { MobilityActions, MobilityData } from './mobilityScreens';
@@ -212,10 +213,12 @@ function BackMenuHeader({
   onBack,
   title,
   light = true,
+  onMenu,
 }: {
   onBack: () => void;
   title?: string;
   light?: boolean;
+  onMenu?: () => void;
 }) {
   return (
     <View style={styles.header}>
@@ -225,8 +228,8 @@ function BackMenuHeader({
 
       {title ? <Text style={[styles.headerTitle, !light && styles.headerTitleDark]}>{title}</Text> : <View />}
 
-      <Pressable style={({ pressed }) => [styles.menuSquare, pressed && styles.pressed]}>
-        <Feather name="menu" size={23} color="#1BE8B1" />
+      <Pressable onPress={onMenu} style={({ pressed }) => [styles.menuSquare, pressed && styles.pressed]}>
+        <Feather name="menu" size={23} color={COLORS.yellow} />
       </Pressable>
     </View>
   );
@@ -436,11 +439,11 @@ export function KareebuRidesHomeScreen({
           </Marker>
         </MapView>
 
-        <BackMenuHeader onBack={() => actions.go('home')} />
+        <BackMenuHeader onBack={() => actions.go('home')} onMenu={() => actions.go('rideSettings')} />
 
         <View style={styles.searchPanel}>
           <View style={styles.searchPanelTop}>
-            <Pressable onPress={() => navigate('whereTo')} style={({ pressed }) => [styles.searchBigButton, pressed && styles.pressed]}>
+            <Pressable onPress={() => actions.go('whereTo')} style={({ pressed }) => [styles.searchBigButton, pressed && styles.pressed]}>
               <View style={styles.searchIconBox}>
                 <Feather name="search" size={28} color="#FFFFFF" />
               </View>
@@ -478,7 +481,7 @@ export function KareebuRidesHomeScreen({
           ))}
         </View>
 
-        <View style={styles.plusBanner}>
+        <Pressable onPress={() => actions.go('plusManage')} style={styles.plusBanner}>
           <View style={styles.plusPatternOne} />
           <View style={styles.plusPatternTwo} />
           <View style={styles.plusCopyBox}>
@@ -489,13 +492,19 @@ export function KareebuRidesHomeScreen({
           <View style={styles.plusGiftBox}>
             <Ionicons name="gift" size={42} color="#FFC928" />
           </View>
+        </Pressable>
+
+        <View style={styles.compactActionRow}>
+          <Pressable onPress={() => actions.go('rideBusiness')} style={styles.compactAction}><Ionicons name="briefcase-outline" size={18} color="#0F1113"/><Text style={styles.compactActionText}>Business</Text></Pressable>
+          <Pressable onPress={() => actions.go('rideHistory')} style={styles.compactAction}><Ionicons name="time-outline" size={18} color="#0F1113"/><Text style={styles.compactActionText}>Your rides</Text></Pressable>
+          <Pressable onPress={() => actions.go('rideSettings')} style={styles.compactAction}><Ionicons name="options-outline" size={18} color="#0F1113"/><Text style={styles.compactActionText}>Settings</Text></Pressable>
         </View>
 
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeading}>Offers</Text>
           <Pressable style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}>
             <Text style={styles.linkText}>See all</Text>
-            <Feather name="arrow-right" size={21} color="#07594E" />
+            <Feather name="arrow-right" size={21} color={COLORS.black} />
           </Pressable>
         </View>
 
@@ -571,10 +580,10 @@ export function KareebuRidesHomeScreen({
         ].map((item, index) => (
           <Pressable
             key={item.title}
-            onPress={() => navigate('pickupConfirm')}
+            onPress={() => actions.go('whereTo')}
             style={({ pressed }) => [styles.suggestionRow, pressed && styles.pressed]}
           >
-            <Ionicons name="location-outline" size={32} color="#10A595" />
+            <Ionicons name="location-outline" size={32} color={COLORS.black} />
             <View style={styles.suggestionCopy}>
               <Text style={styles.suggestionTitle}>{item.title}</Text>
               <Text style={styles.suggestionSubtitle}>{item.subtitle}</Text>
@@ -666,7 +675,7 @@ export function KareebuRidesHomeScreen({
           />
         </View>
 
-        <Pressable onPress={() => navigate('schedulePicker')} style={({ pressed }) => [styles.primaryCta, pressed && styles.pressed]}>
+        <Pressable onPress={() => actions.go('rideSchedule')} style={({ pressed }) => [styles.primaryCta, pressed && styles.pressed]}>
           <Text style={styles.primaryCtaText}>Schedule ride</Text>
         </Pressable>
       </View>
@@ -905,7 +914,7 @@ export function KareebuRidesHomeScreen({
               onPress={() => setSelectedPlace(place)}
               style={({ pressed }) => [styles.savedPlaceRow, pressed && styles.pressed]}
             >
-              <Ionicons name={place.icon} size={28} color={place.id === selectedPlace.id ? '#10A595' : '#50555A'} />
+              <Ionicons name={place.icon} size={28} color={place.id === selectedPlace.id ? COLORS.black : '#50555A'} />
               <View style={styles.savedPlaceCopy}>
                 <Text style={styles.savedPlaceTitle}>{place.label}</Text>
                 <Text style={styles.savedPlaceSub}>{place.subtitle}</Text>
@@ -975,18 +984,15 @@ export function KareebuRidesHomeScreen({
           'Trusted, vetted drivers',
         ].map((item) => (
           <View key={item} style={styles.whatRow}>
-            <Feather name="check" size={20} color="#0A916D" />
+            <Feather name="check" size={20} color={COLORS.green} />
             <Text style={styles.whatText}>{item}</Text>
           </View>
         ))}
       </View>
 
       <Pressable
-        onPress={() => {
-          setView('home');
-          setHistory(['home']);
-        }}
-        style={({ pressed }) => [styles.confirmCta, pressed && styles.pressed, { marginTop: 26 }]}
+        onPress={() => actions.go('schoolRun')}
+        style={({ pressed }) => [styles.confirmCta, pressed && styles.pressed, { marginTop: 18 }]}
       >
         <Text style={styles.confirmCtaText}>Buy package</Text>
       </Pressable>
@@ -1004,7 +1010,7 @@ export function KareebuRidesHomeScreen({
         <CityCard
           key={item.id}
           item={item}
-          onPress={() => navigate('pickupConfirm')}
+          onPress={() => actions.go('whereTo')}
         />
       ))}
     </ScrollView>
@@ -1026,7 +1032,7 @@ export function KareebuRidesHomeScreen({
         Use Kareebu together with contacts. Get started by syncing contacts or adding a contact by phone number.
       </Text>
 
-      <Pressable onPress={() => navigate('pickupConfirm')} style={({ pressed }) => [styles.confirmCta, pressed && styles.pressed]}>
+      <Pressable onPress={() => actions.go('whereTo')} style={({ pressed }) => [styles.confirmCta, pressed && styles.pressed]}>
         <Text style={styles.confirmCtaText}>Select from device</Text>
       </Pressable>
 
@@ -1075,10 +1081,7 @@ export function KareebuRidesHomeScreen({
 
           <View style={styles.confirmActionsRow}>
             <Pressable
-              onPress={() => {
-                setView('home');
-                setHistory(['home']);
-              }}
+              onPress={() => actions.go('whereTo')}
               style={({ pressed }) => [styles.confirmPickupButton, pressed && styles.pressed]}
             >
               <Text style={styles.confirmPickupText}>Confirm pick-up</Text>
@@ -1126,24 +1129,24 @@ const styles = StyleSheet.create({
   },
   darkScreen: {
     flex: 1,
-    backgroundColor: '#01483E',
+    backgroundColor: COLORS.black,
   },
   darkScroll: {
     paddingBottom: 20,
-    backgroundColor: '#01483E',
+    backgroundColor: COLORS.black,
   },
 
   header: {
-    paddingTop: 18,
-    paddingHorizontal: 22,
+    paddingTop: 10,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   headerSquare: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
@@ -1151,12 +1154,12 @@ const styles = StyleSheet.create({
     borderColor: '#D7DADD',
   },
   menuSquare: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#07594E',
+    backgroundColor: COLORS.black,
   },
   headerTitle: {
     color: '#2D3134',
@@ -1173,7 +1176,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   mapHero: {
-    height: 565,
+    height: 405,
     backgroundColor: '#EFF2F4',
     overflow: 'hidden',
   },
@@ -1187,12 +1190,12 @@ const styles = StyleSheet.create({
   },
   searchPanel: {
     position: 'absolute',
-    top: 106,
-    left: 22,
-    right: 22,
-    borderRadius: 28,
+    top: 70,
+    left: 14,
+    right: 14,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
-    padding: 18,
+    padding: 12,
     shadowColor: '#000000',
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -1206,33 +1209,33 @@ const styles = StyleSheet.create({
   },
   searchBigButton: {
     flex: 1,
-    minHeight: 84,
-    borderRadius: 22,
+    minHeight: 58,
+    borderRadius: 14,
     backgroundColor: '#F4F6F6',
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
   },
   searchIconBox: {
-    width: 52,
-    height: 52,
-    borderRadius: 15,
-    backgroundColor: '#07594E',
+    width: 40,
+    height: 40,
+    borderRadius: 11,
+    backgroundColor: COLORS.black,
     alignItems: 'center',
     justifyContent: 'center',
   },
   searchBigText: {
-    marginLeft: 14,
+    marginLeft: 10,
     color: '#4A4E52',
-    fontSize: 24,
-    lineHeight: 29,
+    fontSize: 18,
+    lineHeight: 22,
     fontWeight: '800',
     letterSpacing: -0.4,
   },
   laterButton: {
-    width: 128,
-    minHeight: 76,
-    borderRadius: 18,
+    width: 96,
+    minHeight: 46,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#D7DBDD',
     backgroundColor: '#FFFFFF',
@@ -1243,15 +1246,15 @@ const styles = StyleSheet.create({
   },
   laterButtonText: {
     color: '#43474C',
-    fontSize: 17,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 16,
     fontWeight: '800',
   },
   pickupPanel: {
-    marginTop: 16,
+    marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 72,
+    minHeight: 48,
     paddingHorizontal: 12,
   },
   pickupPanelCopy: {
@@ -1260,40 +1263,40 @@ const styles = StyleSheet.create({
   },
   pickupPanelTitle: {
     color: '#35393D',
-    fontSize: 18,
-    lineHeight: 23,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '800',
   },
   pickupPanelSubtitle: {
     marginTop: 2,
     color: '#81868B',
-    fontSize: 15,
-    lineHeight: 19,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
 
   contentSection: {
     marginTop: -4,
-    paddingTop: 26,
-    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingHorizontal: 14,
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
   },
   pageHeading: {
     color: '#313437',
-    fontSize: 28,
-    lineHeight: 33,
+    fontSize: 20,
+    lineHeight: 24,
     fontWeight: '900',
     letterSpacing: -0.6,
   },
   tileRow: {
-    marginTop: 18,
+    marginTop: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   shortcutCard: {
-    height: 140,
+    height: 108,
     paddingTop: 10,
     borderRadius: 18,
     backgroundColor: '#F5F6F6',
@@ -1301,13 +1304,13 @@ const styles = StyleSheet.create({
   },
   shortcutVisual: {
     width: '100%',
-    height: 84,
+    height: 62,
     alignItems: 'center',
     justifyContent: 'center',
   },
   shortcutImage: {
     width: '90%',
-    height: 84,
+    height: 62,
   },
   shortcutLabel: {
     marginTop: 8,
@@ -1320,11 +1323,11 @@ const styles = StyleSheet.create({
   },
 
   plusBanner: {
-    minHeight: 150,
-    marginTop: 28,
+    minHeight: 112,
+    marginTop: 18,
     borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: '#086F60',
+    borderColor: COLORS.yellow,
     overflow: 'hidden',
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
@@ -1337,7 +1340,7 @@ const styles = StyleSheet.create({
     right: 120,
     bottom: -14,
     height: 54,
-    backgroundColor: '#004E42',
+    backgroundColor: COLORS.black,
     transform: [{ rotate: '-8deg' }],
   },
   plusPatternTwo: {
@@ -1347,52 +1350,73 @@ const styles = StyleSheet.create({
     width: 130,
     height: 74,
     borderRadius: 35,
-    backgroundColor: '#0C6D61',
+    backgroundColor: COLORS.blackSoft,
   },
   plusCopyBox: {
     flex: 1,
     paddingRight: 12,
   },
   plusKareebu: {
-    color: '#0A8B72',
-    fontSize: 24,
-    lineHeight: 28,
+    color: COLORS.black,
+    fontSize: 18,
+    lineHeight: 22,
     fontWeight: '900',
   },
   plusTitle: {
-    marginTop: 10,
+    marginTop: 6,
     color: '#2F3336',
-    fontSize: 17,
-    lineHeight: 22,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '800',
   },
   plusBody: {
     marginTop: 4,
     color: '#5E6469',
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
   plusGiftBox: {
-    width: 98,
-    height: 98,
-    borderRadius: 49,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: '#FFF4CE',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
+  compactActionRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  compactAction: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 12,
+    backgroundColor: '#F5F6F6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  compactActionText: {
+    color: '#0F1113',
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '800',
+  },
   sectionHeaderRow: {
-    marginTop: 30,
-    marginBottom: 14,
+    marginTop: 18,
+    marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   sectionHeading: {
     color: '#313437',
-    fontSize: 26,
-    lineHeight: 31,
+    fontSize: 19,
+    lineHeight: 23,
     fontWeight: '900',
   },
   linkRow: {
@@ -1401,22 +1425,22 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   linkText: {
-    color: '#07594E',
-    fontSize: 16,
-    lineHeight: 20,
+    color: COLORS.black,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '800',
   },
   offerCard: {
-    minHeight: 108,
-    borderRadius: 18,
+    minHeight: 86,
+    borderRadius: 14,
     backgroundColor: '#F0F2FF',
-    padding: 20,
+    padding: 14,
     overflow: 'hidden',
   },
   offerTitle: {
     color: '#0F1113',
-    fontSize: 27,
-    lineHeight: 33,
+    fontSize: 18,
+    lineHeight: 22,
     fontWeight: '900',
   },
   offerBody: {
@@ -1437,24 +1461,24 @@ const styles = StyleSheet.create({
 
   whereCard: {
     marginHorizontal: 10,
-    marginTop: 24,
-    borderRadius: 28,
+    marginTop: 14,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: '#DADDDD',
     backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
   whereRow: {
-    minHeight: 54,
+    minHeight: 46,
     flexDirection: 'row',
     alignItems: 'center',
   },
   whereIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: '#07594E',
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: COLORS.black,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1462,16 +1486,16 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 16,
     color: '#35393D',
-    fontSize: 18,
-    lineHeight: 23,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '700',
   },
   wherePlaceholderText: {
     flex: 1,
     marginLeft: 16,
     color: '#B0B4B7',
-    fontSize: 18,
-    lineHeight: 23,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
   inputDividerColumn: {
@@ -1488,20 +1512,20 @@ const styles = StyleSheet.create({
   chipRow: {
     paddingLeft: 10,
     paddingRight: 20,
-    paddingVertical: 18,
-    gap: 12,
+    paddingVertical: 10,
+    gap: 8,
   },
   chipActive: {
-    paddingHorizontal: 22,
-    minHeight: 52,
+    paddingHorizontal: 16,
+    minHeight: 40,
     borderRadius: 15,
-    backgroundColor: '#07594E',
+    backgroundColor: COLORS.black,
     alignItems: 'center',
     justifyContent: 'center',
   },
   chip: {
-    paddingHorizontal: 22,
-    minHeight: 52,
+    paddingHorizontal: 16,
+    minHeight: 40,
     borderRadius: 15,
     borderWidth: 1,
     borderColor: '#D4D7D9',
@@ -1547,8 +1571,8 @@ const styles = StyleSheet.create({
   suggestionSubtitle: {
     marginTop: 2,
     color: '#7D8288',
-    fontSize: 15,
-    lineHeight: 19,
+    fontSize: 12,
+    lineHeight: 16,
   },
   suggestionMeta: {
     marginLeft: 10,
@@ -1556,13 +1580,13 @@ const styles = StyleSheet.create({
   },
   suggestionDistance: {
     color: '#8C9197',
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     marginBottom: 5,
   },
 
   scheduleHeaderBg: {
-    backgroundColor: '#0A6A5A',
+    backgroundColor: COLORS.black,
     paddingBottom: 12,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
@@ -1583,7 +1607,7 @@ const styles = StyleSheet.create({
   },
   schedulePanel: {
     marginTop: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 14,
     paddingBottom: 22,
   },
   panelHandle: {
@@ -1596,13 +1620,13 @@ const styles = StyleSheet.create({
   },
   bigFlowIcon: {
     width: 210,
-    height: 140,
+    height: 108,
     marginTop: 8,
     marginLeft: 4,
   },
   howItWorks: {
     marginTop: 14,
-    color: '#D8ECE7',
+    color: COLORS.yellowSoft,
     fontSize: 18,
     lineHeight: 22,
     fontWeight: '700',
@@ -1610,7 +1634,7 @@ const styles = StyleSheet.create({
   scheduleTitle: {
     marginTop: 8,
     color: '#FFFFFF',
-    fontSize: 46,
+    fontSize: 24,
     lineHeight: 52,
     fontWeight: '900',
     letterSpacing: -1.4,
@@ -1644,9 +1668,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bulletBody: {
-    color: '#D8ECE7',
-    fontSize: 14,
-    lineHeight: 18,
+    color: COLORS.yellowSoft,
+    fontSize: 12,
+    lineHeight: 16,
     marginTop: 2,
   },
 
@@ -1654,12 +1678,12 @@ const styles = StyleSheet.create({
     marginTop: 28,
     minHeight: 70,
     borderRadius: 18,
-    backgroundColor: '#19E6AF',
+    backgroundColor: COLORS.yellow,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryCtaText: {
-    color: '#033B33',
+    color: COLORS.black,
     fontSize: 18,
     lineHeight: 22,
     fontWeight: '900',
@@ -1670,7 +1694,7 @@ const styles = StyleSheet.create({
   },
   calendarHero: {
     paddingTop: 26,
-    paddingHorizontal: 24,
+    paddingHorizontal: 14,
     alignItems: 'center',
   },
   calendarBadge: {
@@ -1701,7 +1725,7 @@ const styles = StyleSheet.create({
   scheduleQuestion: {
     color: '#2E3134',
     textAlign: 'center',
-    fontSize: 40,
+    fontSize: 24,
     lineHeight: 47,
     fontWeight: '900',
     letterSpacing: -1.2,
@@ -1710,13 +1734,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: '#70757B',
     textAlign: 'center',
-    fontSize: 18,
-    lineHeight: 23,
+    fontSize: 12,
+    lineHeight: 16,
   },
   todayRow: {
     marginTop: 28,
     minHeight: 104,
-    paddingHorizontal: 24,
+    paddingHorizontal: 14,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: '#ECEEEF',
@@ -1726,7 +1750,7 @@ const styles = StyleSheet.create({
   },
   todayTitle: {
     color: '#2D3134',
-    fontSize: 34,
+    fontSize: 24,
     lineHeight: 40,
     fontWeight: '900',
   },
@@ -1751,7 +1775,7 @@ const styles = StyleSheet.create({
   },
   timeWheelBig: {
     color: '#2F3337',
-    fontSize: 42,
+    fontSize: 26,
     lineHeight: 48,
     fontWeight: '900',
   },
@@ -1764,15 +1788,15 @@ const styles = StyleSheet.create({
   },
   confirmCta: {
     marginHorizontal: 12,
-    marginTop: 18,
+    marginTop: 12,
     minHeight: 72,
     borderRadius: 18,
-    backgroundColor: '#07594E',
+    backgroundColor: COLORS.black,
     alignItems: 'center',
     justifyContent: 'center',
   },
   confirmCtaText: {
-    color: '#19E6AF',
+    color: COLORS.yellow,
     fontSize: 18,
     lineHeight: 22,
     fontWeight: '900',
@@ -1799,7 +1823,7 @@ const styles = StyleSheet.create({
     paddingBottom: 26,
   },
   schoolHero: {
-    backgroundColor: '#EAF4F1',
+    backgroundColor: COLORS.yellowWash,
     paddingBottom: 12,
   },
   schoolHeroArt: {
@@ -1813,34 +1837,34 @@ const styles = StyleSheet.create({
   },
   schoolBrandRow: {
     marginTop: 12,
-    paddingHorizontal: 30,
+    paddingHorizontal: 14,
   },
   schoolBrand: {
-    color: '#07594E',
+    color: COLORS.black,
     fontSize: 24,
     lineHeight: 29,
     fontWeight: '900',
   },
   schoolTitle: {
     marginTop: 20,
-    paddingHorizontal: 30,
+    paddingHorizontal: 14,
     color: '#2F3336',
-    fontSize: 42,
+    fontSize: 24,
     lineHeight: 50,
     fontWeight: '900',
     letterSpacing: -1.2,
   },
   schoolPrice: {
     marginTop: 14,
-    paddingHorizontal: 30,
-    color: '#0B9A85',
+    paddingHorizontal: 14,
+    color: COLORS.green,
     fontSize: 22,
     lineHeight: 27,
     fontWeight: '800',
   },
   schoolBenefitList: {
     marginTop: 26,
-    paddingHorizontal: 26,
+    paddingHorizontal: 14,
     gap: 22,
   },
   schoolDetailPage: {
@@ -1848,16 +1872,16 @@ const styles = StyleSheet.create({
   },
   schoolDetailTitle: {
     marginTop: 24,
-    paddingHorizontal: 24,
+    paddingHorizontal: 14,
     color: '#101214',
-    fontSize: 38,
+    fontSize: 24,
     lineHeight: 45,
     fontWeight: '900',
     letterSpacing: -1.1,
   },
   schoolAddressRow: {
-    marginTop: 18,
-    paddingHorizontal: 24,
+    marginTop: 12,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -1890,7 +1914,7 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   schoolMapMini: {
-    marginTop: 18,
+    marginTop: 12,
     marginHorizontal: 22,
     height: 180,
     borderRadius: 24,
@@ -1903,7 +1927,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 34,
     borderTopRightRadius: 34,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
+    paddingHorizontal: 14,
     paddingBottom: 20,
     borderTopWidth: 1,
     borderColor: '#E6E8E9',
@@ -1935,7 +1959,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   addressSearch: {
-    marginTop: 18,
+    marginTop: 12,
     minHeight: 60,
     borderRadius: 16,
     borderWidth: 1,
@@ -1961,8 +1985,8 @@ const styles = StyleSheet.create({
   },
   savedHeaderText: {
     color: '#323639',
-    fontSize: 16,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '800',
   },
   savedPlaceRow: {
@@ -1978,15 +2002,15 @@ const styles = StyleSheet.create({
   },
   savedPlaceTitle: {
     color: '#33373A',
-    fontSize: 17,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 16,
     fontWeight: '700',
   },
   savedPlaceSub: {
     marginTop: 2,
     color: '#7B8187',
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
   },
 
   schoolPackagePage: {
@@ -1994,7 +2018,7 @@ const styles = StyleSheet.create({
   },
   schoolPackageHero: {
     height: 320,
-    backgroundColor: '#EEF6F4',
+    backgroundColor: COLORS.yellowWash,
   },
   schoolPackageHeroImage: {
     width: '100%',
@@ -2010,11 +2034,11 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   packageCard: {
-    marginTop: 18,
+    marginTop: 12,
     marginHorizontal: 24,
     borderRadius: 20,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 18,
+    paddingHorizontal: 14,
     paddingVertical: 22,
     shadowColor: '#000000',
     shadowOpacity: 0.08,
@@ -2033,7 +2057,7 @@ const styles = StyleSheet.create({
   },
   packageSub: {
     marginTop: 6,
-    color: '#0B9A85',
+    color: COLORS.green,
     fontSize: 18,
     lineHeight: 22,
     fontWeight: '800',
@@ -2047,8 +2071,8 @@ const styles = StyleSheet.create({
   packagePerRide: {
     marginTop: 6,
     color: '#8A8F95',
-    fontSize: 16,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   travelBetween: {
@@ -2081,11 +2105,11 @@ const styles = StyleSheet.create({
   travelSub: {
     marginTop: 4,
     color: '#7F848A',
-    fontSize: 15,
-    lineHeight: 19,
+    fontSize: 12,
+    lineHeight: 16,
   },
   editText: {
-    color: '#07594E',
+    color: COLORS.black,
     fontSize: 18,
     lineHeight: 22,
     fontWeight: '800',
@@ -2094,8 +2118,8 @@ const styles = StyleSheet.create({
     marginTop: 30,
     marginHorizontal: 24,
     color: '#23272A',
-    fontSize: 26,
-    lineHeight: 31,
+    fontSize: 19,
+    lineHeight: 23,
     fontWeight: '900',
   },
   whatList: {
@@ -2120,10 +2144,10 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   cityHeading: {
-    marginTop: 18,
+    marginTop: 12,
     marginHorizontal: 22,
     color: '#2E3134',
-    fontSize: 34,
+    fontSize: 24,
     lineHeight: 40,
     fontWeight: '900',
     letterSpacing: -0.8,
@@ -2132,16 +2156,16 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginHorizontal: 22,
     color: '#787D83',
-    fontSize: 18,
-    lineHeight: 23,
+    fontSize: 12,
+    lineHeight: 16,
   },
   cityCard: {
-    marginTop: 18,
+    marginTop: 12,
     marginHorizontal: 22,
     minHeight: 190,
     borderRadius: 20,
     overflow: 'hidden',
-    padding: 20,
+    padding: 14,
     justifyContent: 'flex-end',
   },
   cityCardCopy: {
@@ -2150,8 +2174,8 @@ const styles = StyleSheet.create({
   },
   cityTitle: {
     color: '#FFFFFF',
-    fontSize: 28,
-    lineHeight: 33,
+    fontSize: 20,
+    lineHeight: 24,
     fontWeight: '900',
     textShadowColor: 'rgba(0,0,0,0.2)',
     textShadowRadius: 3,
@@ -2159,15 +2183,15 @@ const styles = StyleSheet.create({
   cityFare: {
     marginTop: 6,
     color: '#FFFFFF',
-    fontSize: 17,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 16,
     fontWeight: '700',
   },
   citySubtitle: {
     marginTop: 4,
-    color: '#F1F6F4',
-    fontSize: 14,
-    lineHeight: 18,
+    color: COLORS.yellowWash,
+    fontSize: 12,
+    lineHeight: 16,
   },
   cityCardIcon: {
     position: 'absolute',
@@ -2182,7 +2206,7 @@ const styles = StyleSheet.create({
   },
   friendHero: {
     height: 430,
-    backgroundColor: '#E7F7F4',
+    backgroundColor: COLORS.yellowSoft,
   },
   friendHeroImage: {
     width: '92%',
@@ -2194,7 +2218,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginHorizontal: 22,
     color: '#0F1113',
-    fontSize: 36,
+    fontSize: 24,
     lineHeight: 42,
     fontWeight: '900',
     letterSpacing: -1,
@@ -2233,7 +2257,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 14,
-    backgroundColor: '#07594E',
+    backgroundColor: COLORS.black,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2244,8 +2268,8 @@ const styles = StyleSheet.create({
   },
   confirmPlaceTitle: {
     color: '#3A3E41',
-    fontSize: 18,
-    lineHeight: 23,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '800',
   },
   confirmPlaceSub: {
@@ -2263,12 +2287,12 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 70,
     borderRadius: 18,
-    backgroundColor: '#07594E',
+    backgroundColor: COLORS.black,
     alignItems: 'center',
     justifyContent: 'center',
   },
   confirmPickupText: {
-    color: '#19E6AF',
+    color: COLORS.yellow,
     fontSize: 18,
     fontWeight: '900',
   },
@@ -2286,7 +2310,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 16,
-    backgroundColor: '#07594E',
+    backgroundColor: COLORS.black,
     borderWidth: 4,
     borderColor: '#FFFFFF',
     alignItems: 'center',
@@ -2301,13 +2325,13 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     gap: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEF1F1',
+    borderBottomColor: COLORS.surface,
   },
   schoolRowIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#E1F3EF',
+    backgroundColor: COLORS.yellowSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2327,12 +2351,12 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   schoolSearchBar: {
-    marginTop: 18,
+    marginTop: 12,
     marginHorizontal: 22,
     minHeight: 60,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#0A5E52',
+    borderColor: COLORS.yellow,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',

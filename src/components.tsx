@@ -17,7 +17,8 @@ import {
 } from 'react-native';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomTab, Screen } from './types';
-import { COLORS, FONT, SHADOW, TYPE } from './theme';
+import { COLORS, CONTROL, FONT, LAYOUT, RADIUS, SHADOW, TYPE } from './theme';
+import { assets } from './assets';
 
 export function ScreenShell({
   children,
@@ -166,6 +167,60 @@ export function RoundedCard({ children, style }: { children: React.ReactNode; st
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
+
+export type BrandIconSemantic =
+  | keyof typeof assets.service
+  | 'account';
+
+function semanticForIcon(icon?: string): BrandIconSemantic {
+  const value = String(icon ?? '').toLowerCase();
+  if (/(car|navigate|map|location|pin)/.test(value)) return 'rides';
+  if (/(bicycle|bike|motorcycle)/.test(value)) return 'boda';
+  if (/(restaurant|pizza|fast-food|cafe|coffee)/.test(value)) return 'food';
+  if (/(medical|medkit|pulse|fitness)/.test(value)) return 'pharmacies';
+  if (/(battery|headset|phone|flash|volume|hardware)/.test(value)) return 'electronics';
+  if (/(basket|nutrition|leaf|water)/.test(value)) return 'groceries';
+  if (/(card|wallet|cash|receipt|qr|document)/.test(value)) return 'pay';
+  if (/(construct|hammer|build|tool)/.test(value)) return 'fix';
+  if (/(heart|gift|people)/.test(value)) return 'forGood';
+  if (/(calendar|ticket|compass|earth|globe)/.test(value)) return 'goOut';
+  if (/(home|bed|key)/.test(value)) return 'homeCare';
+  if (/(cube|package|send|paper-plane|time)/.test(value)) return 'send';
+  if (/(person|account)/.test(value)) return 'account';
+  if (/(bag|store|shop|sparkles|paw|eye)/.test(value)) return 'shops';
+  return 'all';
+}
+
+export function BrandIcon({
+  icon,
+  semantic,
+  size = 34,
+  tile = false,
+  active = false,
+}: {
+  icon?: string;
+  semantic?: BrandIconSemantic;
+  size?: number;
+  tile?: boolean;
+  active?: boolean;
+}) {
+  const resolved = semantic ?? semanticForIcon(icon);
+  const source = resolved === 'account' ? assets.avatars.account : assets.service[resolved];
+  const image = (
+    <Image
+      source={source}
+      resizeMode="contain"
+      style={{ width: size, height: size }}
+    />
+  );
+  if (!tile) return image;
+  return (
+    <View style={[styles.brandIconTile, active && styles.brandIconTileActive]}>
+      {image}
+    </View>
+  );
+}
+
 export function ServiceTile({
   label,
   image,
@@ -183,12 +238,12 @@ export function ServiceTile({
   );
 }
 
-const tabConfig: Record<BottomTab, { label: string; icon: keyof typeof Ionicons.glyphMap; screen: Screen }> = {
-  home: { label: 'Home', icon: 'home-outline', screen: 'home' },
-  explore: { label: 'Explore', icon: 'grid-outline', screen: 'services' },
-  activity: { label: 'Activity', icon: 'time-outline', screen: 'activity' },
-  wallet: { label: 'Wallet', icon: 'wallet-outline', screen: 'wallet' },
-  account: { label: 'Account', icon: 'person-outline', screen: 'account' },
+const tabConfig: Record<BottomTab, { label: string; icon: keyof typeof Ionicons.glyphMap; semantic: BrandIconSemantic; screen: Screen }> = {
+  home: { label: 'Home', icon: 'home-outline', semantic: 'all', screen: 'home' },
+  explore: { label: 'Explore', icon: 'compass-outline', semantic: 'goOut', screen: 'exploreHub' },
+  activity: { label: 'Activity', icon: 'time-outline', semantic: 'send', screen: 'activity' },
+  wallet: { label: 'Wallet', icon: 'wallet-outline', semantic: 'pay', screen: 'wallet' },
+  account: { label: 'Account', icon: 'person-outline', semantic: 'account', screen: 'account' },
 };
 
 export function BottomNav({ active, go }: { active: BottomTab; go: (screen: Screen) => void }) {
@@ -200,7 +255,7 @@ export function BottomNav({ active, go }: { active: BottomTab; go: (screen: Scre
         return (
           <Pressable key={key} onPress={() => go(item.screen)} style={({ pressed }) => [styles.bottomNavItem, pressed && styles.bottomNavItemPressed]}>
             <View style={[styles.bottomNavIconBubble, selected && styles.bottomNavIconBubbleActive]}>
-              <Ionicons name={selected ? String(item.icon).replace('-outline', '') as keyof typeof Ionicons.glyphMap : item.icon} size={21} color={selected ? COLORS.white : COLORS.muted} />
+              <BrandIcon semantic={item.semantic} size={selected ? 28 : 25} active={selected} />
             </View>
             <Text style={[styles.bottomNavLabel, selected && styles.bottomNavLabelActive]}>{item.label}</Text>
           </Pressable>
@@ -221,7 +276,7 @@ export function PaymentLogo({ source }: { source: ImageSourcePropType }) {
 export function MenuRow({ icon, label, detail, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; detail?: string; onPress?: () => void }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}>
-      <View style={styles.menuIconTile}><Ionicons name={icon} size={23} color={COLORS.black} /></View>
+      <BrandIcon icon={icon} size={30} tile />
       <Text style={styles.menuLabel}>{label}</Text>
       {detail ? <Text style={styles.menuDetail}>{detail}</Text> : null}
       <Feather name="chevron-right" size={22} color={COLORS.muted} />
@@ -243,53 +298,55 @@ export function TrustNote({ icon, title, body }: { icon: keyof typeof MaterialCo
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.white },
-  safeAndroid: { paddingTop: Math.max(StatusBar.currentHeight ?? 24, 24) + 12, paddingBottom: 24 },
+  safeAndroid: { paddingTop: Math.max(StatusBar.currentHeight ?? 24, 24) + 4, paddingBottom: 24 },
   safeDark: { backgroundColor: COLORS.black },
   flex: { flex: 1 },
   scrollContent: { flexGrow: 1 },
-  header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18 },
-  headerSide: { width: 54, minHeight: 44, justifyContent: 'center' },
+  header: { height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: LAYOUT.screenGutter },
+  headerSide: { width: 46, minHeight: 40, justifyContent: 'center' },
   headerSideRight: { alignItems: 'flex-end' },
-  headerIconButton: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.white, justifyContent: 'center', alignItems: 'center' },
+  headerIconButton: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.white, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { ...TYPE.navTitle, color: COLORS.black },
-  primaryButton: { height: 54, borderRadius: 17, backgroundColor: COLORS.red, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  primaryButtonCompact: { height: 50, borderRadius: 15 },
-  primaryButtonPressed: { backgroundColor: COLORS.redDark, transform: [{ scale: 0.995 }] },
+  primaryButton: { height: CONTROL.button, borderRadius: RADIUS.md, backgroundColor: COLORS.yellow, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  primaryButtonCompact: { height: 44, borderRadius: RADIUS.md },
+  primaryButtonPressed: { backgroundColor: COLORS.yellowDeep, transform: [{ scale: 0.995 }] },
   primaryButtonDisabled: { opacity: 0.42 },
-  primaryButtonText: { ...TYPE.button, color: COLORS.white },
+  primaryButtonText: { ...TYPE.button, color: COLORS.black },
   primaryButtonTextCompact: { fontSize: TYPE.button.fontSize },
   textButton: { minHeight: 36, justifyContent: 'center', alignItems: 'center' },
   textButtonText: { ...TYPE.action },
-  fieldGroup: { gap: 8 },
+  fieldGroup: { gap: 6 },
   fieldLabel: { ...TYPE.small, fontFamily: FONT.medium, fontWeight: '700', color: COLORS.black },
-  fieldShell: { minHeight: 58, borderWidth: 1.2, borderColor: COLORS.line, borderRadius: 17, backgroundColor: COLORS.white, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
-  fieldInput: { flex: 1, minHeight: 56, paddingHorizontal: 17, color: COLORS.black, ...TYPE.bodyStrong },
+  fieldShell: { minHeight: CONTROL.field, borderWidth: 1, borderColor: COLORS.line, borderRadius: RADIUS.md, backgroundColor: COLORS.white, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
+  fieldInput: { flex: 1, minHeight: CONTROL.field - 2, paddingHorizontal: LAYOUT.screenGutter, color: COLORS.black, ...TYPE.bodyStrong },
   fieldInputWithLeft: { paddingLeft: 8 },
   fieldLeft: { marginLeft: 14 },
   fieldRight: { marginRight: 14 },
-  sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, marginBottom: 10 },
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 28, marginBottom: 7 },
   sectionTitle: { ...TYPE.sectionTitle, color: COLORS.black },
-  card: { borderRadius: 18, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.white, overflow: 'hidden', ...SHADOW },
-  serviceTile: { width: '23.2%', minHeight: 96, borderWidth: 1, borderColor: COLORS.line, borderRadius: 18, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 5, paddingVertical: 10, ...SHADOW },
-  serviceIcon: { width: 54, height: 54 },
-  serviceLabel: { minHeight: 30, textAlign: 'center', ...TYPE.small, fontFamily: FONT.medium, fontWeight: '700', color: COLORS.black },
+  card: { borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.white, overflow: 'hidden', ...SHADOW },
+  serviceTile: { width: '23.2%', minHeight: 78, borderWidth: 1, borderColor: COLORS.line, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 5, paddingVertical: 8, ...SHADOW },
+  serviceIcon: { width: 46, height: 46 },
+  serviceLabel: { minHeight: 26, textAlign: 'center', ...TYPE.small, fontFamily: FONT.medium, fontWeight: '700', color: COLORS.black },
+  brandIconTile: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  brandIconTileActive: { borderColor: COLORS.yellow, backgroundColor: COLORS.yellowSoft },
   pressed: { opacity: 0.62 },
-  bottomNav: { minHeight: Platform.OS === 'android' ? 72 : 68, paddingTop: 7, paddingBottom: 5, borderTopWidth: 1, borderTopColor: COLORS.line, backgroundColor: COLORS.white, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
-  bottomNavItem: { flex: 1, minHeight: Platform.OS === 'android' ? 58 : 54, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  bottomNav: { minHeight: Platform.OS === 'android' ? 64 : 62, paddingTop: 4, paddingBottom: 4, borderTopWidth: 1, borderTopColor: COLORS.line, backgroundColor: COLORS.white, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
+  bottomNavItem: { flex: 1, minHeight: Platform.OS === 'android' ? 52 : 50, alignItems: 'center', justifyContent: 'center', gap: 3 },
   bottomNavItemPressed: { opacity: 0.62 },
-  bottomNavIconBubble: { width: 38, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  bottomNavIconBubbleActive: { backgroundColor: COLORS.black },
+  bottomNavIconBubble: { width: 40, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  bottomNavIconBubbleActive: { backgroundColor: COLORS.yellowSoft },
   bottomNavLabel: { ...TYPE.label, fontSize: 10.5, lineHeight: 13, fontFamily: FONT.regular, fontWeight: '500', color: COLORS.muted },
   bottomNavLabelActive: { color: COLORS.black, fontFamily: FONT.bold, fontWeight: '900' },
   locationDotOuter: { width: 17, height: 17, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   locationDotInner: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.white },
   paymentLogo: { width: 36, height: 36, borderRadius: 9 },
-  menuRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 15, borderBottomWidth: 1, borderBottomColor: COLORS.line },
-  menuIconTile: { width: 46, height: 46, borderRadius: 14, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center' },
+  menuRow: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: COLORS.line },
+  menuIconTile: { width: 38, height: 38, borderRadius: 12, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
   menuLabel: { flex: 1, ...TYPE.bodyStrong, color: COLORS.black },
   menuDetail: { color: COLORS.muted, ...TYPE.small },
-  trustNote: { flexDirection: 'row', alignItems: 'center', gap: 13 },
-  trustIcon: { width: 48, height: 48, borderRadius: 24, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
+  trustNote: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  trustIcon: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
   trustTitle: { ...TYPE.cardTitle, color: COLORS.black },
   trustBody: { ...TYPE.small, color: COLORS.muted, marginTop: 2 },
 });

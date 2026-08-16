@@ -1,0 +1,127 @@
+{
+  "donor_deep_link_count": 260,
+  "donor_hosts": {
+    "activities.careem.com": 1,
+    "app.careem.com": 4,
+    "bike.careem.com": 1,
+    "bookaride": 1,
+    "bookaride?action=setPickup&pickup=my_location&promo_code=": 1,
+    "c4b.careem.com": 1,
+    "care.careem.com": 30,
+    "cct-selection": 1,
+    "chat.careem.com": 1,
+    "com.careem.identity": 1,
+    "consents.identity.careem.com": 1,
+    "deletion.account.identity.careem.com": 1,
+    "discovery.careem.com": 28,
+    "donations.careem.com": 9,
+    "explore.careem.com": 26,
+    "food.careem.com": 9,
+    "gmm-bookaride": 1,
+    "home.careem.com": 21,
+    "homecleaning.justmop.partner.careem.com": 1,
+    "identity.careem.com": 13,
+    "intercity": 1,
+    "justmop.partner.careem.com": 2,
+    "kyc.careem.com": 3,
+    "marketing.consents.identity.careem.com": 1,
+    "now": 1,
+    "now.careem.com": 7,
+    "orderanything.careem.com": 2,
+    "pay.careem.com": 41,
+    "pcr.justmop.partner.careem.com": 1,
+    "quik": 1,
+    "quik.careem.com": 5,
+    "ridehailing.careem.com": 14,
+    "rides.careem.com": 4,
+    "rides.careem.com?service_provider=autocab": 1,
+    "salon.justmop.partner.careem.com": 1,
+    "service.careem.com": 1,
+    "shops.careem.com": 8,
+    "subscription.careem.com": 10,
+    "swapp.partner.careem.com": 1,
+    "tikety.partner.careem.com": 1,
+    "wallet": 1,
+    "washmen.partner.careem.com": 1
+  },
+  "implemented_surfaces": {
+    "Home": [
+      "stories rail",
+      "global search",
+      "services discovery",
+      "offers",
+      "top picks"
+    ],
+    "Food": [
+      "discovery",
+      "restaurant and dish search",
+      "filters and sort",
+      "category listings",
+      "restaurant menu search",
+      "item customisation",
+      "cart",
+      "checkout",
+      "order tracking",
+      "schedule entry"
+    ],
+    "Rides": [
+      "compact rides home",
+      "where-to handoff",
+      "schedule",
+      "business profile",
+      "settings",
+      "school rides",
+      "booking flow",
+      "driver/on-trip/safety/rating"
+    ],
+    "Pay": [
+      "send",
+      "request",
+      "top up",
+      "bills",
+      "mobile recharge",
+      "gift cards",
+      "remittance entry",
+      "transactions",
+      "manage accounts",
+      "KYC entry"
+    ],
+    "Kareebu+": [
+      "membership entry",
+      "savings",
+      "manage membership"
+    ],
+    "Explore": [
+      "explore hub",
+      "location detail",
+      "stories"
+    ],
+    "Account": [
+      "compact account hub",
+      "privacy",
+      "activity",
+      "payments",
+      "support shortcuts"
+    ],
+    "Shops": [
+      "storefront help entry",
+      "existing commerce product/cart/checkout"
+    ],
+    "Support": [
+      "support inbox",
+      "issue submission",
+      "ticket persistence in app state"
+    ],
+    "Cross-service": [
+      "order anything",
+      "donations/For Good",
+      "deep-link resolver",
+      "global service search"
+    ]
+  },
+  "backend_boundaries": [
+    "Careem private APIs are not called",
+    "Live settlement, KYC verification, remittance rails, merchant feeds, dispatch, subscription billing and support backend require Kareebu services",
+    "Client UX/navigation/state is reconstructed in Kareebu React Native/Expo/TypeScript"
+  ]
+}

@@ -22,6 +22,7 @@ export type Screen =
   | 'tripComplete'
   | 'rateTrip'
   | 'food'
+  | 'foodSearch'
   | 'restaurant'
   | 'foodItem'
   | 'cart'
@@ -119,7 +120,52 @@ export type Screen =
   | 'rideFareDetails'
   | 'captainProfile'
   | 'rideHistory'
-  | 'rideReceipt';
+  | 'rideReceipt'
+  | 'paySend'
+  | 'payRequest'
+  | 'payTopUp'
+  | 'payBills'
+  | 'payRecharge'
+  | 'payGiftCards'
+  | 'payRemittance'
+  | 'payTransactions'
+  | 'payManageAccounts'
+  | 'payKyc'
+  | 'supportInbox'
+  | 'supportIssue'
+  | 'plusSavings'
+  | 'plusManage'
+  | 'exploreHub'
+  | 'exploreLocation'
+  | 'stories'
+  | 'foodSchedule'
+  | 'rideBusiness'
+  | 'rideSettings'
+  | 'donations'
+  | 'orderAnything'
+  | 'accountPrivacy'
+  | 'shopHelp';
 
 export type BottomTab = 'home' | 'explore' | 'activity' | 'wallet' | 'account';
 export type RideId = 'boda' | 'economy' | 'comfort' | 'xl' | 'delivery';
+
+
+export type WalletTransactionKind = 'send' | 'receive' | 'topup' | 'bill' | 'recharge' | 'remittance' | 'donation' | 'food' | 'ride' | 'shop';
+export type WalletTransaction = {
+  id: string;
+  title: string;
+  meta: string;
+  amount: number;
+  kind: WalletTransactionKind;
+  createdAt: string;
+};
+
+
+export type SupportTicketStatus = 'Open' | 'In review' | 'Resolved';
+export type SupportTicket = {
+  id: string;
+  title: string;
+  detail: string;
+  status: SupportTicketStatus;
+  createdAt: string;
+};

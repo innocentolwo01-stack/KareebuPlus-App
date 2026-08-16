@@ -19,36 +19,36 @@ type ServiceColumn = [ServiceItem, ServiceItem];
 
 const serviceColumns: ServiceColumn[] = [
   [
-    { label: 'Rides', screen: 'mobilityHome', image: require('../../assets/kareebu-plus/service-carousel/rides.png') },
-    { label: 'Pharmacies', screen: 'shops', image: require('../../assets/kareebu-plus/service-carousel/pharmacies.png') },
+    { label: 'Rides', screen: 'mobilityHome', image: require('../../assets/kareebu-plus/services-3d/rides.png') },
+    { label: 'Pharmacies', screen: 'shops', image: require('../../assets/kareebu-plus/services-3d/pharmacies.png') },
   ],
   [
-    { label: 'Food', screen: 'food', image: require('../../assets/kareebu-plus/service-carousel/food.png') },
-    { label: 'Shops', screen: 'shops', image: require('../../assets/kareebu-plus/service-carousel/shops.png') },
+    { label: 'Food', screen: 'food', image: require('../../assets/kareebu-plus/services-3d/food.png') },
+    { label: 'Shops', screen: 'shops', image: require('../../assets/kareebu-plus/services-3d/shops.png') },
   ],
   [
-    { label: 'Groceries', screen: 'shops', image: require('../../assets/kareebu-plus/service-carousel/groceries.png') },
-    { label: 'Send', screen: 'parcel', image: require('../../assets/kareebu-plus/service-carousel/send.png') },
+    { label: 'Groceries', screen: 'shops', image: require('../../assets/kareebu-plus/services-3d/groceries.png') },
+    { label: 'Send', screen: 'parcel', image: require('../../assets/kareebu-plus/services-3d/send.png') },
   ],
   [
-    { label: 'Boda', screen: 'mobilityHome', image: require('../../assets/kareebu-plus/service-carousel/boda.png') },
-    { label: 'More', screen: 'services', image: require('../../assets/kareebu-plus/service-carousel/more.png') },
+    { label: 'Boda', screen: 'mobilityHome', image: require('../../assets/kareebu-plus/services-3d/boda.png') },
+    { label: 'More', screen: 'services', image: require('../../assets/kareebu-plus/services-3d/more.png') },
   ],
   [
-    { label: 'DineOut', screen: 'dineOut', image: require('../../assets/kareebu-plus/service-carousel/dineout.png') },
-    { label: 'Pay', screen: 'wallet', image: require('../../assets/kareebu-plus/service-carousel/pay.png') },
+    { label: 'DineOut', screen: 'dineOut', image: require('../../assets/kareebu-plus/services-3d/dineout.png') },
+    { label: 'Pay', screen: 'wallet', image: require('../../assets/kareebu-plus/services-3d/pay.png') },
   ],
   [
-    { label: 'Fix', screen: 'fix', image: require('../../assets/kareebu-plus/service-carousel/fix.png') },
-    { label: 'Home & Care', screen: 'homeCare', image: require('../../assets/kareebu-plus/service-carousel/home-care.png') },
+    { label: 'Fix', screen: 'fix', image: require('../../assets/kareebu-plus/services-3d/fix.png') },
+    { label: 'Home & Care', screen: 'homeCare', image: require('../../assets/kareebu-plus/services-3d/home-care.png') },
   ],
   [
-    { label: 'For Good', screen: 'forGood', image: require('../../assets/kareebu-plus/service-carousel/for-good.png') },
-    { label: 'Go Out', screen: 'goOut', image: require('../../assets/kareebu-plus/service-carousel/go-out.png') },
+    { label: 'For Good', screen: 'forGood', image: require('../../assets/kareebu-plus/services-3d/for-good.png') },
+    { label: 'Go Out', screen: 'goOut', image: require('../../assets/kareebu-plus/services-3d/go-out.png') },
   ],
   [
-    { label: 'Electronics', screen: 'shops', image: require('../../assets/kareebu-plus/service-carousel/electronics.png') },
-    { label: 'Healthcare', screen: 'healthcare', image: require('../../assets/kareebu-plus/service-carousel/healthcare.png') },
+    { label: 'Electronics', screen: 'shops', image: require('../../assets/kareebu-plus/services-3d/electronics.png') },
+    { label: 'Healthcare', screen: 'healthcare', image: require('../../assets/kareebu-plus/services-3d/healthcare.png') },
   ],
 ];
 
@@ -92,25 +92,25 @@ export function KareebuServiceCarousel({
 
 const styles = StyleSheet.create({
   bleed: {
-    marginHorizontal: -16,
+    marginHorizontal: -14,
   },
   rail: {
-    paddingLeft: 16,
+    paddingLeft: 14,
     paddingRight: 28,
-    gap: 8,
+    gap: 6,
   },
   column: {
-    width: 86,
-    gap: 12,
+    width: 76,
+    gap: 8,
   },
   tile: {
-    width: 86,
-    height: 112,
-    borderRadius: 15,
-    backgroundColor: '#F4F6F5',
+    width: 76,
+    height: 92,
+    borderRadius: 13,
+    backgroundColor: '#FFFDF8',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: 8,
+    paddingTop: 6,
     paddingHorizontal: 4,
   },
   pressed: {
@@ -118,23 +118,23 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   artWrap: {
-    width: 68,
-    height: 70,
+    width: 58,
+    height: 58,
     alignItems: 'center',
     justifyContent: 'center',
   },
   art: {
-    width: 66,
-    height: 66,
+    width: 56,
+    height: 56,
   },
   label: {
-    minHeight: 30,
+    minHeight: 24,
     marginTop: 0,
     paddingHorizontal: 2,
     textAlign: 'center',
     color: '#202124',
-    fontSize: 13.2,
-    lineHeight: 15.5,
+    fontSize: 11.5,
+    lineHeight: 14,
     fontWeight: '700',
   },
 });

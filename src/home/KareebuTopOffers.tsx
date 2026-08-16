@@ -190,23 +190,23 @@ export function KareebuTopOffers({
 
 const styles = StyleSheet.create({
   section: {
-    marginTop: 24,
-    marginHorizontal: -16,
+    marginTop: 14,
+    marginHorizontal: -14,
     paddingBottom: 6,
     backgroundColor: '#FFFFFF',
   },
   heading: {
-    marginLeft: 16,
-    marginBottom: 16,
+    marginLeft: 14,
+    marginBottom: 9,
     color: '#2A2C2E',
-    fontSize: 25,
-    lineHeight: 30,
+    fontSize: 18,
+    lineHeight: 22,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
 
   largeRail: {
-    paddingLeft: 16,
+    paddingLeft: 14,
     paddingRight: 28,
   },
   largeGap: {
@@ -214,15 +214,15 @@ const styles = StyleSheet.create({
   },
   largeCard: {
     flexShrink: 0,
-    borderRadius: 16,
+    borderRadius: 13,
     overflow: 'hidden',
-    backgroundColor: '#caffe3',
+    backgroundColor: '#FFF4BF',
   },
 
   brandRow: {
-    height: 48,
+    height: 40,
     paddingHorizontal: 13,
-    paddingTop: 10,
+    paddingTop: 7,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#07594E',
+    backgroundColor: '#171717',
   },
   kareebuK: {
     color: '#FFC928',
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   },
   shopsText: {
     marginLeft: 6,
-    color: '#07594E',
+    color: '#171717',
     fontSize: 14,
     lineHeight: 18,
     fontWeight: '900',
@@ -251,11 +251,11 @@ const styles = StyleSheet.create({
     width: 1,
     height: 20,
     marginHorizontal: 7,
-    backgroundColor: 'rgba(7,89,78,0.35)',
+    backgroundColor: 'rgba(23,23,23,0.18)',
   },
   partnerText: {
     flex: 1,
-    color: '#07594E',
+    color: '#171717',
     fontSize: 9.5,
     lineHeight: 12,
     fontWeight: '800',
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   },
 
   offerCopy: {
-    minHeight: 62,
+    minHeight: 52,
     paddingHorizontal: 11,
     paddingTop: 4,
     alignItems: 'center',
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
 
   smallRail: {
     paddingTop: 14,
-    paddingLeft: 16,
+    paddingLeft: 14,
     paddingRight: 28,
   },
   smallGap: {
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: '#caffe3',
+    backgroundColor: '#FFF4BF',
   },
   smallTitle: {
     position: 'absolute',
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
     top: 10,
     left: 7,
     right: 7,
-    color: '#07594E',
+    color: '#171717',
     textAlign: 'center',
     fontSize: 12,
     lineHeight: 14,

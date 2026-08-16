@@ -5,13 +5,13 @@
     "version": "2.7.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/kareebu-plus/brand/app-icon-v6.png",
     "scheme": "kareebuplus",
     "android": {
       "package": "global.kareebu.plus",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0C0C0D"
+        "foregroundImage": "./assets/kareebu-plus/brand/adaptive-foreground-v10.png",
+        "backgroundColor": "#FFC400"
       },
       "predictiveBackGestureEnabled": true
     },
@@ -23,9 +23,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0C0C0D",
-          "image": "./assets/kareebu-plus/kareebu-plus-mark.png",
-          "imageWidth": 128,
+          "backgroundColor": "#FFC400",
+          "image": "./assets/kareebu-plus/brand/adaptive-foreground-v10.png",
+          "imageWidth": 180,
           "resizeMode": "contain"
         }
       ],

@@ -26,6 +26,9 @@ const server = fs.readFileSync('server/kareebu-ai-api.mjs','utf8');
 const demo = fs.readFileSync('src/demoData.ts','utf8');
 const env = fs.readFileSync('.env.example','utf8');
 const components = fs.readFileSync('src/components.tsx','utf8');
+const parityCustomer = fs.readFileSync('src/parity/customerParity.tsx','utf8');
+const foodDiscoveryController = fs.readFileSync('src/food/discovery/controller.ts','utf8');
+const foodDiscoveryDocument = fs.readFileSync('src/food/discovery/document.ts','utf8');
 
 const screens = [
   'SplashScreen','WelcomeScreen','CountryScreen','CityScreen','LocationScreen','LocationPickerScreen','PhoneScreen','OtpScreen','ProfileScreen','PermissionsScreen',
@@ -46,7 +49,8 @@ const requirements = [
   ['native splash hides after root layout', app, 'NativeSplashScreen.hideAsync'],
   ['country crash namespace removed', source, 'assets.countrySelection', true],
   ['device trip sharing', source, 'Share.share'],
-  ['interactive wallet top up', source, 'setTopUpOpen(true)'],
+  ['interactive wallet top up route', source, "actions.go('payTopUp')"],
+  ['interactive wallet top up screen', parityCustomer, 'export function PayTopUpScreen'],
   ['inline ride payment picker', source, 'setPaymentOpen(true)'],
   ['session wallet balance', app, 'walletBalance'],
   ['requested Karibu splash copy', source, '>Karibu</Text>'],
@@ -70,7 +74,7 @@ const requirements = [
   ['real route estimate', source, 'useRouteEstimate'],
   ['ride comparison', source, 'Choose ride'],
   ['functional trip scheduling', source, 'Schedule pickup'],
-  ['functional restaurant sorting', source, "sortMode === 'Fastest'"],
+  ['functional restaurant sorting', foodDiscoveryController, "filters.sort === 'Fastest'"],
   ['food item customisation flow', source, 'FoodItemDetailsView'],
   ['food checkout flow', source, 'FoodCheckoutView'],
   ['food order confirmation', source, 'FoodOrderSuccessView'],
@@ -81,7 +85,7 @@ const requirements = [
   ['XL option', source, "id: 'xl'"],
   ['Delivery option', source, "id: 'delivery'"],
   ['Food promo rail', source, 'Only on'],
-  ['Food featured restaurants', source, 'Featured restaurants'],
+  ['Food featured restaurants', foodDiscoveryDocument, "source: 'featured'"],
   ['Pharmacy hero', source, "accent:'Wellness Drop'"],
   ['category hero banners', source, 'V40ShopHeroBanner'],
   ['Kareebu AI screen', source, 'Kareebu AI'],

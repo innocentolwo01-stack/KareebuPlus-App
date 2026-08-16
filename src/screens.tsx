@@ -22,6 +22,7 @@ import * as Location from 'expo-location';
 import {
   AppField,
   BottomNav,
+  BrandIcon,
   Header,
   LocationDot,
   MenuRow,
@@ -35,7 +36,7 @@ import {
   TrustNote,
 } from './components';
 import { assets } from './assets';
-import { BottomTab, RideId, Screen } from './types';
+import { BottomTab, RideId, Screen, SupportTicket, WalletTransaction } from './types';
 import { VEHICLE_MODE_CONFIG, VehicleGpsPayload, VehicleMode, bearingBetween, rideBelongsToMode, vehicleModeForRide } from './ride/vehicle';
 import { useAnimatedVehicle } from './ride/useAnimatedVehicle';
 import { PlaceSelection, PlaceSuggestion, placeAttribution, resolvePlaceSuggestion, reverseGeocodePlace } from './places/provider';
@@ -44,7 +45,7 @@ import { routingAttribution } from './routing/provider';
 import { useRouteEstimate } from './routing/useRouteEstimate';
 import { COLORS, FONT, SHADOW, TYPE } from './theme';
 import { dialCodeFor, formatMoney, localeProfile, primaryMobileMoneyFor, secondaryMobileMoneyFor } from './locale';
-import { DEMO_PROMOTIONS, DEMO_RESTAURANTS, DEMO_SHOPS, HOME_REAL_BRANDS, HOME_RETAIL_PROMOTIONS, DemoMenuItem, DemoRestaurant, DemoShop, HomeRealBrand, HomeRetailPromotion, demoDirections } from './demoData';
+import { DEMO_PROMOTIONS, DEMO_RESTAURANTS as BASE_DEMO_RESTAURANTS, DEMO_SHOPS, HOME_REAL_BRANDS, HOME_RETAIL_PROMOTIONS, DemoMenuItem, DemoRestaurant, DemoShop, HomeRealBrand, HomeRetailPromotion, demoDirections } from './demoData';
 import { askKareebuAssistant, KareebuAssistantAction, KareebuAssistantRecommendation } from './ai/kareebuAssistant';
 import { FoodItemDetailsView, FoodCheckoutView, FoodOrderSuccessView, cartLineDescription, calculateFoodCartSubtotal } from './food/screens';
 import type { FoodCartLine, FoodCheckoutDraft, FoodOrder } from './food/types';
@@ -104,6 +105,34 @@ import {
   SubscriptionResultScreen,
   UpdateScreen,
 } from './v41/frontend';
+import {
+  DonationsScreen,
+  OrderAnythingScreen,
+  AccountPrivacyScreen,
+  ShopHelpScreen,
+  ExploreHubScreen,
+  ExploreLocationScreen,
+  FoodScheduleScreen,
+  PayBillsScreen,
+  PayGiftCardsScreen,
+  PayKycScreen,
+  PayManageAccountsScreen,
+  PayRechargeScreen,
+  PayRemittanceScreen,
+  PayRequestScreen,
+  PaySendScreen,
+  PayTopUpScreen,
+  PayTransactionsScreen,
+  PlusManageScreen,
+  PlusSavingsScreen,
+  RideBusinessScreen,
+  RideSettingsScreen,
+  StoriesScreen,
+  SupportInboxScreen,
+  SupportIssueScreen,
+  type CustomerParityActions,
+  type CustomerParityData,
+} from './parity/customerParity';
 
 function demandAdjustedDeliveryFee(baseFee: number, service: 'food-delivery' | 'store-delivery') {
   return applyDemand(baseFee, demandQuote(service)).totalFee;
@@ -115,6 +144,12 @@ import { KareebuTopPicks } from './home/KareebuTopPicks';
 import { KareebuDineOutSection } from './home/KareebuDineOutSection';
 import { KareebuTopOffers } from './home/KareebuTopOffers';
 import { KareebuRidesHomeScreen } from './ride/kareebuRidesHome';
+import { KareebuFoodDiscoveryHome } from './food/discovery/FoodDiscoveryHome';
+import { buildKareebuRestaurantCatalog } from './food/realisticCatalog';
+
+// KAREEBU_V6_REALISTIC_RESTAURANTS
+const DEMO_RESTAURANTS = buildKareebuRestaurantCatalog(BASE_DEMO_RESTAURANTS);
+
 export type AppData = {
   guest: boolean;
   authReturn: Screen;
@@ -167,6 +202,8 @@ export type AppData = {
   serviceRequest: ServiceRequest;
   lastServiceBooking: ServiceBooking | null;
   rewardPoints: number;
+  walletTransactions: WalletTransaction[];
+  supportTickets: SupportTicket[];
 };
 
 export type AppActions = {
@@ -223,6 +260,8 @@ export type AppActions = {
   updateServiceRequest: (patch: Partial<ServiceRequest>) => void;
   placeServiceBooking: (booking: ServiceBooking) => void;
   setRewardPoints: (value: number) => void;
+  recordWalletTransaction: (transaction: Omit<WalletTransaction, 'id' | 'createdAt'>) => void;
+  createSupportTicket: (ticket: Pick<SupportTicket, 'title' | 'detail'>) => void;
   setCartItemQuantity: (itemId: string, quantity: number) => void;
   toggleFavoriteRestaurant: (restaurantId: string) => void;
   toggleFavoriteShop: (shopId: string) => void;
@@ -1798,6 +1837,17 @@ function HomeRecentActivityCompact({ data, go }: { data: AppData; go: (screen: S
 }
 
 
+function HomeStoriesRail({ actions }: { actions: AppActions }) {
+  const stories: Array<{label:string; icon:keyof typeof Ionicons.glyphMap; screen:Screen; tone:string}> = [
+    {label:'For you',icon:'sparkles-outline',screen:'stories',tone:COLORS.yellow},
+    {label:'Kareebu+',icon:'diamond-outline',screen:'plusManage',tone:COLORS.black},
+    {label:'Pay',icon:'wallet-outline',screen:'wallet',tone:'#FFF1DC'},
+    {label:'Explore',icon:'compass-outline',screen:'exploreHub',tone:'#F1F4EA'},
+    {label:'For Good',icon:'heart-outline',screen:'donations',tone:'#FFF0EE'},
+  ];
+  return <View style={styles.homeStoriesWrap}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.homeStoriesRail}>{stories.map((item)=><Pressable key={item.label} onPress={()=>actions.go(item.screen)} style={styles.homeStoryItem}><View style={[styles.homeStoryRing,{borderColor:item.tone===COLORS.black?COLORS.black:COLORS.red}]}><View style={[styles.homeStoryBubble,{backgroundColor:item.tone}]}><Ionicons name={item.icon} size={20} color={item.tone===COLORS.black?COLORS.white:COLORS.black}/></View></View><Text numberOfLines={1} style={styles.homeStoryLabel}>{item.label}</Text></Pressable>)}</ScrollView></View>;
+}
+
 function V40HomeHeroBanner({ data, actions }: { data: AppData; actions: AppActions }) {
   return (
     <Pressable onPress={() => { actions.setShopCategoryPreset('Beauty'); actions.go('shops'); }} style={({pressed})=>[styles.v40HomeHeroBanner,pressed&&styles.v26CardPressed]}>
@@ -1869,6 +1919,8 @@ export function HomeScreen({ data, actions }: { data: AppData; actions: AppActio
         <Pressable style={styles.v40HomeSearch} onPress={() => actions.go('search')}><Feather name="search" size={20} color={COLORS.black}/><Text style={styles.v40HomeSearchText}>Search for food, groceries, medicine and more</Text></Pressable>
 
         <Pressable onPress={() => actions.go('assistant')} style={({pressed})=>[styles.v40AiStrip,pressed&&styles.v26CardPressed]}><View style={styles.v40AiStripIcon}><Ionicons name="sparkles" size={18} color={COLORS.black}/></View><View style={styles.flex}><Text style={styles.v40AiStripTitle}>Ask Kareebu AI</Text><Text style={styles.v40AiStripBody}>Tell me what you need and I’ll recommend the best options nearby.</Text></View><Feather name="chevron-right" size={18} color={COLORS.white}/></Pressable>
+
+        <HomeStoriesRail actions={actions}/>
 
         <View style={styles.uxHomeSectionHeading}><Text style={styles.uxHomeSectionTitle}>What do you need?</Text><Text style={styles.uxHomeSectionHint}>Everything in one place</Text></View>
         <View>
@@ -1976,11 +2028,22 @@ const GLOBAL_SEARCH_ITEMS: GlobalSearchItem[] = [
   { id:'pharmacy', title:'Pharmacies', subtitle:'Health, medicine and wellness', kind:'Shop', icon:'medical-outline', keywords:['pharmacy','chemist','medicine','health','wellness','drugs'], screen:'shops' },
   { id:'shops', title:'Shops', subtitle:'Stores, products and local brands', kind:'Shop', icon:'bag-handle-outline', keywords:['shop','shops','store','shopping','products','marketplace'], screen:'shops' },
   { id:'parcel', title:'Send a parcel', subtitle:'Courier delivery in the city or across Uganda', kind:'Service', icon:'cube-outline', keywords:['send','parcel','package','courier','delivery','documents'], screen:'parcel' },
+  { id:'order-anything', title:'Order anything', subtitle:'Ask Kareebu to find and deliver something', kind:'Service', icon:'bag-add-outline', keywords:['order anything','find item','buy for me','courier','concierge'], screen:'orderAnything' },
   { id:'wallet', title:'Wallet & Pay', subtitle:'Pay, top up and manage payment methods', kind:'Kareebu+', icon:'wallet-outline', keywords:['wallet','pay','payment','money','mtn','airtel','mobile money','top up'], screen:'wallet' },
   { id:'orders', title:'Orders', subtitle:'Track food, shopping and parcel orders', kind:'Kareebu+', icon:'receipt-outline', keywords:['order','orders','track','tracking','receipt'], screen:'orders' },
   { id:'activity', title:'Activity', subtitle:'Recent rides, purchases and deliveries', kind:'Kareebu+', icon:'time-outline', keywords:['activity','history','recent','trips','purchases'], screen:'activity' },
   { id:'account', title:'Account', subtitle:'Profile, addresses, payments and settings', kind:'Kareebu+', icon:'person-circle-outline', keywords:['account','profile','address','settings','support'], screen:'account' },
   { id:'assistant', title:'Kareebu AI', subtitle:'Ask for rides, food, shops, places or help in your own words', kind:'Kareebu+', icon:'sparkles-outline', keywords:['ai','assistant','ask','concierge','help','recommend'], screen:'assistant' },
+  { id:'explore', title:'Explore', subtitle:'Discover things to do, eat and see nearby', kind:'Kareebu+', icon:'compass-outline', keywords:['explore','discover','activities','things to do','places','nearby'], screen:'exploreHub' },
+  { id:'send-money', title:'Send money', subtitle:'Send Kareebu Pay balance to someone', kind:'Kareebu+', icon:'paper-plane-outline', keywords:['send money','transfer','p2p','pay','wallet'], screen:'paySend' },
+  { id:'request-money', title:'Request money', subtitle:'Ask a contact to pay you', kind:'Kareebu+', icon:'download-outline', keywords:['request money','collect','payment request','wallet'], screen:'payRequest' },
+  { id:'bills', title:'Pay bills', subtitle:'Utilities, TV, internet and services', kind:'Kareebu+', icon:'receipt-outline', keywords:['bills','utilities','electricity','water','tv','internet'], screen:'payBills' },
+  { id:'recharge', title:'Mobile recharge', subtitle:'Buy airtime for MTN or Airtel', kind:'Kareebu+', icon:'phone-portrait-outline', keywords:['airtime','recharge','mtn','airtel','mobile'], screen:'payRecharge' },
+  { id:'remittance', title:'Send abroad', subtitle:'International money transfers', kind:'Kareebu+', icon:'globe-outline', keywords:['international','remittance','send abroad','transfer'], screen:'payRemittance' },
+  { id:'plus', title:'Kareebu+', subtitle:'Membership, savings and delivery benefits', kind:'Kareebu+', icon:'diamond-outline', keywords:['plus','membership','subscription','savings','benefits'], screen:'plusManage' },
+  { id:'support', title:'Help & support', subtitle:'Orders, rides, payments and account help', kind:'Kareebu+', icon:'help-buoy-outline', keywords:['help','support','problem','ticket','complaint'], screen:'support' },
+  { id:'stories', title:'Stories', subtitle:'Offers, launches and local highlights', kind:'Kareebu+', icon:'albums-outline', keywords:['stories','offers','highlights','discover'], screen:'stories' },
+  { id:'for-good', title:'For Good', subtitle:'Donate to local causes', kind:'Kareebu+', icon:'heart-outline', keywords:['donate','donations','charity','for good','cause'], screen:'donations' },
   { id:'cafe-javas', title:'Cafe Javas', subtitle:'Restaurant · Coffee, burgers and local favourites', kind:'Food', icon:'cafe-outline', keywords:['cafe javas','coffee','burger','restaurant','food'], screen:'restaurant', restaurantId:'cafe-javas' },
   { id:'chicken-tonight', title:'Chicken Tonight', subtitle:'Restaurant · Grilled chicken and meals', kind:'Food', icon:'restaurant-outline', keywords:['chicken tonight','chicken','grill','restaurant','food'], screen:'restaurant', restaurantId:'chicken-tonight' },
   { id:'pizza-inn', title:'Pizza Inn', subtitle:'Restaurant · Pizza and fast delivery', kind:'Food', icon:'pizza-outline', keywords:['pizza inn','pizza','restaurant','food'], screen:'restaurant', restaurantId:'pizza-inn' },
@@ -2078,7 +2141,16 @@ const ALL_SERVICE_OPTIONS: Array<{label:string; description:string; screen:Scree
   { label:'Pharmacies', description:'Health and wellness stores', screen:'shops', icon:'medical-outline', category:'Pharmacy' },
   { label:'Stores', description:'Local shops and marketplaces', screen:'shops', image:assets.service.shops, category:'All' },
   { label:'Send parcel', description:'Tracked city and intercity delivery', screen:'parcel', image:assets.service.send },
+  { label:'Order anything', description:'Ask Kareebu to find, buy and deliver an item', screen:'orderAnything', icon:'bag-add-outline' },
   { label:'Wallet & Pay', description:'Payments, balance and methods', screen:'wallet', image:assets.service.pay },
+  { label:'Send money', description:'Transfer money to a contact', screen:'paySend', icon:'paper-plane-outline' },
+  { label:'Pay bills', description:'Utilities, TV and internet', screen:'payBills', icon:'receipt-outline' },
+  { label:'Mobile recharge', description:'Airtime for MTN and Airtel', screen:'payRecharge', icon:'phone-portrait-outline' },
+  { label:'Send abroad', description:'International money transfers', screen:'payRemittance', icon:'globe-outline' },
+  { label:'Explore', description:'Places, activities and local discoveries', screen:'exploreHub', icon:'compass-outline' },
+  { label:'Kareebu+', description:'Membership, savings and benefits', screen:'plusManage', icon:'diamond-outline' },
+  { label:'Help & support', description:'Get help with any Kareebu service', screen:'support', icon:'help-buoy-outline' },
+  { label:'For Good', description:'Support local causes and organisations', screen:'donations', icon:'heart-outline' },
   { label:'Vehicle rental', description:'Cars and vans from verified rental partners', screen:'rentals', icon:'car-sport-outline' },
   { label:'Local services', description:'Cleaning, repairs, beauty and moving help', screen:'serviceMarketplace', icon:'construct-outline' },
   { label:'Rewards', description:'Points, rewards and member benefits', screen:'rewards', icon:'gift-outline' },
@@ -2200,7 +2272,7 @@ export function AllServicesScreen({ data, actions }: { data: AppData; actions: A
         <Text style={styles.v38ServicesIntro}>Choose what you need. Kareebu+ keeps the same delivery location, payment methods and activity across every service.</Text>
         <View style={styles.v38ServicesGrid}>
           {ALL_SERVICE_OPTIONS.map((item)=><Pressable key={item.label} onPress={()=>open(item)} style={({pressed})=>[styles.v38ServiceCard,pressed&&styles.v26CardPressed]}>
-            <View style={styles.v38ServiceIconWrap}>{item.image?<Image source={item.image} style={styles.v38ServiceImage} resizeMode="contain"/>:<Ionicons name={item.icon ?? 'grid-outline'} size={29} color={COLORS.black}/>}</View>
+            <View style={styles.v38ServiceIconWrap}>{item.image?<Image source={item.image} style={styles.v38ServiceImage} resizeMode="contain"/>:<BrandIcon icon={item.icon ?? 'grid-outline'} size={42}/>}</View>
             <Text style={styles.v38ServiceTitle}>{item.label}</Text>
             <Text style={styles.v38ServiceBody}>{item.description}</Text>
             <Feather name="arrow-up-right" size={18} color={COLORS.red}/>
@@ -2256,7 +2328,7 @@ export function StorefrontScreen({ data, actions }: { data: AppData; actions: Ap
   const filtered=products.filter((item)=>category==='All'||item.category===category);
   return (
     <ScreenShell>
-      <Header onBack={()=>actions.go('shops')} right={<Pressable onPress={()=>actions.toggleFavoriteShop(store.id)} style={styles.v30HeaderHeart}><Ionicons name={favorite?'heart':'heart-outline'} size={25} color={favorite?COLORS.red:COLORS.black}/></Pressable>}/>
+      <Header onBack={()=>actions.go('shops')} right={<View style={{flexDirection:'row',gap:7}}><Pressable onPress={()=>actions.go('shopHelp')} style={styles.v30HeaderHeart}><Ionicons name="help-circle-outline" size={21} color={COLORS.black}/></Pressable><Pressable onPress={()=>actions.toggleFavoriteShop(store.id)} style={styles.v30HeaderHeart}><Ionicons name={favorite?'heart':'heart-outline'} size={23} color={favorite?COLORS.red:COLORS.black}/></Pressable></View>}/>
       <ScrollView style={styles.flex} contentContainerStyle={styles.v38StorefrontScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.v38StorefrontHero}>
           <View style={styles.v38StorefrontLogo}><PopularStoreLogo store={store}/></View>
@@ -2268,7 +2340,7 @@ export function StorefrontScreen({ data, actions }: { data: AppData; actions: Ap
         <View style={styles.v38StorefrontInfoRow}><View><Text style={styles.v38StorefrontInfoLabel}>Delivery</Text><Text style={styles.v38StorefrontInfoValue}>{store.deliveryFee===0?'Free':formatMoney(data.country,demandAdjustedDeliveryFee(store.deliveryFee,'store-delivery'))}</Text></View><View><Text style={styles.v38StorefrontInfoLabel}>Minimum</Text><Text style={styles.v38StorefrontInfoValue}>{formatMoney(data.country,store.minOrder)}</Text></View><View><Text style={styles.v38StorefrontInfoLabel}>Location</Text><Text style={styles.v38StorefrontInfoValue}>{data.city}</Text></View></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingRight:12}}>{['All',...categories].map((item)=><FilterChip key={item} label={item} active={category===item} onPress={()=>setCategory(item)}/>)}</ScrollView>
         <SectionTitle title="Popular products" />
-        <View style={styles.v38ProductGrid}>{filtered.map((item)=>{const qty=lines.filter((line)=>line.productId===item.id).reduce((sum,line)=>sum+line.quantity,0);return <Pressable key={item.id} onPress={()=>{actions.selectCommerceProduct(item.id);actions.go('commerceProduct')}} style={styles.v38ProductCard}><View style={styles.v38ProductVisual}><Ionicons name={item.icon as any} size={34} color={COLORS.black}/>{item.badge?<View style={{position:'absolute',top:7,left:7,backgroundColor:COLORS.yellow,borderRadius:8,paddingHorizontal:7,paddingVertical:4}}><Text style={{fontFamily:FONT.bold,fontSize:9,fontWeight:'900'}}>{item.badge}</Text></View>:null}</View><Text numberOfLines={2} style={styles.v38ProductName}>{item.name}</Text><Text numberOfLines={1} style={styles.v38ProductDetail}>{item.detail}</Text><Text style={styles.v38ProductPrice}>{formatMoney(data.country,item.basePrice)}</Text><View style={[styles.v38ProductAdd,{backgroundColor:qty?COLORS.black:COLORS.red}]}><Text style={styles.v38ProductAddText}>{qty?`${qty} in basket`:'Choose'}</Text></View></Pressable>})}</View>
+        <View style={styles.v38ProductGrid}>{filtered.map((item)=>{const qty=lines.filter((line)=>line.productId===item.id).reduce((sum,line)=>sum+line.quantity,0);return <Pressable key={item.id} onPress={()=>{actions.selectCommerceProduct(item.id);actions.go('commerceProduct')}} style={styles.v38ProductCard}><View style={styles.v38ProductVisual}><BrandIcon icon={item.icon as any} size={50}/>{item.badge?<View style={{position:'absolute',top:7,left:7,backgroundColor:COLORS.yellow,borderRadius:8,paddingHorizontal:7,paddingVertical:4}}><Text style={{fontFamily:FONT.bold,fontSize:9,fontWeight:'900'}}>{item.badge}</Text></View>:null}</View><Text numberOfLines={2} style={styles.v38ProductName}>{item.name}</Text><Text numberOfLines={1} style={styles.v38ProductDetail}>{item.detail}</Text><Text style={styles.v38ProductPrice}>{formatMoney(data.country,item.basePrice)}</Text><View style={[styles.v38ProductAdd,{backgroundColor:qty?COLORS.black:COLORS.yellow}]}><Text style={[styles.v38ProductAddText,!qty&&{color:COLORS.black}]}>{qty?`${qty} in basket`:'Choose'}</Text></View></Pressable>})}</View>
       </ScrollView>
       {count>0?<Pressable onPress={()=>actions.go('commerceCart')} style={styles.v38StoreBasketBar}><View style={styles.v38StoreBasketCount}><Text style={styles.v38StoreBasketCountText}>{count}</Text></View><Text style={styles.v38StoreBasketLabel}>View basket</Text><Text style={styles.v38StoreBasketTotal}>{formatMoney(data.country,total)}</Text><Feather name="chevron-right" size={21} color={COLORS.white}/></Pressable>:null}
     </ScreenShell>
@@ -3010,78 +3082,108 @@ function restaurantReason(restaurant: DemoRestaurant) {
   return restaurant.cuisine.split('·')[0].trim();
 }
 
-export function FoodScreen({ data, actions }: { data: AppData; actions: AppActions }) {
-  const [activeFilter, setActiveFilter] = useState('Offers');
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [query, setQuery] = useState('');
-  const [sortMode, setSortMode] = useState<'Recommended'|'Fastest'|'Top rated'|'Lowest fee'>('Recommended');
-  const categories = ['Burgers','Chicken','Grills','Pizza','Local dishes','Desserts'] as const;
-  const featuredIds = ['java-house','pizza-inn','chicken-tonight','cafe-javas','roast-rhyme','smokery'];
-  const featured = featuredIds.map((id)=>DEMO_RESTAURANTS.find((restaurant)=>restaurant.id===id)).filter((restaurant): restaurant is DemoRestaurant=>Boolean(restaurant));
-  const menuEntries = useMemo(() => DEMO_RESTAURANTS.flatMap((restaurant) => restaurant.menu.slice(0, 4).map((item) => ({ restaurant, item }))), []);
-  const popularEntries = menuEntries.filter(({ item }) => item.popular).slice(0, 8);
-  const trendingEntries = menuEntries.filter(({ item }) => Boolean(item.badge) || item.popular).slice(0, 8);
-  const quickDelivery = [...DEMO_RESTAURANTS].sort((a,b)=>Number(a.eta.split('–')[0])-Number(b.eta.split('–')[0])).slice(0,6);
-  const filtered = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    const rows = DEMO_RESTAURANTS.filter((restaurant) => {
-      const queryMatch = !term || [restaurant.name, restaurant.cuisine, ...restaurant.menu.map((item) => item.name)].join(' ').toLowerCase().includes(term);
-      const categoryMatch = activeCategory === 'All' || restaurant.categories.includes(activeCategory as any);
-      const filterMatch = activeFilter === 'Offers' ? Boolean(restaurant.offer) : activeFilter === 'Rating 4.0+' ? restaurant.rating >= 4.0 : activeFilter === 'Fast delivery' ? Number(restaurant.eta.split('–')[0]) <= 22 : true;
-      return queryMatch && categoryMatch && filterMatch;
-    });
-    if (sortMode === 'Fastest') rows.sort((a,b)=>Number(a.eta.split('–')[0])-Number(b.eta.split('–')[0]));
-    if (sortMode === 'Top rated') rows.sort((a,b)=>b.rating-a.rating);
-    if (sortMode === 'Lowest fee') rows.sort((a,b)=>a.deliveryFee-b.deliveryFee);
-    return rows;
-  }, [query, activeCategory, activeFilter, sortMode]);
-  const openRestaurant = (restaurant: DemoRestaurant) => { actions.selectRestaurant(restaurant.id); actions.go('restaurant'); };
-  const openFoodItem = (restaurant: DemoRestaurant, item: DemoMenuItem) => { actions.selectRestaurant(restaurant.id); actions.selectFoodItem(item.id); actions.go('foodItem'); };
-  const cartCount = data.foodCartLines.reduce((sum, line) => sum + line.quantity, 0);
+// KAREEBU_FOOD_RN_WIDGET_ARCHITECTURE_V5
+// Careem is used only as an architecture/UX reference.
+// This implementation is native to Kareebu's React Native / Expo TypeScript stack.
+
+// KAREEBU_FOOD_RN_WIDGET_ARCHITECTURE_V5_2
+// Careem is used only as an architecture/UX reference.
+// This implementation is native to Kareebu's React Native / Expo TypeScript stack.
+
+// KAREEBU_FOOD_RN_WIDGET_ARCHITECTURE_V5_2_1
+// Careem is used only as an architecture/UX reference.
+// This implementation is native to Kareebu's React Native / Expo TypeScript stack.
+
+// KAREEBU_FOOD_RN_WIDGET_ARCHITECTURE_V5
+// Careem is used only as an architecture/UX reference.
+// This implementation is native to Kareebu's React Native / Expo TypeScript stack.
+
+// KAREEBU_FOOD_RN_WIDGET_ARCHITECTURE_V5
+// Careem is used only as an architecture/UX reference.
+// This implementation is native to Kareebu's React Native / Expo TypeScript stack.
+
+// KAREEBU_FOOD_RN_WIDGET_ARCHITECTURE_V5
+// Careem is used only as an architecture/UX reference.
+// This implementation is native to Kareebu's React Native / Expo TypeScript stack.
+
+export function FoodScreen({
+  data,
+  actions,
+  initialSurface,
+}: {
+  data: AppData;
+  actions: AppActions;
+  initialSurface?: string;
+}) {
+  const restaurants = DEMO_RESTAURANTS.map((restaurant) => ({
+    id: restaurant.id,
+    name: localisedRestaurantName(
+      restaurant,
+      data.country,
+      data.city,
+    ),
+    cuisine: restaurant.cuisine,
+    categories: restaurant.categories,
+    rating: restaurant.rating,
+    eta: restaurant.eta,
+    distance: restaurant.distance,
+    deliveryLabel:
+      restaurant.deliveryFee === 0
+        ? 'Free delivery'
+        : `${formatMoney(
+            data.country,
+            demandAdjustedDeliveryFee(
+              restaurant.deliveryFee,
+              'food-delivery',
+            ),
+          )} delivery`,
+    offer: restaurant.offer ? String(restaurant.offer) : null,
+    plus: restaurant.plus === true,
+    image: assets.food[restaurant.image],
+    menu: restaurant.menu.map((item) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      category: item.category,
+      price: item.price,
+      image: assets.food[item.image],
+      ...(item.popular === undefined ? {} : { popular: item.popular }),
+      ...(item.badge === undefined ? {} : { badge: item.badge }),
+    })),
+  }));
+
   return (
     <ScreenShell>
-      <ScrollView style={styles.flex} contentContainerStyle={styles.v40CommerceScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <CommerceHeader title="Food" location={data.deliveryPlace?.name || data.city} cart cartCount={cartCount} go={actions.go} onLocation={() => { actions.setLocationReturn('food'); actions.go('locationPicker'); }} />
-        <View style={styles.v40CommerceSearch}><Feather name="search" size={21} color={COLORS.black}/><TextInput value={query} onChangeText={setQuery} placeholder="Search dishes or restaurants" placeholderTextColor={COLORS.mutedLight} style={styles.v40CommerceSearchInput}/>{query?<Pressable onPress={()=>setQuery('')}><Ionicons name="close-circle" size={20} color={COLORS.muted}/></Pressable>:null}</View>
+      <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+        <KareebuFoodDiscoveryHome
+          city={data.city}
+          country={data.country}
+          restaurants={restaurants}
+          favouriteIds={data.favoriteRestaurantIds}
+          initialSurface={initialSurface === 'search' ? 'search' : 'home'}
+          actions={{
+            openRestaurant: (restaurantId) => {
+              actions.selectRestaurant(restaurantId);
+              actions.go('restaurant');
+            },
+            openFoodItem: (restaurantId, itemId) => {
+              actions.selectRestaurant(restaurantId);
+              actions.selectFoodItem(itemId);
+              actions.go('foodItem');
+            },
+            openSearch: () => actions.go('foodSearch'),
+            openFoodHome: () => actions.go('food'),
+            openOffers: () => actions.go('offers'),
+            openMembership: () => actions.go('membership'),
+            toggleFavourite: actions.toggleFavoriteRestaurant,
+          }}
+        />
 
-        <View style={styles.foodParityHeading}><View><Text style={styles.foodParityTitle}>Find your food</Text><Text style={styles.foodParitySub}>Browse by what you feel like eating</Text></View></View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FoodCategoryRow}>{categories.map((label,index)=>{const image=[assets.food.cafeJavas,assets.food.chickenTonight,assets.food.tamaraThai][index%3];const selected=activeCategory===label;return <Pressable key={label} onPress={()=>setActiveCategory(selected?'All':label)} style={styles.v40FoodCategory}><View style={[styles.v40FoodCategoryCircle,selected&&styles.v40FoodCategoryCircleActive]}><Image source={image} style={styles.v40FoodCategoryImage} resizeMode="cover"/></View><Text style={[styles.v40FoodCategoryText,selected&&styles.v40FoodCategoryTextActive]}>{label}</Text></Pressable>})}</ScrollView>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FoodPromoRow}><V40FoodPromoCard kind="discount"/><V40FoodPromoCard kind="exclusive"/><V40FoodPromoCard kind="delivery"/></ScrollView>
-
-        <View style={styles.foodParitySection}>
-          <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>Featured restaurants</Text><Text style={styles.v40SectionSub}>Popular places in {data.city}</Text></View><TextButton label="See all" onPress={()=>setActiveFilter('All restaurants')} color={COLORS.red}/></View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.foodParityRestaurantRail}>{featured.map((restaurant)=><Pressable key={restaurant.id} onPress={()=>openRestaurant(restaurant)} style={styles.foodParityRestaurantCard}><Image source={assets.food[restaurant.image]} style={styles.foodParityRestaurantImage}/><Text numberOfLines={1} style={styles.foodParityRestaurantName}>{localisedRestaurantName(restaurant,data.country,data.city)}</Text><Text style={styles.foodParityRestaurantMeta}>{restaurant.rating.toFixed(1)} ★ · {restaurant.eta}</Text>{restaurant.offer?<Text numberOfLines={1} style={styles.foodParityRestaurantOffer}>{restaurant.offer}</Text>:null}</Pressable>)}</ScrollView>
-        </View>
-
-        <View style={styles.foodParitySection}>
-          <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>Just for you</Text><Text style={styles.v40SectionSub}>Popular dishes picked from nearby menus</Text></View></View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.foodParityDishRail}>{popularEntries.map(({restaurant,item})=><Pressable key={`${restaurant.id}-${item.id}`} onPress={()=>openFoodItem(restaurant,item)} style={styles.foodParityDishCard}><Image source={assets.food[item.image]} style={styles.foodParityDishImage}/><Text numberOfLines={2} style={styles.foodParityDishName}>{item.name}</Text><Text style={styles.foodParityDishPrice}>{formatMoney(data.country,item.price)}</Text><Text numberOfLines={1} style={styles.foodParityDishStore}>{restaurant.name}</Text></Pressable>)}</ScrollView>
-        </View>
-
-        <View style={styles.foodParitySection}>
-          <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>Quick delivery</Text><Text style={styles.v40SectionSub}>Fastest nearby restaurants</Text></View></View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.foodParityQuickRail}>{quickDelivery.map((restaurant)=><Pressable key={restaurant.id} onPress={()=>openRestaurant(restaurant)} style={styles.foodParityQuickCard}><View style={styles.foodParityQuickIcon}><Ionicons name="flash" size={20} color={COLORS.red}/></View><View style={styles.flex}><Text numberOfLines={1} style={styles.foodParityQuickName}>{restaurant.name}</Text><Text style={styles.foodParityQuickMeta}>{restaurant.eta} · {restaurant.deliveryFee===0?'Free delivery':formatMoney(data.country,demandAdjustedDeliveryFee(restaurant.deliveryFee,'food-delivery'))}</Text></View></Pressable>)}</ScrollView>
-        </View>
-
-        {data.lastFoodOrder ? <Pressable onPress={()=>actions.go('orderTracking')} style={styles.foodParityLastOrder}><View style={styles.foodParityLastOrderIcon}><Ionicons name="receipt-outline" size={22} color={COLORS.black}/></View><View style={styles.flex}><Text style={styles.foodParityLastOrderEyebrow}>Last order</Text><Text style={styles.foodParityLastOrderTitle}>{DEMO_RESTAURANTS.find((restaurant)=>restaurant.id===data.lastFoodOrder?.restaurantId)?.name ?? 'Food order'}</Text><Text style={styles.foodParityLastOrderMeta}>Order #{data.lastFoodOrder.id} · Track status</Text></View><Feather name="chevron-right" size={21} color={COLORS.muted}/></Pressable> : null}
-
-        <View style={styles.foodParitySection}>
-          <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>Trending dishes</Text><Text style={styles.v40SectionSub}>What people are ordering now</Text></View></View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.foodParityDishRail}>{trendingEntries.map(({restaurant,item})=><Pressable key={`trend-${restaurant.id}-${item.id}`} onPress={()=>openFoodItem(restaurant,item)} style={styles.foodParityDishCard}><View><Image source={assets.food[item.image]} style={styles.foodParityDishImage}/>{item.badge?<View style={styles.foodParityDishBadge}><Text style={styles.foodParityDishBadgeText}>{item.badge}</Text></View>:null}</View><Text numberOfLines={2} style={styles.foodParityDishName}>{item.name}</Text><Text style={styles.foodParityDishPrice}>{formatMoney(data.country,item.price)}</Text><Text numberOfLines={1} style={styles.foodParityDishStore}>{restaurant.name}</Text></Pressable>)}</ScrollView>
-        </View>
-
-        <View style={styles.foodParityExploreHeader}><View><Text style={styles.v40SectionTitle}>Explore restaurants</Text><Text style={styles.v40SectionSub}>All restaurants available around you</Text></View></View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FilterRow}><FilterChip label={sortMode==='Recommended'?'Sort by':`Sort: ${sortMode}`} active={sortMode!=='Recommended'} onPress={()=>setSortMode(sortMode==='Recommended'?'Fastest':sortMode==='Fastest'?'Top rated':sortMode==='Top rated'?'Lowest fee':'Recommended')}/>{['Offers','Rating 4.0+','Fast delivery'].map((filter)=><FilterChip key={filter} label={filter} active={activeFilter===filter} onPress={()=>setActiveFilter(activeFilter===filter?'All restaurants':filter)}/>)}</ScrollView>
-
-        <View style={styles.v40RestaurantList}>{filtered.map((restaurant)=><Pressable key={restaurant.id} onPress={()=>openRestaurant(restaurant)} style={({pressed})=>[styles.v40RestaurantRow,pressed&&styles.v26CardPressed]}><View style={styles.v40RestaurantImageWrap}><Image source={assets.food[restaurant.image]} style={styles.v40RestaurantImage} resizeMode="cover"/>{restaurant.offer?<View style={styles.v40RestaurantDiscount}><Text style={styles.v40RestaurantDiscountText}>{restaurant.offer.split(' ').slice(0,2).join(' ')}</Text></View>:null}</View><View style={styles.v40RestaurantCopy}><View style={styles.v40RestaurantNameRow}><View style={styles.v40ProTag}><Text style={styles.v40ProTagText}>pro</Text></View><Text numberOfLines={1} style={styles.v40RestaurantName}>{localisedRestaurantName(restaurant,data.country,data.city)}</Text><Pressable onPress={()=>actions.toggleFavoriteRestaurant(restaurant.id)}><Ionicons name={data.favoriteRestaurantIds.includes(restaurant.id)?'heart':'heart-outline'} size={21} color={data.favoriteRestaurantIds.includes(restaurant.id)?COLORS.red:COLORS.black}/></Pressable></View><Text style={styles.v40RestaurantMeta}>{restaurant.rating.toFixed(1)} <Text style={styles.star}>★</Text> ({restaurant.reviews}) · {restaurant.eta} · {restaurant.deliveryFee===0?formatMoney(data.country,0):formatMoney(data.country,demandAdjustedDeliveryFee(restaurant.deliveryFee,'food-delivery'))}</Text><View style={styles.v40RestaurantReason}><Text style={styles.v40RestaurantReasonText}>{restaurantReason(restaurant)}</Text></View><Text numberOfLines={1} style={styles.v40RestaurantCuisine}>{restaurant.cuisine}</Text></View></Pressable>)}</View>
-        {filtered.length===0?<RoundedCard style={styles.v30EmptyState}><Ionicons name="restaurant-outline" size={32} color={COLORS.muted}/><Text style={styles.v30EmptyTitle}>No restaurants match</Text><Text style={styles.v30EmptyBody}>Try another category, filter or search.</Text></RoundedCard>:null}
-      </ScrollView>
-      <FoodBottomNav go={actions.go} active="food" />
+        <FoodBottomNav go={actions.go} active="food" />
+      </View>
     </ScreenShell>
   );
 }
-
 
 function FoodBottomNav({ go, active }: { go: (screen: Screen) => void; active: 'home'|'food'|'shops'|'orders'|'cart' }) {
   // Food and Shops remain commerce sub-flows while sharing the same global navigation pattern.
@@ -3092,15 +3194,40 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
   const restaurant = DEMO_RESTAURANTS.find((item) => item.id === data.selectedRestaurantId) ?? DEMO_RESTAURANTS[0]!;
   const favorite = data.favoriteRestaurantIds.includes(restaurant.id);
   const categories = Array.from(new Set(restaurant.menu.map((item) => item.category)));
+  const [activeMenuCategory, setActiveMenuCategory] = useState('All');
+  const [menuQuery, setMenuQuery] = useState('');
   const restaurantLines = data.foodCartLines.filter((line) => line.restaurantId === restaurant.id);
   const cartCount = restaurantLines.reduce((sum, line) => sum + line.quantity, 0);
   const cartTotal = calculateFoodCartSubtotal(restaurantLines);
   const itemQuantity = (itemId: string) => restaurantLines.filter((line) => line.itemId === itemId).reduce((sum, line) => sum + line.quantity, 0);
   const openItem = (item: DemoMenuItem) => { actions.selectFoodItem(item.id); actions.go('foodItem'); };
+  const query = menuQuery.trim().toLowerCase();
+  const visibleMenu = restaurant.menu.filter((item) => {
+    const categoryMatches = activeMenuCategory === 'All' || item.category === activeMenuCategory;
+    const searchMatches = !query || `${item.name} ${item.description} ${item.category}`.toLowerCase().includes(query);
+    return categoryMatches && searchMatches;
+  });
+  const visibleCategories = activeMenuCategory === 'All' ? categories : [activeMenuCategory];
+
   return (
     <ScreenShell>
-      <Header onBack={() => actions.go('food')} right={<Pressable onPress={() => actions.toggleFavoriteRestaurant(restaurant.id)} style={styles.v30HeaderHeart}><Ionicons name={favorite?'heart':'heart-outline'} size={25} color={favorite?COLORS.red:COLORS.black} /></Pressable>} />
-      <ScrollView style={styles.flex} contentContainerStyle={styles.restaurantDetailScroll} showsVerticalScrollIndicator={false}>
+      <Header
+        onBack={() => actions.go('food')}
+        right={
+          <View style={styles.v33RestaurantHeaderActions}>
+            <Pressable
+              onPress={() => Share.share({ message: `${restaurant.name} on Kareebu+ · ${restaurant.cuisine}` })}
+              style={styles.v30HeaderHeart}
+            >
+              <Feather name="share-2" size={20} color={COLORS.black} />
+            </Pressable>
+            <Pressable onPress={() => actions.toggleFavoriteRestaurant(restaurant.id)} style={styles.v30HeaderHeart}>
+              <Ionicons name={favorite?'heart':'heart-outline'} size={25} color={favorite?COLORS.red:COLORS.black} />
+            </Pressable>
+          </View>
+        }
+      />
+      <ScrollView style={styles.flex} contentContainerStyle={styles.restaurantDetailScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.v30RestaurantHeroWrap}>
           <Image source={assets.food[restaurant.image]} style={styles.restaurantHero} />
           <View style={styles.v30RestaurantHeroBadge}><Image source={assets.mark} style={styles.v30RestaurantHeroMark}/><Text style={styles.v30RestaurantHeroBadgeText}>Kareebu+ partner</Text></View>
@@ -3111,16 +3238,47 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
         <Text style={styles.restaurantDetailSub}>{restaurant.eta}  ·  {restaurant.distance}  ·  {restaurant.deliveryFee===0?'Free delivery':`${formatMoney(data.country,demandAdjustedDeliveryFee(restaurant.deliveryFee,'food-delivery'))} delivery`}</Text>
         <View style={styles.badgeRow}>{[restaurant.plus?'Kareebu+':'Local favourite','Great reviews','Live order tracking'].map((badge)=><View key={badge} style={styles.badge}><Text style={styles.badgeText}>{badge}</Text></View>)}</View>
         <View style={styles.v30RestaurantInfoStrip}><View><Text style={styles.v30InfoValue}>{restaurant.eta}</Text><Text style={styles.v30InfoLabel}>Delivery</Text></View><View style={styles.v30InfoRule}/><View><Text style={styles.v30InfoValue}>{restaurant.rating.toFixed(1)} ★</Text><Text style={styles.v30InfoLabel}>Rating</Text></View><View style={styles.v30InfoRule}/><View><Text style={styles.v30InfoValue}>{restaurant.distance}</Text><Text style={styles.v30InfoLabel}>Distance</Text></View></View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v30MenuCategoryRow}>{categories.map((category,index)=><View key={category} style={[styles.v30MenuCategoryChip,index===0&&styles.v30MenuCategoryChipActive]}><Text style={[styles.v30MenuCategoryText,index===0&&styles.v30MenuCategoryTextActive]}>{category}</Text></View>)}</ScrollView>
-        {categories.map((category) => (
-          <View key={category} style={styles.v30MenuSection}>
-            <View style={styles.v30MenuSectionHeading}><Text style={styles.v30MenuSectionTitle}>{category}</Text><Text style={styles.v30MenuSectionCount}>{restaurant.menu.filter((item)=>item.category===category).length} items</Text></View>
-            {restaurant.menu.filter((item)=>item.category===category).map((item) => {
-              const quantity = itemQuantity(item.id);
-              return <Pressable key={item.id} onPress={()=>openItem(item)} style={({pressed})=>[styles.v30MenuItem,pressed&&styles.v26CardPressed]}><View style={styles.v30MenuCopy}><View style={styles.v30MenuNameRow}><Text style={styles.menuName}>{item.name}</Text>{item.popular?<View style={styles.v30PopularPill}><Text style={styles.v30PopularPillText}>Popular</Text></View>:null}</View><Text numberOfLines={2} style={styles.v30MenuDescription}>{item.description}</Text><Text style={styles.v30MenuPrice}>{formatMoney(data.country, item.price)}</Text>{item.badge?<Text style={styles.v30MenuBadgeText}>{item.badge}</Text>:null}</View><View style={styles.v30MenuVisualWrap}><Image source={assets.food[item.image]} style={styles.v30MenuImage}/><View style={[styles.v30MenuAddButton,quantity>0&&{backgroundColor:COLORS.black,borderColor:COLORS.black}]}>{quantity>0?<Text style={{color:COLORS.white,fontFamily:FONT.bold,fontWeight:'900'}}>{quantity}</Text>:<Feather name="plus" size={20} color={COLORS.red}/>}</View></View></Pressable>;
-            })}
+        <View style={styles.v30RestaurantActionRail}>
+          <Pressable onPress={()=>actions.go('foodSchedule')} style={styles.v30RestaurantAction}><Ionicons name="calendar-outline" size={17} color={COLORS.black}/><Text style={styles.v30RestaurantActionText}>Schedule</Text></Pressable>
+          <Pressable onPress={()=>actions.go('foodSearch')} style={styles.v30RestaurantAction}><Ionicons name="search-outline" size={17} color={COLORS.black}/><Text style={styles.v30RestaurantActionText}>Search Food</Text></Pressable>
+          <Pressable onPress={()=>actions.go('support')} style={styles.v30RestaurantAction}><Ionicons name="help-circle-outline" size={17} color={COLORS.black}/><Text style={styles.v30RestaurantActionText}>Help</Text></Pressable>
+        </View>
+
+        <View style={styles.v33MenuSearch}>
+          <Feather name="search" size={19} color={COLORS.muted}/>
+          <TextInput
+            value={menuQuery}
+            onChangeText={setMenuQuery}
+            placeholder={`Search ${restaurant.name}`}
+            placeholderTextColor={COLORS.muted}
+            style={styles.v33MenuSearchInput}
+          />
+          {menuQuery ? <Pressable onPress={()=>setMenuQuery('')} hitSlop={8}><Feather name="x-circle" size={18} color={COLORS.muted}/></Pressable> : null}
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v30MenuCategoryRow}>
+          {['All', ...categories].map((category)=><Pressable key={category} onPress={()=>setActiveMenuCategory(category)} style={[styles.v30MenuCategoryChip,activeMenuCategory===category&&styles.v30MenuCategoryChipActive]}><Text style={[styles.v30MenuCategoryText,activeMenuCategory===category&&styles.v30MenuCategoryTextActive]}>{category}</Text></Pressable>)}
+        </ScrollView>
+
+        {visibleMenu.length === 0 ? (
+          <View style={styles.v33MenuEmpty}>
+            <Feather name="search" size={28} color={COLORS.muted}/>
+            <Text style={styles.v33MenuEmptyTitle}>No matching dishes</Text>
+            <Text style={styles.v33MenuEmptyBody}>Try another search or menu category.</Text>
           </View>
-        ))}
+        ) : visibleCategories.map((category) => {
+          const categoryItems = visibleMenu.filter((item)=>item.category===category);
+          if (!categoryItems.length) return null;
+          return (
+            <View key={category} style={styles.v30MenuSection}>
+              <View style={styles.v30MenuSectionHeading}><Text style={styles.v30MenuSectionTitle}>{category}</Text><Text style={styles.v30MenuSectionCount}>{categoryItems.length} items</Text></View>
+              {categoryItems.map((item) => {
+                const quantity = itemQuantity(item.id);
+                return <Pressable key={item.id} onPress={()=>openItem(item)} style={({pressed})=>[styles.v30MenuItem,pressed&&styles.v26CardPressed]}><View style={styles.v30MenuCopy}><View style={styles.v30MenuNameRow}><Text style={styles.menuName}>{item.name}</Text>{item.popular?<View style={styles.v30PopularPill}><Text style={styles.v30PopularPillText}>Popular</Text></View>:null}</View><Text numberOfLines={2} style={styles.v30MenuDescription}>{item.description}</Text><Text style={styles.v30MenuPrice}>{formatMoney(data.country, item.price)}</Text>{item.badge?<Text style={styles.v30MenuBadgeText}>{item.badge}</Text>:null}</View><View style={styles.v30MenuVisualWrap}><Image source={assets.food[item.image]} style={styles.v30MenuImage}/><View style={[styles.v30MenuAddButton,quantity>0&&{backgroundColor:COLORS.black,borderColor:COLORS.black}]}>{quantity>0?<Text style={{color:COLORS.white,fontFamily:FONT.bold,fontWeight:'900'}}>{quantity}</Text>:<Feather name="plus" size={20} color={COLORS.red}/>}</View></View></Pressable>;
+              })}
+            </View>
+          );
+        })}
       </ScrollView>
       {cartCount > 0 ? <Pressable onPress={()=>actions.go('cart')} style={styles.viewCartBar}><View style={styles.v30CartCountBubble}><Text style={styles.v30CartCountText}>{cartCount}</Text></View><View style={styles.flex}><Text style={styles.viewCartTitle}>View cart</Text><Text style={styles.viewCartMeta}>{restaurant.name}</Text></View><View style={styles.v30CartBarRight}><Text style={styles.v30CartBarTotal}>{formatMoney(data.country, cartTotal)}</Text><Feather name="chevron-right" size={21} color={COLORS.white}/></View></Pressable> : null}
     </ScreenShell>
@@ -3188,14 +3346,14 @@ export function OrderTrackingScreen({ data, actions }: { data: AppData; actions:
 
 function V40ShopHeroBanner({ category, country }: { category: string; country: string }) {
   const config = category === 'Pharmacy'
-    ? { title:'Weekend', accent:'Wellness Drop', offer:'UP TO 70% OFF', body:'Top care. Lower prices. Delivered to you.', bg:'#F5EEFF', image:assets.shops.pharmacy }
+    ? { title:'Weekend', accent:'Wellness Drop', offer:'UP TO 70% OFF', body:'Top care. Lower prices. Delivered to you.', bg:COLORS.yellowSoft, image:assets.shops.pharmacy }
     : category === 'Groceries'
-      ? { title:'Fresh', accent:'Basket Deals', offer:'UP TO 30% OFF', body:'Groceries, pantry and home essentials.', bg:'#EFF8E9', image:assets.service.groceries }
+      ? { title:'Fresh', accent:'Basket Deals', offer:'UP TO 30% OFF', body:'Groceries, pantry and home essentials.', bg:COLORS.yellowWash, image:assets.service.groceries }
       : category === 'Beauty'
-        ? { title:'Glowing', accent:'Summer', offer:'UP TO 70% OFF', body:'Beauty, skincare and personal care picks.', bg:'#FFF2E7', image:assets.service.shops }
+        ? { title:'Glowing', accent:'Summer', offer:'UP TO 70% OFF', body:'Beauty, skincare and personal care picks.', bg:COLORS.orangeSoft, image:assets.service.shops }
         : category === 'Nutrition'
-          ? { title:'Everyday', accent:'Wellness', offer:'SAVE ON BUNDLES', body:'Nutrition and wellness essentials.', bg:'#FFF7DA', image:assets.shops.pharmacy }
-          : { title:'Kareebu+', accent:'Store Deals', offer:'LOCAL SAVINGS', body:`Shop top picks available in ${country}.`, bg:'#FFF4EE', image:assets.service.shops };
+          ? { title:'Everyday', accent:'Wellness', offer:'SAVE ON BUNDLES', body:'Nutrition and wellness essentials.', bg:COLORS.yellowSoft, image:assets.shops.pharmacy }
+          : { title:'Kareebu+', accent:'Store Deals', offer:'LOCAL SAVINGS', body:`Shop top picks available in ${country}.`, bg:COLORS.surface, image:assets.service.shops };
   return <View style={[styles.v40ShopHero,{backgroundColor:config.bg}]}><View style={styles.v40ShopHeroCopy}><Text style={styles.v40ShopHeroTitle}>{config.title}{`
 `}<Text style={styles.v40ShopHeroAccent}>{config.accent}</Text></Text><Text style={styles.v40ShopHeroOffer}>{config.offer}</Text><Text style={styles.v40ShopHeroBody}>{config.body}</Text></View><Image source={config.image} style={styles.v40ShopHeroImage} resizeMode="contain"/><View style={styles.v40ShopHeroFree}><Ionicons name="bicycle-outline" size={13} color={COLORS.red}/><Text style={styles.v40ShopHeroFreeText}>FREE DELIVERY</Text></View></View>;
 }
@@ -3225,7 +3383,7 @@ export function ShopsScreen({ data, actions }: { data: AppData; actions: AppActi
         <CommerceHeader title="Shops" location={data.deliveryPlace?.name || data.city} cart cartCount={cartCount} go={actions.go} onLocation={() => { actions.setLocationReturn('shops'); actions.go('locationPicker'); }} />
         <View style={styles.v40CommerceSearch}><Feather name="search" size={21} color={COLORS.black}/><TextInput value={query} onChangeText={setQuery} placeholder={activeCategory==='Pharmacy'?'Search for medicines or pharmacies':'Search stores, products or categories'} placeholderTextColor={COLORS.mutedLight} style={styles.v40CommerceSearchInput}/>{query?<Pressable onPress={()=>setQuery('')}><Ionicons name="close-circle" size={20} color={COLORS.muted}/></Pressable>:null}</View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40ShopCategoryRow}>{categories.map((label)=>{const selected=activeCategory===label;const icon=(label==='All'?'storefront-outline':label==='Pharmacy'?'medical-outline':label==='Groceries'?'basket-outline':label==='Beauty'?'sparkles-outline':label==='Nutrition'?'nutrition-outline':label==='Eye care'?'eye-outline':label==='Pets'?'paw-outline':'bag-handle-outline') as keyof typeof Ionicons.glyphMap;return <Pressable key={label} onPress={()=>setActiveCategory(label)} style={styles.v40ShopCategory}><View style={[styles.v40ShopCategoryCircle,selected&&styles.v40ShopCategoryCircleActive]}><Ionicons name={icon} size={25} color={selected?COLORS.red:COLORS.black}/></View><Text style={[styles.v40ShopCategoryText,selected&&styles.v40ShopCategoryTextActive]}>{label}</Text></Pressable>})}</ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40ShopCategoryRow}>{categories.map((label)=>{const selected=activeCategory===label;const icon=(label==='All'?'storefront-outline':label==='Pharmacy'?'medical-outline':label==='Groceries'?'basket-outline':label==='Beauty'?'sparkles-outline':label==='Nutrition'?'nutrition-outline':label==='Eye care'?'eye-outline':label==='Pets'?'paw-outline':'bag-handle-outline') as keyof typeof Ionicons.glyphMap;return <Pressable key={label} onPress={()=>setActiveCategory(label)} style={styles.v40ShopCategory}><View style={[styles.v40ShopCategoryCircle,selected&&styles.v40ShopCategoryCircleActive]}><BrandIcon icon={icon} size={38}/></View><Text style={[styles.v40ShopCategoryText,selected&&styles.v40ShopCategoryTextActive]}>{label}</Text></Pressable>})}</ScrollView>
 
         <V40ShopHeroBanner category={activeCategory} country={data.country}/>
         <PromoDots count={4}/>
@@ -3236,7 +3394,7 @@ export function ShopsScreen({ data, actions }: { data: AppData; actions: AppActi
         <Text style={styles.v40BrowseTitle}>{activeCategory==='Pharmacy'?'Browse pharmacies':'Browse stores'}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FilterRow}>{['Offers','Free delivery','Under 30 mins','Rating 4.7+'].map((filter)=><FilterChip key={filter} label={filter} active={activeFilter===filter} onPress={()=>setActiveFilter(activeFilter===filter?'All stores':filter)}/>)}</ScrollView>
 
-        <View style={styles.v40ShopList}>{filtered.map((shop)=>{const favorite=data.favoriteShopIds.includes(shop.id);return <Pressable key={shop.id} onPress={()=>{actions.selectShop(shop.id);actions.go('shop')}} style={({pressed})=>[styles.v40ShopRow,pressed&&styles.v26CardPressed]}><View style={styles.v40ShopRowLogo}><PopularStoreLogo store={shop}/></View><View style={styles.flex}><View style={styles.v40ShopNameRow}><Text numberOfLines={1} style={styles.v40ShopName}>{localisedStoreName(shop,data.country)}</Text><Text style={styles.v40ShopRating}>{shop.rating.toFixed(1)} <Text style={styles.star}>★</Text></Text></View><Text style={styles.v40ShopMeta}>{shop.eta} · Minimum order {formatMoney(data.country,shop.minOrder)}</Text><View style={styles.v40ShopBadges}><View style={styles.v40ShopDeal}><Ionicons name="pricetag-outline" size={12} color={COLORS.black}/><Text numberOfLines={1} style={styles.v40ShopDealText}>{shop.deal}</Text></View>{shop.deliveryFee===0?<View style={styles.v40ShopFree}><Ionicons name="bicycle-outline" size={12} color="#167A38"/><Text style={styles.v40ShopFreeText}>FREE DELIVERY</Text></View>:null}</View></View><Pressable onPress={()=>actions.toggleFavoriteShop(shop.id)} style={styles.v40ShopHeart}><Ionicons name={favorite?'heart':'heart-outline'} size={21} color={favorite?COLORS.red:COLORS.muted}/></Pressable></Pressable>})}</View>
+        <View style={styles.v40ShopList}>{filtered.map((shop)=>{const favorite=data.favoriteShopIds.includes(shop.id);return <Pressable key={shop.id} onPress={()=>{actions.selectShop(shop.id);actions.go('shop')}} style={({pressed})=>[styles.v40ShopRow,pressed&&styles.v26CardPressed]}><View style={styles.v40ShopRowLogo}><PopularStoreLogo store={shop}/></View><View style={styles.flex}><View style={styles.v40ShopNameRow}><Text numberOfLines={1} style={styles.v40ShopName}>{localisedStoreName(shop,data.country)}</Text><Text style={styles.v40ShopRating}>{shop.rating.toFixed(1)} <Text style={styles.star}>★</Text></Text></View><Text style={styles.v40ShopMeta}>{shop.eta} · Minimum order {formatMoney(data.country,shop.minOrder)}</Text><View style={styles.v40ShopBadges}><View style={styles.v40ShopDeal}><Ionicons name="pricetag-outline" size={12} color={COLORS.black}/><Text numberOfLines={1} style={styles.v40ShopDealText}>{shop.deal}</Text></View>{shop.deliveryFee===0?<View style={styles.v40ShopFree}><Ionicons name="bicycle-outline" size={12} color={COLORS.green}/><Text style={styles.v40ShopFreeText}>FREE DELIVERY</Text></View>:null}</View></View><Pressable onPress={()=>actions.toggleFavoriteShop(shop.id)} style={styles.v40ShopHeart}><Ionicons name={favorite?'heart':'heart-outline'} size={21} color={favorite?COLORS.red:COLORS.muted}/></Pressable></Pressable>})}</View>
         {filtered.length===0?<RoundedCard style={styles.v30EmptyState}><Ionicons name="bag-handle-outline" size={32} color={COLORS.muted}/><Text style={styles.v30EmptyTitle}>No stores match</Text><Text style={styles.v30EmptyBody}>Try another category, filter or search.</Text></RoundedCard>:null}
       </ScrollView>
       <FoodBottomNav go={actions.go} active="shops" />
@@ -3280,67 +3438,136 @@ function WalletPayment({ id, data, actions }: { id:'mtn'|'airtel'|'visa'; data:A
 }
 
 export function WalletScreen({ data, actions }: { data: AppData; actions: AppActions }) {
-  const [topUpOpen, setTopUpOpen] = useState(false);
-  const topUpAmounts = [5000, 10000, 20000, 50000];
-  const applyTopUp = (amount: number) => {
-    actions.setWalletBalance(data.walletBalance + amount);
-    setTopUpOpen(false);
-  };
-
+  const payActions: Array<{label:string;icon:keyof typeof Ionicons.glyphMap;screen:Screen}> = [
+    {label:'Send',icon:'arrow-up-circle-outline',screen:'paySend'},
+    {label:'Request',icon:'arrow-down-circle-outline',screen:'payRequest'},
+    {label:'Top up',icon:'add-circle-outline',screen:'payTopUp'},
+    {label:'Bills',icon:'receipt-outline',screen:'payBills'},
+    {label:'Recharge',icon:'phone-portrait-outline',screen:'payRecharge'},
+    {label:'Gift cards',icon:'gift-outline',screen:'payGiftCards'},
+    {label:'Send abroad',icon:'globe-outline',screen:'payRemittance'},
+    {label:'History',icon:'time-outline',screen:'payTransactions'},
+  ];
   return (
     <ScreenShell>
-      <Header title="Wallet" onBack={()=>actions.go('home')} />
-      <KareebuContextBar label="Kareebu+ Wallet · pay across the super app" />
-      <ScrollView style={styles.flex} contentContainerStyle={styles.walletScroll}>
-        <View style={styles.walletCard}><Text style={styles.walletCardLabel}>Kareebu+ Wallet</Text><Text style={styles.walletBalance}>{formatMoney(data.country,data.walletBalance)}</Text><Text style={styles.walletCardSub}>Wallet balance · {data.country}</Text><Pressable onPress={()=>setTopUpOpen(true)} style={styles.topUpButton}><Text style={styles.topUpText}>Top up</Text></Pressable><Image source={assets.mark} style={styles.walletCardMark}/></View>
-        <View style={styles.walletActions}><WalletAction icon="send-circle-outline" label="Send money" onPress={()=>Alert.alert('Send money','Choose a Kareebu+ contact or mobile-money number in the live payments flow.')}/><WalletAction icon="receipt-text-outline" label="Pay bills" onPress={()=>Alert.alert('Pay bills','Bill categories will appear here as local payment partners are connected.')}/><WalletAction icon="account-plus-outline" label="Add money" onPress={()=>setTopUpOpen(true)}/><WalletAction icon="history" label="History" onPress={()=>actions.go('activity')}/></View>
-        <Text style={styles.walletSectionTitle}>Rewards & savings</Text>
-        <RoundedCard style={styles.accountMenu}><MenuRow icon="gift-outline" label="Kareebu Rewards" detail={`${data.rewardPoints.toLocaleString()} points`} onPress={()=>actions.go('rewards')}/><MenuRow icon="pricetag-outline" label="Coupons" detail="3 available" onPress={()=>actions.go('coupons')}/><MenuRow icon="people-outline" label="Refer & earn" onPress={()=>actions.go('referral')}/><MenuRow icon="diamond-outline" label="Kareebu Black" onPress={()=>actions.go('membership')}/></RoundedCard>
-        <Text style={styles.walletSectionTitle}>Payment methods</Text>
-        <RoundedCard style={styles.walletPayments}><WalletPayment id="mtn" data={data} actions={actions}/><WalletPayment id="airtel" data={data} actions={actions}/><WalletPayment id="visa" data={data} actions={actions}/></RoundedCard>
-        <View style={styles.walletSectionHeader}><Text style={styles.walletSectionTitle}>Kareebu Business</Text><TextButton label="Switch" onPress={()=>Alert.alert('Kareebu Business','Business account switching will appear here when a business profile is connected.')}/></View>
-        <Pressable onPress={()=>Alert.alert('Kareebu Business','Create or connect a business profile to manage business payments.')}><RoundedCard style={styles.businessCard}><View style={styles.businessIcon}><Ionicons name="briefcase" size={22} color={COLORS.white}/></View><Text style={styles.businessText}>Kareebu Business Account</Text><Feather name="chevron-right" size={24} color={COLORS.muted}/></RoundedCard></Pressable>
+      <Header title="Pay" onBack={()=>actions.go('home')} right={<Pressable onPress={()=>actions.go('payTransactions')} style={styles.uxHeaderAction}><Ionicons name="receipt-outline" size={20} color={COLORS.black}/></Pressable>} />
+      <ScrollView style={styles.flex} contentContainerStyle={styles.payHubScroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.payHubBalanceCard}>
+          <View style={styles.payHubBalanceTop}><View><Text style={styles.payHubLabel}>Kareebu Pay</Text><Text style={styles.payHubBalance}>{formatMoney(data.country,data.walletBalance)}</Text><Text style={styles.payHubMeta}>Available balance</Text></View><Image source={assets.mark} style={styles.payHubMark}/></View>
+          <Pressable onPress={()=>actions.go('payTopUp')} style={styles.payHubAdd}><Feather name="plus" size={16} color={COLORS.black}/><Text style={styles.payHubAddText}>Add money</Text></Pressable>
+        </View>
+
+        <View style={styles.payHubGrid}>{payActions.map(item=><Pressable key={item.label} onPress={()=>actions.go(item.screen)} style={({pressed})=>[styles.payHubAction,pressed&&styles.v26CardPressed]}><BrandIcon icon={item.icon} size={34} tile/><Text style={styles.payHubActionLabel}>{item.label}</Text></Pressable>)}</View>
+
+        <View style={styles.payHubSectionHeader}><Text style={styles.payHubSectionTitle}>Money & accounts</Text><TextButton label="Manage" onPress={()=>actions.go('payManageAccounts')} color={COLORS.red}/></View>
+        <RoundedCard style={styles.payHubMenu}><MenuRow icon="card-outline" label="Payment methods" detail={paymentMethodTitle(data.selectedPayment,data.country)} onPress={()=>actions.go('paymentMethods')}/><MenuRow icon="business-outline" label="Accounts & cash out" onPress={()=>actions.go('payManageAccounts')}/><MenuRow icon="shield-checkmark-outline" label="Identity verification" detail="Payment limits" onPress={()=>actions.go('payKyc')}/><MenuRow icon="document-text-outline" label="Wallet statement" onPress={()=>actions.go('payTransactions')}/></RoundedCard>
+
+        <View style={styles.payHubSectionHeader}><Text style={styles.payHubSectionTitle}>Rewards & savings</Text><TextButton label="See all" onPress={()=>actions.go('rewards')} color={COLORS.red}/></View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.payHubPromoRail}>
+          <Pressable onPress={()=>actions.go('rewards')} style={[styles.payHubPromo,{backgroundColor:'#FFF3CE'}]}><Ionicons name="gift-outline" size={25}/><Text style={styles.payHubPromoTitle}>{data.rewardPoints.toLocaleString()} points</Text><Text style={styles.payHubPromoBody}>Redeem across Kareebu+</Text></Pressable>
+          <Pressable onPress={()=>actions.go('plusSavings')} style={[styles.payHubPromo,{backgroundColor:'#ECECEC'}]}><Ionicons name="diamond-outline" size={25}/><Text style={styles.payHubPromoTitle}>Kareebu+ savings</Text><Text style={styles.payHubPromoBody}>See your member value</Text></Pressable>
+          <Pressable onPress={()=>actions.go('referral')} style={[styles.payHubPromo,{backgroundColor:'#FFE9E6'}]}><Ionicons name="people-outline" size={25}/><Text style={styles.payHubPromoTitle}>Refer & earn</Text><Text style={styles.payHubPromoBody}>Invite friends</Text></Pressable>
+        </ScrollView>
       </ScrollView>
       <BottomNav active="wallet" go={actions.go}/>
-
-      <Modal visible={topUpOpen} transparent animationType="fade" onRequestClose={()=>setTopUpOpen(false)}>
-        <Pressable style={styles.v404ModalBackdrop} onPress={()=>setTopUpOpen(false)}>
-          <Pressable style={styles.v404TopUpSheet} onPress={(event)=>event.stopPropagation()}>
-            <View style={styles.v404SheetHandle}/><Text style={styles.v404TopUpTitle}>Add money</Text>
-            <Text style={styles.v404TopUpBody}>Choose an amount to add with {paymentMethodTitle(data.selectedPayment,data.country)}.</Text>
-            <View style={styles.v404TopUpGrid}>{topUpAmounts.map((amount)=><Pressable key={amount} onPress={()=>applyTopUp(amount)} style={styles.v404TopUpOption}><Text style={styles.v404TopUpOptionText}>{formatMoney(data.country,amount)}</Text></Pressable>)}</View>
-            <Pressable onPress={()=>setTopUpOpen(false)} style={styles.v404TopUpCancel}><Text style={styles.v404TopUpCancelText}>Cancel</Text></Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </ScreenShell>
   );
 }
 
 export function AccountScreen({ data, actions }: { data: AppData; actions: AppActions }) {
-  if(data.guest){
-    return <ScreenShell><Header title="Account" right={<Pressable onPress={()=>Alert.alert('Settings','Sign in to save and manage notification, privacy, language and security preferences.')} hitSlop={10}><Ionicons name="settings-outline" size={27} color={COLORS.black}/></Pressable>}/><View style={styles.guestAccount}><View style={styles.guestAvatar}><Ionicons name="person-outline" size={65} color={COLORS.muted}/></View><Text style={styles.guestAccountTitle}>You’re browsing as a guest</Text><Text style={styles.guestAccountText}>Sign in to save trips, addresses, payment methods, receipts and Kareebu+ rewards.</Text><PrimaryButton label="Sign in or create account" onPress={()=>{actions.setAuthReturn('account');actions.go('phone');}}/></View><BottomNav active="account" go={actions.go}/></ScreenShell>;
-  }
   return (
     <ScreenShell>
-      <Header title="Account" right={<Pressable onPress={()=>actions.go('settings')}><Ionicons name="settings-outline" size={28} color={COLORS.black}/></Pressable>} />
+      <Header
+        title="Account"
+        right={
+          <Pressable onPress={() => actions.go('settings')}>
+            <Ionicons name="settings-outline" size={28} color={COLORS.black} />
+          </Pressable>
+        }
+      />
+
       <KareebuContextBar label="Your Kareebu+ profile, rewards and preferences" />
-      <ScrollView style={styles.flex} contentContainerStyle={styles.accountScroll} showsVerticalScrollIndicator={false}>
-        <Pressable onPress={()=>actions.go('editProfile')} style={styles.accountProfile}><Image source={assets.avatars.account} style={styles.accountAvatar}/><View style={styles.flex}><Text style={styles.accountName}>{data.fullName || 'John Ssekandi'}</Text><Text style={styles.accountPhone}>{dialCodeFor(data.country)} {data.phone || '772 123456'}</Text><Text style={styles.viewProfile}>Manage profile and personal details</Text></View><Feather name="chevron-right" size={22} color={COLORS.muted}/></Pressable>
+
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.accountScroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <Pressable
+          onPress={() => actions.go('editProfile')}
+          style={styles.accountProfile}
+        >
+          <Image source={assets.avatars.account} style={styles.accountAvatar} />
+          <View style={styles.flex}>
+            <Text style={styles.accountName}>{data.fullName || 'John Ssekandi'}</Text>
+            <Text style={styles.accountPhone}>{dialCodeFor(data.country)} {data.phone || '772 123456'}</Text>
+            <Text style={styles.viewProfile}>Manage profile and personal details</Text>
+          </View>
+          <Feather name="chevron-right" size={22} color={COLORS.muted} />
+        </Pressable>
+
         <View style={styles.uxQuickGrid}>
           {[
-            ['wallet-outline','Wallet','wallet'],['gift-outline','Rewards','rewards'],['receipt-outline','Orders','orders'],['help-circle-outline','Support','support']
-          ].map(([icon,label,target])=><Pressable key={label} onPress={()=>actions.go(target as Screen)} style={({pressed})=>[styles.uxQuickCard,pressed&&styles.v26CardPressed]}><View style={styles.uxQuickIcon}><Ionicons name={icon as any} size={21} color={COLORS.black}/></View><Text style={styles.uxQuickLabel}>{label}</Text></Pressable>)}
+            ['wallet-outline', 'Wallet', 'wallet'],
+            ['gift-outline', 'Rewards', 'rewards'],
+            ['receipt-outline', 'Orders', 'orders'],
+            ['help-circle-outline', 'Help & support', 'support'],
+          ].map(([icon, label, target]) => (
+            <Pressable
+              key={label}
+              onPress={() => actions.go(target as Screen)}
+              style={({ pressed }) => [styles.uxQuickCard, pressed && styles.v26CardPressed]}
+            >
+              <BrandIcon icon={icon as any} size={32} tile />
+              <Text style={styles.uxQuickLabel}>{label}</Text>
+            </Pressable>
+          ))}
         </View>
-        <Pressable onPress={()=>actions.go('membership')} style={styles.blackMembership}><Image source={assets.mark} style={styles.membershipMark}/><View style={styles.flex}><Text style={styles.membershipText}>Kareebu Black</Text><Text style={styles.uxMembershipSub}>Priority rides, rewards and member perks</Text></View><Text style={styles.membershipStatus}>Member</Text><Feather name="chevron-right" size={25} color={COLORS.white}/></Pressable>
+
+        <Pressable onPress={() => actions.go('membership')} style={styles.blackMembership}>
+          <Image source={assets.mark} style={styles.membershipMark} />
+          <View style={styles.flex}>
+            <Text style={styles.membershipText}>Kareebu+</Text>
+            <Text style={styles.uxMembershipSub}>Priority rides, rewards and member perks</Text>
+          </View>
+          <Text style={styles.membershipStatus}>Member</Text>
+          <Feather name="chevron-right" size={25} color={COLORS.white} />
+        </Pressable>
+
         <Text style={styles.uxGroupLabel}>Activity</Text>
-        <RoundedCard style={styles.accountMenu}><MenuRow icon="time-outline" label="Your activity" onPress={()=>actions.go('activity')}/><MenuRow icon="heart-outline" label="Favourites" onPress={()=>actions.go('favourites')}/><MenuRow icon="notifications-outline" label="Notifications" onPress={()=>actions.go('notifications')}/><MenuRow icon="chatbubbles-outline" label="Messages" onPress={()=>actions.go('messages')}/></RoundedCard>
+        <RoundedCard style={styles.accountMenu}>
+          <MenuRow icon="time-outline" label="Your activity" onPress={() => actions.go('activity')} />
+          <MenuRow icon="heart-outline" label="Favourites" onPress={() => actions.go('favourites')} />
+          <MenuRow icon="notifications-outline" label="Notifications" onPress={() => actions.go('notifications')} />
+          <MenuRow icon="chatbubbles-outline" label="Messages" onPress={() => actions.go('messages')} />
+        </RoundedCard>
+
         <Text style={styles.uxGroupLabel}>Payments & rewards</Text>
-        <RoundedCard style={styles.accountMenu}><MenuRow icon="card-outline" label="Payment methods" onPress={()=>actions.go('paymentMethods')}/><MenuRow icon="pricetag-outline" label="Coupons" onPress={()=>actions.go('coupons')}/><MenuRow icon="people-outline" label="Refer & earn" onPress={()=>actions.go('referral')}/><MenuRow icon="qr-code-outline" label="Kareebu QR" onPress={()=>actions.go('qr')}/></RoundedCard>
+        <RoundedCard style={styles.accountMenu}>
+          <MenuRow icon="card-outline" label="Payment methods" onPress={() => actions.go('paymentMethods')} />
+          <MenuRow icon="pricetag-outline" label="Coupons" onPress={() => actions.go('coupons')} />
+          <MenuRow icon="people-outline" label="Refer & earn" onPress={() => actions.go('referral')} />
+          <MenuRow icon="qr-code-outline" label="Kareebu QR" onPress={() => actions.go('qr')} />
+        </RoundedCard>
+
         <Text style={styles.uxGroupLabel}>Preferences</Text>
-        <RoundedCard style={styles.accountMenu}><MenuRow icon="location-outline" label="Addresses" onPress={()=>actions.go('addresses')}/><MenuRow icon="globe-outline" label="Country & city" detail={`${data.city}, ${data.country}`} onPress={()=>{actions.setLocationReturn('account');actions.go('country');}}/><MenuRow icon="business-outline" label="Earn with Kareebu" detail="Store, Captain or courier" onPress={()=>actions.go('partnerRegistration')}/><MenuRow icon="settings-outline" label="Settings" onPress={()=>actions.go('settings')}/></RoundedCard>
+        <RoundedCard style={styles.accountMenu}>
+          <MenuRow icon="location-outline" label="Addresses" onPress={() => actions.go('addresses')} />
+          <MenuRow
+            icon="globe-outline"
+            label="Country & city"
+            detail={`${data.city}, ${data.country}`}
+            onPress={() => {
+              actions.setLocationReturn('account');
+              actions.go('country');
+            }}
+          />
+          <MenuRow icon="business-outline" label="Earn with Kareebu" detail="Store, Captain or courier" onPress={() => actions.go('partnerRegistration')} />
+          <MenuRow icon="settings-outline" label="Settings" onPress={() => actions.go('settings')} />
+        </RoundedCard>
       </ScrollView>
-      <BottomNav active="account" go={actions.go}/>
+
+      <BottomNav active="account" go={actions.go} />
     </ScreenShell>
   );
 }
@@ -3364,7 +3591,7 @@ export function ActivityScreen({ data, actions }: { data: AppData; actions: AppA
     <ScrollView style={styles.flex} contentContainerStyle={styles.uxActivityScroll} showsVerticalScrollIndicator={false}>
       <View style={styles.uxActivityHero}><Text style={styles.uxActivityTitle}>Everything you’ve done with Kareebu+</Text><Text style={styles.uxActivityBody}>Orders, rides, deliveries and bookings in one place.</Text></View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.uxFilterRail}>{(['All','Orders','Rides','Deliveries','Services'] as const).map((item)=><Pressable key={item} onPress={()=>setFilter(item)} style={[styles.uxFilterChip,filter===item&&styles.uxFilterChipActive]}><Text style={[styles.uxFilterText,filter===item&&styles.uxFilterTextActive]}>{item}</Text></Pressable>)}</ScrollView>
-      <View style={styles.uxActivityList}>{visible.map((item)=><Pressable key={item.id} onPress={()=>actions.go(item.screen)} style={({pressed})=>[styles.uxActivityCard,pressed&&styles.v26CardPressed]}><View style={styles.uxActivityIcon}><Ionicons name={item.icon} size={22} color={COLORS.black}/></View><View style={styles.flex}><View style={styles.uxActivityTop}><Text numberOfLines={1} style={styles.uxActivityCardTitle}>{item.title}</Text><Text style={styles.uxActivityAmount}>{item.amount}</Text></View><Text numberOfLines={1} style={styles.uxActivityMeta}>{item.meta}</Text><View style={styles.uxStatusRow}><View style={styles.uxStatusDot}/><Text style={styles.uxStatusText}>{item.status}</Text></View></View><Feather name="chevron-right" size={20} color={COLORS.muted}/></Pressable>)}</View>
+      <View style={styles.uxActivityList}>{visible.map((item)=><Pressable key={item.id} onPress={()=>actions.go(item.screen)} style={({pressed})=>[styles.uxActivityCard,pressed&&styles.v26CardPressed]}><BrandIcon icon={item.icon} size={34} tile/><View style={styles.flex}><View style={styles.uxActivityTop}><Text numberOfLines={1} style={styles.uxActivityCardTitle}>{item.title}</Text><Text style={styles.uxActivityAmount}>{item.amount}</Text></View><Text numberOfLines={1} style={styles.uxActivityMeta}>{item.meta}</Text><View style={styles.uxStatusRow}><View style={styles.uxStatusDot}/><Text style={styles.uxStatusText}>{item.status}</Text></View></View><Feather name="chevron-right" size={20} color={COLORS.muted}/></Pressable>)}</View>
       <Pressable onPress={()=>actions.go('orders')} style={styles.uxSeeAllButton}><Text style={styles.uxSeeAllText}>Open orders & booking tools</Text><Feather name="arrow-right" size={18} color={COLORS.black}/></Pressable>
     </ScrollView>
     <BottomNav active="activity" go={actions.go}/>
@@ -3407,6 +3634,26 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
   const rideParityActions = { go:actions.go, selectBid:actions.setSelectedRideBidId };
   const frontendData = { country:data.country, city:data.city, fullName:data.fullName, email:data.email, walletBalance:data.walletBalance, rewardPoints:data.rewardPoints };
   const frontendActions = { go:actions.go };
+  const customerParityData: CustomerParityData = {
+    country: data.country,
+    city: data.city,
+    fullName: data.fullName,
+    email: data.email,
+    phone: data.phone,
+    walletBalance: data.walletBalance,
+    rewardPoints: data.rewardPoints,
+    selectedPayment: data.selectedPayment,
+    walletTransactions: data.walletTransactions,
+    supportTickets: data.supportTickets,
+  };
+  const customerParityActions: CustomerParityActions = {
+    go: actions.go,
+    setWalletBalance: actions.setWalletBalance,
+    setFullName: actions.setFullName,
+    setEmail: actions.setEmail,
+    recordWalletTransaction: actions.recordWalletTransaction,
+    createSupportTicket: actions.createSupportTicket,
+  };
   switch (screen) {
     case 'splash': return <SplashScreen go={actions.go}/>;
     case 'welcome': return <WelcomeScreen go={actions.go} setGuest={actions.setGuest}/>;
@@ -3444,6 +3691,7 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
     case 'tripComplete': return <TripCompleteScreen data={data} actions={actions}/>;
     case 'rateTrip': return <RateTripScreen data={data} actions={actions}/>;
     case 'food': return <FoodScreen data={data} actions={actions}/>;
+    case 'foodSearch': return <FoodScreen data={data} actions={actions} initialSurface="search"/>;
     case 'restaurant': return <RestaurantScreen data={data} actions={actions}/>;
     case 'foodItem': return <FoodItemScreen data={data} actions={actions}/>;
     case 'cart': return <CartScreen data={data} actions={actions}/>;
@@ -3532,20 +3780,51 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
     case 'offlinePayment': return <OfflinePaymentScreen data={frontendData} actions={frontendActions}/>;
     case 'paymentProcessing': return <PaymentProcessingScreen data={frontendData} actions={frontendActions}/>;
     case 'ridePayment': return <RidePaymentScreen data={frontendData} actions={frontendActions}/>;
+    case 'paySend': return <PaySendScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'payRequest': return <PayRequestScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'payTopUp': return <PayTopUpScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'payBills': return <PayBillsScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'payRecharge': return <PayRechargeScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'payGiftCards': return <PayGiftCardsScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'payRemittance': return <PayRemittanceScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'payTransactions': return <PayTransactionsScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'payManageAccounts': return <PayManageAccountsScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'payKyc': return <PayKycScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'supportInbox': return <SupportInboxScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'supportIssue': return <SupportIssueScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'plusSavings': return <PlusSavingsScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'plusManage': return <PlusManageScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'exploreHub': return <ExploreHubScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'exploreLocation': return <ExploreLocationScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'stories': return <StoriesScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'foodSchedule': return <FoodScheduleScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'rideBusiness': return <RideBusinessScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'rideSettings': return <RideSettingsScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'donations': return <DonationsScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'orderAnything': return <OrderAnythingScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'accountPrivacy': return <AccountPrivacyScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'shopHelp': return <ShopHelpScreen data={customerParityData} actions={customerParityActions}/>;
   }
 }
 
 const styles = StyleSheet.create({
   flex:{flex:1}, pressed:{opacity:.62}, rowDivider:{borderBottomWidth:1,borderBottomColor:COLORS.line}, star:{color:COLORS.yellow},
-  uxHeaderAction:{width:40,height:40,borderRadius:20,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center'},uxHomeSectionHeading:{flexDirection:'row',alignItems:'baseline',justifyContent:'space-between',marginBottom:-7},uxHomeSectionTitle:{...TYPE.sectionTitle,color:COLORS.black},uxHomeSectionHint:{...TYPE.caption,color:COLORS.muted},
+  payHubScroll:{paddingHorizontal:14,paddingTop:8,paddingBottom:24,gap:13},
+  payHubBalanceCard:{borderRadius:18,backgroundColor:COLORS.black,padding:15,gap:13},payHubBalanceTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},payHubLabel:{...TYPE.label,color:COLORS.yellow,letterSpacing:.9},payHubBalance:{...TYPE.display,fontWeight:'900',color:COLORS.white,marginTop:4},payHubMeta:{...TYPE.caption,color:'rgba(255,255,255,.62)',marginTop:3},payHubMark:{width:38,height:38},payHubAdd:{alignSelf:'flex-start',height:34,borderRadius:11,backgroundColor:COLORS.yellow,flexDirection:'row',alignItems:'center',gap:5,paddingHorizontal:10},payHubAddText:{...TYPE.label,color:COLORS.black},
+  payHubGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},payHubAction:{width:'23.2%',minHeight:78,borderRadius:14,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center',gap:6},payHubActionIcon:{width:38,height:38,borderRadius:12,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center'},payHubActionLabel:{...TYPE.caption,color:COLORS.black,fontWeight:'800',textAlign:'center'},payHubSectionHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:1},payHubSectionTitle:{...TYPE.sectionTitle,color:COLORS.black},payHubMenu:{shadowOpacity:0},payHubPromoRail:{gap:8,paddingRight:14},payHubPromo:{width:146,minHeight:108,borderRadius:15,padding:12,justifyContent:'flex-end'},payHubPromoTitle:{...TYPE.cardTitle,color:COLORS.black,marginTop:13},payHubPromoBody:{...TYPE.caption,color:COLORS.muted,marginTop:2},
+  guestHubAccount:{flex:1,paddingHorizontal:24,alignItems:'center',justifyContent:'center',gap:12},guestHubAvatar:{width:92,height:92,borderRadius:46,backgroundColor:COLORS.surfaceStrong,alignItems:'center',justifyContent:'center'},guestHubTitle:{...TYPE.screenTitle,color:COLORS.black,textAlign:'center'},guestHubBody:{...TYPE.body,color:COLORS.muted,textAlign:'center',marginBottom:5},
+  accountHubScroll:{paddingHorizontal:14,paddingTop:7,paddingBottom:24,gap:12},accountProfileRow:{minHeight:72,flexDirection:'row',alignItems:'center',gap:11},accountHubAvatar:{width:58,height:58,borderRadius:29},accountHubName:{...TYPE.sectionTitle,color:COLORS.black},accountHubMeta:{...TYPE.caption,color:COLORS.muted,marginTop:3},accountHubShortcuts:{flexDirection:'row',gap:7},accountHubShortcut:{flex:1,minHeight:68,borderRadius:14,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center',gap:5},accountHubShortcutIcon:{width:34,height:34,borderRadius:11,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center'},accountHubShortcutText:{...TYPE.caption,color:COLORS.black,fontWeight:'800'},
+  plusPromoCard:{minHeight:70,borderRadius:16,backgroundColor:COLORS.black,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12},plusPromoBadge:{width:36,height:36,borderRadius:12,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},plusPromoBadgeText:{fontFamily:FONT.bold,fontSize:13,fontWeight:'900',color:COLORS.black},plusPromoTitle:{...TYPE.cardTitle,color:COLORS.white},plusPromoBody:{...TYPE.caption,color:'rgba(255,255,255,.65)',marginTop:2},plusPromoLink:{...TYPE.caption,color:COLORS.yellow,fontWeight:'900'},accountGroupLabel:{...TYPE.label,color:COLORS.muted,textTransform:'uppercase',letterSpacing:.9,marginTop:2},accountMenuCompactCard:{shadowOpacity:0},
+  homeStoriesWrap:{marginHorizontal:-14},homeStoriesRail:{paddingHorizontal:14,gap:12,paddingVertical:1},homeStoryItem:{width:54,alignItems:'center',gap:4},homeStoryRing:{width:48,height:48,borderRadius:24,borderWidth:1.5,alignItems:'center',justifyContent:'center',backgroundColor:COLORS.white},homeStoryBubble:{width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center'},homeStoryLabel:{...TYPE.caption,color:COLORS.black,fontWeight:'700',maxWidth:56,textAlign:'center'},
+  uxHeaderAction:{width:40,height:40,borderRadius:20,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center'},uxHomeSectionHeading:{flexDirection:'row',alignItems:'baseline',justifyContent:'space-between',marginBottom:-4},uxHomeSectionTitle:{...TYPE.sectionTitle,color:COLORS.black},uxHomeSectionHint:{...TYPE.caption,color:COLORS.muted},
   uxQuickGrid:{flexDirection:'row',gap:9},uxQuickCard:{flex:1,minHeight:82,borderRadius:18,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center',gap:7,...SHADOW},uxQuickIcon:{width:36,height:36,borderRadius:12,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},uxQuickLabel:{...TYPE.label,color:COLORS.black,fontWeight:'900'},uxMembershipSub:{...TYPE.caption,color:'rgba(255,255,255,.7)',marginTop:2},uxGroupLabel:{...TYPE.label,color:COLORS.muted,textTransform:'uppercase',letterSpacing:.8,marginTop:5,marginBottom:-4},
-  uxActivityScroll:{paddingHorizontal:18,paddingTop:10,paddingBottom:32,gap:16},uxActivityHero:{borderRadius:24,backgroundColor:COLORS.black,padding:20},uxActivityTitle:{...TYPE.screenTitle,color:COLORS.white,maxWidth:300},uxActivityBody:{...TYPE.body,color:'rgba(255,255,255,.72)',marginTop:7,maxWidth:310},uxFilterRail:{gap:8,paddingRight:12},uxFilterChip:{height:38,borderRadius:19,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,paddingHorizontal:14,alignItems:'center',justifyContent:'center'},uxFilterChipActive:{backgroundColor:COLORS.black,borderColor:COLORS.black},uxFilterText:{...TYPE.small,color:COLORS.black,fontWeight:'700'},uxFilterTextActive:{color:COLORS.white},uxActivityList:{gap:10},uxActivityCard:{minHeight:96,borderRadius:20,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:13,flexDirection:'row',alignItems:'center',gap:11,...SHADOW},uxActivityIcon:{width:46,height:46,borderRadius:15,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center'},uxActivityTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},uxActivityCardTitle:{...TYPE.cardTitle,color:COLORS.black,flex:1},uxActivityAmount:{...TYPE.cardTitle,color:COLORS.black},uxActivityMeta:{...TYPE.small,color:COLORS.muted,marginTop:3},uxStatusRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:7},uxStatusDot:{width:7,height:7,borderRadius:4,backgroundColor:COLORS.green},uxStatusText:{...TYPE.caption,color:COLORS.muted,textTransform:'capitalize'},uxSeeAllButton:{minHeight:54,borderRadius:17,backgroundColor:COLORS.yellow,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16},uxSeeAllText:{...TYPE.action,color:COLORS.black},
-  v41BrowseBlock:{gap:10},v41BrowseHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},v41BrowseTitle:{...TYPE.sectionTitle,color:COLORS.black},v41BrowseAction:{...TYPE.action,color:COLORS.red},v41BrowseRail:{gap:9,paddingRight:12},v41BrowsePill:{minWidth:108,minHeight:62,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:COLORS.white,paddingHorizontal:11,flexDirection:'row',alignItems:'center',gap:8,...SHADOW},v41BrowseIcon:{width:34,height:34,borderRadius:11,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},v41BrowseLabel:{...TYPE.small,fontFamily:FONT.bold,fontWeight:'900',color:COLORS.black},
-  globalSearchHeader:{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:18,paddingTop:9,paddingBottom:10,backgroundColor:COLORS.white,borderBottomWidth:1,borderBottomColor:COLORS.line},
+  uxActivityScroll:{paddingHorizontal:14,paddingTop:7,paddingBottom:24,gap:11},uxActivityHero:{borderRadius:16,backgroundColor:COLORS.black,padding:14},uxActivityTitle:{...TYPE.screenTitle,color:COLORS.white,maxWidth:300},uxActivityBody:{...TYPE.body,color:'rgba(255,255,255,.72)',marginTop:7,maxWidth:310},uxFilterRail:{gap:8,paddingRight:12},uxFilterChip:{height:34,borderRadius:17,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,paddingHorizontal:14,alignItems:'center',justifyContent:'center'},uxFilterChipActive:{backgroundColor:COLORS.yellow,borderColor:COLORS.yellow},uxFilterText:{...TYPE.small,color:COLORS.black,fontWeight:'700'},uxFilterTextActive:{color:COLORS.black,fontWeight:'900'},uxActivityList:{gap:10},uxActivityCard:{minHeight:78,borderRadius:14,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:13,flexDirection:'row',alignItems:'center',gap:11,...SHADOW},uxActivityIcon:{width:40,height:40,borderRadius:12,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center'},uxActivityTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},uxActivityCardTitle:{...TYPE.cardTitle,color:COLORS.black,flex:1},uxActivityAmount:{...TYPE.cardTitle,color:COLORS.black},uxActivityMeta:{...TYPE.small,color:COLORS.muted,marginTop:3},uxStatusRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:7},uxStatusDot:{width:7,height:7,borderRadius:4,backgroundColor:COLORS.green},uxStatusText:{...TYPE.caption,color:COLORS.muted,textTransform:'capitalize'},uxSeeAllButton:{minHeight:46,borderRadius:14,backgroundColor:COLORS.yellow,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16},uxSeeAllText:{...TYPE.action,color:COLORS.black},
+  v41BrowseBlock:{gap:7},v41BrowseHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},v41BrowseTitle:{...TYPE.sectionTitle,color:COLORS.black},v41BrowseAction:{...TYPE.action,color:COLORS.red},v41BrowseRail:{gap:9,paddingRight:12},v41BrowsePill:{minWidth:108,minHeight:62,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:COLORS.white,paddingHorizontal:11,flexDirection:'row',alignItems:'center',gap:8,...SHADOW},v41BrowseIcon:{width:34,height:34,borderRadius:11,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},v41BrowseLabel:{...TYPE.small,fontFamily:FONT.bold,fontWeight:'900',color:COLORS.black},
+  globalSearchHeader:{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:14,paddingTop:9,paddingBottom:10,backgroundColor:COLORS.white,borderBottomWidth:1,borderBottomColor:COLORS.line},
   globalSearchBack:{width:42,height:42,borderRadius:21,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center',backgroundColor:COLORS.white},
   globalSearchInputWrap:{flex:1,height:50,borderRadius:16,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:14},
   globalSearchInput:{flex:1,...TYPE.body,color:COLORS.black,paddingVertical:0}, globalSearchClear:{width:30,height:30,borderRadius:15,backgroundColor:COLORS.line,alignItems:'center',justifyContent:'center'},
-  globalSearchScroll:{paddingHorizontal:20,paddingTop:18,paddingBottom:34,gap:22}, globalSearchTitle:{...TYPE.screenTitle,color:COLORS.black}, globalSearchIntro:{...TYPE.body,color:COLORS.muted,marginTop:7,lineHeight:21},
+  globalSearchScroll:{paddingHorizontal:14,paddingTop:18,paddingBottom:34,gap:12}, globalSearchTitle:{...TYPE.screenTitle,color:COLORS.black}, globalSearchIntro:{...TYPE.body,color:COLORS.muted,marginTop:7,lineHeight:21},
   globalSearchSectionTitle:{...TYPE.sectionTitle,color:COLORS.black,marginBottom:10}, globalSearchChips:{flexDirection:'row',flexWrap:'wrap',gap:9}, globalSearchChip:{height:38,borderRadius:19,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:7,paddingHorizontal:13}, globalSearchChipText:{...TYPE.small,color:COLORS.black,fontWeight:'700'},
   globalSearchBrowseGrid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:10}, globalSearchBrowseCard:{width:'48.6%',minHeight:112,borderRadius:18,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:13}, globalSearchBrowseIcon:{width:38,height:38,borderRadius:12,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center',marginBottom:9}, globalSearchBrowseTitle:{...TYPE.cardTitle,color:COLORS.black}, globalSearchBrowseSub:{...TYPE.small,color:COLORS.muted,marginTop:4,lineHeight:17},
   globalSearchGroup:{gap:0}, globalSearchResultList:{borderWidth:1,borderColor:COLORS.line,borderRadius:18,overflow:'hidden',backgroundColor:COLORS.white}, globalSearchResult:{minHeight:66,flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:12,borderBottomWidth:1,borderBottomColor:COLORS.line}, globalSearchResultIcon:{width:40,height:40,borderRadius:13,alignItems:'center',justifyContent:'center'}, globalSearchResultTitle:{...TYPE.cardTitle,color:COLORS.black}, globalSearchResultSubtitle:{...TYPE.small,color:COLORS.muted,marginTop:3},
@@ -3553,21 +3832,21 @@ const styles = StyleSheet.create({
   onboardingBody:{flex:1}, onboardingFooter:{paddingHorizontal:24,paddingBottom:18,paddingTop:10,backgroundColor:COLORS.white}, onboardingPadding:{paddingHorizontal:24},
   onboardingTitle:{...TYPE.screenTitle,color:COLORS.black,marginTop:8}, onboardingSubtitle:{...TYPE.body,color:COLORS.muted,marginTop:10},
   splash:{flex:1,backgroundColor:'#050506',alignItems:'center',justifyContent:'center',overflow:'hidden'}, splashWordmark:{width:'84%',height:245,marginTop:-120}, splashTagline:{alignItems:'center',marginTop:34,zIndex:2}, splashTaglineWhite:{fontFamily:FONT.bold,fontSize:22,fontWeight:'800',color:COLORS.white}, splashTaglineYellow:{fontFamily:FONT.bold,fontSize:22,fontWeight:'800',color:COLORS.yellow,marginTop:4}, splashRibbons:{position:'absolute',left:-100,right:-100,bottom:-75,width:'140%',height:500}, splashHint:{position:'absolute',bottom:27,color:'rgba(255,255,255,.55)',fontFamily:FONT.regular,fontSize:12},
-  welcomeScreen:{flex:1,paddingHorizontal:22,paddingTop:8,paddingBottom:10}, welcomeTop:{flexShrink:0,marginTop:2}, welcomeKicker:{fontFamily:FONT.bold,fontSize:20,fontWeight:'800',color:COLORS.black}, welcomeTitle:{fontFamily:FONT.bold,fontSize:28,lineHeight:34,fontWeight:'900',letterSpacing:-1.25,color:COLORS.black,marginTop:0}, welcomeRed:{fontFamily:FONT.bold,fontSize:22,fontWeight:'900',color:COLORS.red,marginTop:9}, welcomeLine:{fontFamily:FONT.bold,fontSize:22,fontWeight:'900',color:COLORS.black,marginTop:1}, welcomeHeroFrame:{flex:1,minHeight:190,alignItems:'center',justifyContent:'center',overflow:'hidden',marginTop:2}, welcomeHero:{width:'100%',height:'100%'}, welcomeServices:{height:84,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:COLORS.line,borderRadius:19,paddingHorizontal:7,backgroundColor:COLORS.white,...SHADOW}, welcomeServiceItem:{alignItems:'center',justifyContent:'center',width:'24%',gap:3}, welcomeServiceIcon:{width:42,height:42}, welcomeServiceLabel:{fontFamily:FONT.medium,fontSize:13,fontWeight:'700',color:COLORS.black}, welcomeActions:{paddingTop:13,alignItems:'stretch',gap:1}, guestNote:{fontFamily:FONT.regular,fontSize:12,lineHeight:18,color:COLORS.muted,textAlign:'center',paddingHorizontal:24},
+  welcomeScreen:{flex:1,paddingHorizontal:14,paddingTop:8,paddingBottom:10}, welcomeTop:{flexShrink:0,marginTop:2}, welcomeKicker:{fontFamily:FONT.bold,fontSize:20,fontWeight:'800',color:COLORS.black}, welcomeTitle:{fontFamily:FONT.bold,fontSize:28,lineHeight:34,fontWeight:'900',letterSpacing:-1.25,color:COLORS.black,marginTop:0}, welcomeRed:{fontFamily:FONT.bold,fontSize:22,fontWeight:'900',color:COLORS.red,marginTop:9}, welcomeLine:{fontFamily:FONT.bold,fontSize:22,fontWeight:'900',color:COLORS.black,marginTop:1}, welcomeHeroFrame:{flex:1,minHeight:190,alignItems:'center',justifyContent:'center',overflow:'hidden',marginTop:2}, welcomeHero:{width:'100%',height:'100%'}, welcomeServices:{height:84,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:COLORS.line,borderRadius:19,paddingHorizontal:7,backgroundColor:COLORS.white,...SHADOW}, welcomeServiceItem:{alignItems:'center',justifyContent:'center',width:'24%',gap:3}, welcomeServiceIcon:{width:42,height:42}, welcomeServiceLabel:{fontFamily:FONT.medium,fontSize:13,fontWeight:'700',color:COLORS.black}, welcomeActions:{paddingTop:13,alignItems:'stretch',gap:1}, guestNote:{fontFamily:FONT.regular,fontSize:12,lineHeight:18,color:COLORS.muted,textAlign:'center',paddingHorizontal:24},
   countryCard:{height:78,flexDirection:'row',alignItems:'center',paddingHorizontal:18,gap:13,marginTop:28},flagImage:{width:44,height:44,borderRadius:22},countryName:{flex:1,...TYPE.sectionTitle},groupLabel:{...TYPE.sectionTitle,marginTop:28,marginBottom:13},cityCard:{paddingHorizontal:15},cityRow:{height:68,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:10,borderRadius:16},cityRowSelected:{borderWidth:1.5,borderColor:COLORS.red,backgroundColor:'#FFF7F7',marginVertical:5},cityName:{...TYPE.bodyStrong},radio:{width:24,height:24,borderRadius:12,borderWidth:2,borderColor:COLORS.lineDark,alignItems:'center',justifyContent:'center'},radioSelected:{backgroundColor:COLORS.red,borderColor:COLORS.red},
   phoneContent:{flex:1},phoneFields:{marginTop:70,gap:18},countryCodeCard:{height:64,flexDirection:'row',alignItems:'center',paddingHorizontal:18,gap:14},flagImageSmall:{width:40,height:40,borderRadius:20},countryFlagEmoji:{fontSize:29},countryCode:{flex:1,...TYPE.sectionTitle},bottomTrust:{marginTop:'auto',paddingBottom:20},phoneSummary:{...TYPE.sectionTitle,marginTop:5},otpContent:{flex:1},otpRow:{flexDirection:'row',justifyContent:'space-between',marginTop:105},otpBox:{width:48,height:60,borderWidth:1.2,borderColor:COLORS.line,borderRadius:13,fontFamily:FONT.bold,fontSize:25,fontWeight:'800',color:COLORS.black,backgroundColor:COLORS.white},resendRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9,marginTop:70},resendText:{...TYPE.bodyStrong,color:COLORS.muted},resendTime:{color:COLORS.red,fontWeight:'800'},avatarPlaceholder:{alignSelf:'center',width:188,height:188,borderRadius:94,backgroundColor:'#F0F1F3',alignItems:'center',justifyContent:'center',marginTop:58},avatarCamera:{position:'absolute',right:8,bottom:14,width:46,height:46,borderRadius:23,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center',borderWidth:4,borderColor:COLORS.white},profileFields:{gap:22,marginTop:55,paddingBottom:20},formHelp:{...TYPE.body,color:COLORS.muted},
   permissionsScroll:{paddingBottom:26},permissionsPadding:{paddingHorizontal:24,paddingTop:32,gap:18},permissionsTitle:{...TYPE.screenTitle},permissionsSubtitle:{...TYPE.body,color:COLORS.muted,marginBottom:10},permissionStack:{gap:0},permissionCard:{minHeight:132,borderWidth:1,borderColor:COLORS.line,borderRadius:22,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:17,padding:20,...SHADOW},permissionTitle:{...TYPE.cardTitle},permissionBody:{...TYPE.small,color:COLORS.muted,marginTop:5},permissionCheck:{width:32,height:32,borderRadius:16,borderWidth:2,borderColor:COLORS.lineDark,alignItems:'center',justifyContent:'center'},permissionCheckEnabled:{backgroundColor:COLORS.red,borderColor:COLORS.red},previewTitle:{...TYPE.sectionTitle,marginTop:10},previewSubtitle:{...TYPE.body,color:COLORS.muted,marginTop:-12},homePreview:{padding:15,gap:11},previewHeader:{flexDirection:'row',alignItems:'center',gap:7},previewLocation:{flex:1,fontFamily:FONT.bold,fontSize:13,fontWeight:'800'},previewBalance:{flexDirection:'row',alignItems:'center',gap:5,borderWidth:1,borderColor:COLORS.line,borderRadius:12,padding:7},miniMark:{width:20,height:20},previewBalanceText:{fontFamily:FONT.bold,fontSize:11,fontWeight:'800'},previewSearch:{height:42,borderWidth:1,borderColor:COLORS.line,borderRadius:13,flexDirection:'row',alignItems:'center',gap:9,paddingHorizontal:12},previewSearchText:{fontFamily:FONT.regular,color:COLORS.muted,fontSize:12},previewServices:{flexDirection:'row',gap:7},previewService:{flex:1,alignItems:'center',gap:4,borderWidth:1,borderColor:COLORS.line,borderRadius:12,paddingVertical:7},previewServiceIcon:{width:30,height:30},previewServiceText:{fontFamily:FONT.medium,fontSize:10,fontWeight:'700'},
-  homeHeader:{height:70,paddingHorizontal:20,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},homeLocation:{flexDirection:'row',alignItems:'center',gap:6,flexShrink:1},homeLocationText:{...TYPE.cardTitle,flexShrink:1},balancePill:{height:42,borderWidth:1,borderColor:COLORS.line,borderRadius:14,flexDirection:'row',alignItems:'center',gap:7,paddingHorizontal:10,backgroundColor:COLORS.white},balanceMark:{width:25,height:25},balanceText:{...TYPE.bodyStrong},homeScroll:{paddingHorizontal:20,paddingBottom:34,gap:24},searchBar:{height:58,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:16},searchPlaceholder:{...TYPE.body,color:COLORS.mutedLight,flexShrink:1},serviceGrid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:10},kareebuPromo:{height:146,borderRadius:18,overflow:'hidden',backgroundColor:'#0D0D0E',position:'relative',...SHADOW},kareebuPromoVisual:{...StyleSheet.absoluteFill,width:'100%',height:'100%'},kareebuPromoCopy:{position:'absolute',left:17,top:13,bottom:13,width:'52%',justifyContent:'space-between'},kareebuPromoBrand:{fontFamily:FONT.bold,fontSize:22,lineHeight:24,fontWeight:'900',color:COLORS.white},kareebuPromoTier:{fontFamily:FONT.bold,fontSize:11,fontWeight:'900',letterSpacing:4.5,color:COLORS.yellow,marginTop:0},kareebuPromoBody:{fontFamily:FONT.regular,fontSize:11.5,lineHeight:15,color:'#F1F1F1',marginVertical:4},kareebuPromoButton:{height:30,alignSelf:'flex-start',borderRadius:9,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center',paddingHorizontal:11},kareebuPromoButtonText:{fontFamily:FONT.bold,fontSize:10.5,fontWeight:'900',color:COLORS.black},kareebuPromoMiniCard:{position:'absolute',right:13,bottom:13,width:78,height:45,borderRadius:9,borderWidth:1,borderColor:'#765D16',backgroundColor:'#141414',alignItems:'center',justifyContent:'center'},kareebuPromoCardBrand:{fontFamily:FONT.bold,fontSize:11,fontWeight:'900',color:COLORS.white},kareebuPromoCardTier:{fontFamily:FONT.bold,fontSize:7,fontWeight:'900',letterSpacing:2.2,color:COLORS.yellow,marginTop:2},recentActivityMap:{width:'100%',aspectRatio:1,borderRadius:20,overflow:'hidden',backgroundColor:COLORS.surface,marginBottom:14,...SHADOW},recentActivityMapImage:{width:'100%',height:'100%'},recentActivityMapLocation:{position:'absolute',left:12,top:12,height:34,borderRadius:17,paddingHorizontal:11,backgroundColor:'rgba(255,255,255,0.96)',flexDirection:'row',alignItems:'center',gap:5,borderWidth:1,borderColor:COLORS.line},recentActivityMapLocationText:{fontFamily:FONT.bold,fontSize:12.5,fontWeight:'800',color:COLORS.black},recentActivityMapExpand:{position:'absolute',right:12,top:12,width:34,height:34,borderRadius:17,backgroundColor:'rgba(255,255,255,0.96)',alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:COLORS.line},activityCard:{shadowOpacity:0,borderRadius:18},activityRow:{minHeight:66,flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:13},activityIcon:{width:36,height:36},activityImage:{width:45,height:45,borderRadius:22},activityTitle:{...TYPE.cardTitle,paddingRight:5},activityMeta:{...TYPE.small,color:COLORS.muted,marginTop:3},activityAmount:{...TYPE.bodyStrong},horizontalList:{gap:11,paddingRight:8},homeFoodCard:{width:158,borderWidth:1,borderColor:COLORS.line,borderRadius:17,backgroundColor:COLORS.white,overflow:'hidden',...SHADOW},homeFoodImage:{width:'100%',height:94,backgroundColor:COLORS.surface},homeFoodTitle:{...TYPE.cardTitle},homeFoodMeta:{...TYPE.small,color:COLORS.muted,marginTop:3},homeShopRow:{flexDirection:'row',justifyContent:'space-between'},homeShopCard:{width:'31%',alignItems:'center',borderWidth:1,borderColor:COLORS.line,borderRadius:18,padding:12,gap:7},homeShopLogo:{width:70,height:70,borderRadius:15},homeShopLabel:{fontFamily:FONT.medium,fontSize:13,fontWeight:'700'},
-  whereScroll:{paddingHorizontal:20,paddingBottom:24,gap:14},routeCard:{zIndex:2,shadowOpacity:.04},routeLineRow:{minHeight:70,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:15},routeDivider:{height:1,backgroundColor:COLORS.line,marginLeft:44,marginRight:15},routeLabel:{...TYPE.caption,color:COLORS.muted},routeValue:{...TYPE.cardTitle,marginTop:2},smallOutlineButton:{borderWidth:1,borderColor:COLORS.line,borderRadius:12,paddingHorizontal:11,paddingVertical:8},smallOutlineText:{...TYPE.label,color:COLORS.black},plusButton:{width:46,height:46,borderWidth:1,borderColor:COLORS.line,borderRadius:14,alignItems:'center',justifyContent:'center'},whereMap:{width:'100%',aspectRatio:1.35,marginTop:-2},suggestedCard:{paddingHorizontal:14,paddingTop:14,shadowOpacity:0},suggestedTitle:{...TYPE.sectionTitle,marginBottom:2},placeRow:{minHeight:70,flexDirection:'row',alignItems:'center',gap:13,borderBottomWidth:1,borderBottomColor:COLORS.line},placeTitle:{...TYPE.cardTitle},placeSubtitle:{...TYPE.small,color:COLORS.muted,marginTop:2},
-  rideScroll:{paddingHorizontal:20,paddingBottom:28,gap:13},rideList:{gap:9},rideOption:{minHeight:86,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:14},rideOptionSelected:{borderColor:COLORS.red,borderWidth:1.8,backgroundColor:'#FFF4F1'},rideIcon:{width:58,height:58},rideName:{...TYPE.cardTitle},rideEta:{...TYPE.small,color:COLORS.muted,marginTop:2},rideFare:{...TYPE.cardTitle,color:COLORS.black},rideRadio:{width:25,height:25,borderRadius:13,borderWidth:2,borderColor:COLORS.mutedLight,alignItems:'center',justifyContent:'center'},rideRadioSelected:{backgroundColor:COLORS.red,borderColor:COLORS.red},scheduleCard:{shadowOpacity:0},scheduleRow:{height:66,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:14},scheduleTitle:{...TYPE.cardTitle},scheduleSubtitle:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:3},paymentSummary:{minHeight:66,flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:14,shadowOpacity:0},paymentTitle:{...TYPE.cardTitle},paymentSubtitle:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:2},estimatedLabel:{...TYPE.caption,color:COLORS.muted},estimatedFare:{fontFamily:FONT.bold,fontSize:23,lineHeight:28,fontWeight:'900',color:COLORS.black,marginTop:1},
-  confirmScroll:{paddingHorizontal:20,paddingBottom:28,gap:15},confirmRouteCard:{padding:18,shadowOpacity:0},confirmRouteRow:{flexDirection:'row',alignItems:'center',gap:12,minHeight:42},confirmRouteText:{fontFamily:FONT.bold,fontSize:16,fontWeight:'800'},confirmRouteConnector:{width:2,height:20,backgroundColor:COLORS.lineDark,marginLeft:8},confirmRouteMeta:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:10,marginLeft:30},paymentChoices:{paddingHorizontal:14,shadowOpacity:0},paymentChoice:{minHeight:70,flexDirection:'row',alignItems:'center',gap:13,borderBottomWidth:1,borderBottomColor:COLORS.line},paymentChoiceSelected:{},priceTitle:{...TYPE.cardTitle,marginTop:3},priceRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',minHeight:30},priceLabel:{fontFamily:FONT.regular,fontSize:15,color:COLORS.muted},priceValue:{fontFamily:FONT.medium,fontSize:15,color:COLORS.black},totalRow:{borderTopWidth:1,borderTopColor:COLORS.line,marginTop:5,paddingTop:9},totalLabel:{fontFamily:FONT.bold,fontSize:16,fontWeight:'900'},totalValue:{fontFamily:FONT.bold,fontSize:17,fontWeight:'900'},cancelPolicy:{fontFamily:FONT.regular,fontSize:12,color:COLORS.muted,textAlign:'center'},
-  etaText:{fontFamily:FONT.bold,fontSize:17,fontWeight:'900',color:COLORS.red,textAlign:'center',marginBottom:10},driverScroll:{paddingHorizontal:20,paddingBottom:25,gap:13},driverMap:{width:'100%',height:310,borderRadius:22},driverProfile:{minHeight:108,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:14,shadowOpacity:.04},driverAvatar:{width:70,height:70,borderRadius:35},driverName:{fontFamily:FONT.bold,fontSize:21,fontWeight:'900'},driverRating:{fontFamily:FONT.medium,fontSize:15,color:COLORS.muted,marginTop:2},driverMeta:{fontFamily:FONT.regular,fontSize:14,color:COLORS.muted,marginTop:3},circleAction:{width:49,height:49,borderRadius:25,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center'},driverActionGrid:{flexDirection:'row',justifyContent:'space-between'},driverAction:{width:'23%',height:72,borderWidth:1,borderColor:COLORS.line,borderRadius:17,alignItems:'center',justifyContent:'center',gap:6},driverActionLabel:{fontFamily:FONT.regular,fontSize:12,color:COLORS.black},captainProfileLink:{height:44,borderRadius:14,borderWidth:1,borderColor:COLORS.line,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6},captainProfileLinkText:{fontFamily:FONT.bold,fontSize:12,fontWeight:'800',color:COLORS.red},ridePriceHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},tripScroll:{paddingHorizontal:20,paddingBottom:24,gap:13},tripMap:{width:'100%',height:284,borderRadius:22},tripSummary:{padding:17,shadowOpacity:.04},tripLabel:{fontFamily:FONT.regular,fontSize:17,color:COLORS.muted},tripDestination:{...TYPE.screenTitle,marginTop:4},tripRule:{height:1,backgroundColor:COLORS.line,marginVertical:18},tripStats:{flexDirection:'row',justifyContent:'space-between'},tripStatLabel:{fontFamily:FONT.regular,fontSize:14,color:COLORS.muted},tripStatValue:{fontFamily:FONT.bold,fontSize:18,fontWeight:'900',marginTop:7},tripButtons:{flexDirection:'row',gap:10,marginVertical:22},tripSecondary:{flex:1,height:54,borderWidth:1,borderColor:COLORS.line,borderRadius:16,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8},tripSecondaryText:{fontFamily:FONT.medium,fontSize:14,fontWeight:'700'},
-  completeScroll:{paddingHorizontal:22,paddingBottom:24,alignItems:'stretch',gap:17},completeBadge:{width:112,height:112,borderRadius:56,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center',alignSelf:'center',marginTop:15},completeThankYou:{fontFamily:FONT.bold,fontSize:22,fontWeight:'900',textAlign:'center'},completeRouteCard:{padding:18,gap:12,shadowOpacity:0},completePlace:{flexDirection:'row',alignItems:'center',gap:12},completePlaceText:{fontFamily:FONT.medium,fontSize:16,fontWeight:'700'},completeMeta:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginLeft:29},receiptCard:{padding:18,gap:8,shadowOpacity:0},receiptTitle:{...TYPE.cardTitle,marginBottom:5},paidWith:{flexDirection:'row',alignItems:'center',gap:12,borderTopWidth:1,borderTopColor:COLORS.line,paddingTop:14,marginTop:5},rateScroll:{paddingHorizontal:20,paddingBottom:25,gap:20},rateQuestion:{fontFamily:FONT.bold,fontSize:20,fontWeight:'900',textAlign:'center'},starsRow:{flexDirection:'row',justifyContent:'center',gap:5},rateWord:{fontFamily:FONT.medium,fontSize:15,color:COLORS.muted,textAlign:'center',marginTop:-12},tipCard:{padding:18,shadowOpacity:0},tipTitle:{...TYPE.cardTitle},tipSubtitle:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:3},tipRow:{flexDirection:'row',gap:8,marginVertical:18},tipOption:{flex:1,minHeight:42,borderWidth:1,borderColor:COLORS.line,borderRadius:11,alignItems:'center',justifyContent:'center'},tipOptionSelected:{borderColor:COLORS.red,backgroundColor:'#FFF2F2'},tipOptionText:{fontFamily:FONT.medium,fontSize:12,fontWeight:'700'},tipOptionTextSelected:{color:COLORS.red},
-  commerceScroll:{paddingHorizontal:20,paddingBottom:28,gap:20},commerceHeader:{minHeight:60,flexDirection:'row',alignItems:'center'},commerceTitle:{...TYPE.screenTitle,flex:1},commerceLocation:{flexDirection:'row',alignItems:'center',gap:6},commerceLocationText:{...TYPE.bodyStrong},cartButton:{width:42,alignItems:'flex-end'},categoryPanel:{minHeight:116,borderWidth:1,borderColor:COLORS.line,borderRadius:22,flexDirection:'row',alignItems:'center',justifyContent:'space-around',paddingHorizontal:5},categoryItem:{alignItems:'center',gap:8},categoryCircle:{width:49,height:49,borderRadius:25,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center'},categoryLabel:{...TYPE.label},categoryEmoji:{fontSize:24},commercePromo:{width:'100%',height:157,borderRadius:22},restaurantRow:{flexDirection:'row',justifyContent:'space-between'},restaurantCard:{width:'31%'},restaurantImage:{width:'100%',aspectRatio:.76,borderRadius:17},restaurantName:{...TYPE.bodyStrong,marginTop:9},restaurantRating:{...TYPE.small,color:COLORS.muted,marginTop:5},restaurantMeta:{...TYPE.caption,color:COLORS.muted,marginTop:4},bottomNav:{minHeight:78,paddingBottom:8,borderTopWidth:1,borderTopColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',justifyContent:'space-around'},bottomNavItem:{flex:1,alignItems:'center',justifyContent:'center',gap:4},bottomNavLabel:{...TYPE.label,fontFamily:FONT.regular,fontWeight:'400',color:COLORS.muted},bottomNavLabelActive:{color:COLORS.red,fontFamily:FONT.bold,fontWeight:'800'},
-  restaurantDetailScroll:{paddingHorizontal:20,paddingBottom:105},restaurantHero:{width:'100%',height:250,borderRadius:24},restaurantDetailName:{...TYPE.screenTitle,marginTop:18},restaurantDetailMeta:{...TYPE.body,color:COLORS.muted,marginTop:7},restaurantDetailSub:{...TYPE.small,color:COLORS.muted,marginTop:5},badgeRow:{flexDirection:'row',gap:8,marginTop:13,marginBottom:25},badge:{borderWidth:1,borderColor:COLORS.line,borderRadius:16,paddingHorizontal:11,paddingVertical:7},badgeText:{...TYPE.label},menuItem:{minHeight:92,flexDirection:'row',alignItems:'center',gap:13,borderBottomWidth:1,borderBottomColor:COLORS.line},menuImage:{width:70,height:70,borderRadius:15},menuName:{...TYPE.cardTitle},menuPrice:{...TYPE.small,color:COLORS.muted,marginTop:5},addButton:{width:38,height:38,borderWidth:1,borderColor:COLORS.line,borderRadius:19,alignItems:'center',justifyContent:'center'},viewCartBar:{position:'absolute',left:20,right:20,bottom:12,height:70,borderRadius:18,backgroundColor:COLORS.black,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:18},viewCartTitle:{...TYPE.bodyStrong,color:COLORS.white},viewCartMeta:{...TYPE.small,color:'#D8D8D8',marginTop:3},cartScroll:{paddingHorizontal:20,paddingBottom:28,gap:18},cartRestaurant:{...TYPE.sectionTitle},cartItem:{minHeight:92,flexDirection:'row',alignItems:'center',gap:12},cartImage:{width:72,height:72,borderRadius:15},quantity:{height:38,borderWidth:1,borderColor:COLORS.line,borderRadius:13,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:9},quantityText:{fontFamily:FONT.bold,fontWeight:'800'},cartTotals:{gap:5},orderTrackingScroll:{paddingHorizontal:20,paddingBottom:24,gap:10},orderId:{...TYPE.cardTitle},orderEta:{...TYPE.cardTitle,color:COLORS.red},orderRestaurant:{...TYPE.small,color:COLORS.muted},orderMap:{width:'100%',height:310,borderRadius:22,marginVertical:10},referralCard:{minHeight:74,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:16,backgroundColor:COLORS.yellowSoft,shadowOpacity:0},referralTitle:{...TYPE.cardTitle},referralBody:{...TYPE.small,color:COLORS.muted,marginTop:3},deliverLabel:{...TYPE.small,color:COLORS.muted,marginTop:-10},deliverRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:-12},deliverAddress:{...TYPE.bodyStrong},storeRow:{flexDirection:'row',justifyContent:'space-between'},storeCard:{width:'23%',alignItems:'center'},storeLogo:{width:'100%',aspectRatio:1,borderWidth:1,borderColor:COLORS.line,borderRadius:18},storeName:{...TYPE.label,marginTop:9},storeRating:{...TYPE.caption,color:COLORS.muted,marginTop:5},
-  parcelScroll:{paddingHorizontal:20,paddingBottom:28,gap:16},segmented:{height:60,borderWidth:1,borderColor:COLORS.line,borderRadius:19,flexDirection:'row',padding:4},segment:{flex:1,borderRadius:15,alignItems:'center',justifyContent:'center'},segmentActive:{backgroundColor:COLORS.white,...SHADOW},segmentText:{fontFamily:FONT.medium,fontSize:16,color:COLORS.muted},segmentTextActive:{color:COLORS.black,fontWeight:'800'},parcelCard:{minHeight:112,flexDirection:'row',alignItems:'center',gap:15,paddingHorizontal:17,shadowOpacity:0},parcelIcon:{width:48,alignItems:'center'},parcelLabel:{fontFamily:FONT.regular,fontSize:14,color:COLORS.muted},parcelValue:{fontFamily:FONT.bold,fontSize:18,fontWeight:'800',marginTop:6},parcelDetail:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:4},parcelEstimate:{fontFamily:FONT.regular,fontSize:14,color:COLORS.muted,textAlign:'center'},
-  walletScroll:{paddingHorizontal:20,paddingBottom:25,gap:24},walletCard:{height:210,borderRadius:22,backgroundColor:'#151515',padding:22,overflow:'hidden'},walletCardLabel:{fontFamily:FONT.regular,fontSize:17,color:COLORS.white},walletBalance:{fontFamily:FONT.bold,fontSize:39,fontWeight:'900',color:COLORS.white,marginTop:10},walletCardSub:{fontFamily:FONT.regular,fontSize:17,color:COLORS.white,marginTop:5},topUpButton:{width:110,height:48,borderRadius:14,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center',marginTop:17},topUpText:{fontFamily:FONT.bold,fontSize:16,fontWeight:'900'},walletCardMark:{position:'absolute',right:18,bottom:16,width:50,height:50},walletActions:{flexDirection:'row',justifyContent:'space-between'},walletAction:{width:'24%',alignItems:'center',gap:8},walletActionLabel:{fontFamily:FONT.regular,fontSize:12,color:COLORS.muted,textAlign:'center'},walletSectionTitle:{...TYPE.sectionTitle},walletSectionHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},walletPayments:{paddingHorizontal:15,shadowOpacity:0},walletPayment:{minHeight:74,flexDirection:'row',alignItems:'center',gap:13,borderBottomWidth:1,borderBottomColor:COLORS.line},walletPaymentTitle:{...TYPE.cardTitle},walletPaymentSub:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:3},walletRadio:{width:27,height:27,borderRadius:14,borderWidth:2,borderColor:COLORS.mutedLight,alignItems:'center',justifyContent:'center'},walletRadioSelected:{backgroundColor:COLORS.yellow,borderColor:COLORS.yellow},businessCard:{minHeight:75,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:16,shadowOpacity:0},businessIcon:{width:42,height:42,borderRadius:11,backgroundColor:COLORS.green,alignItems:'center',justifyContent:'center'},businessText:{flex:1,fontFamily:FONT.bold,fontSize:16,fontWeight:'800'},
-  accountScroll:{paddingHorizontal:20,paddingBottom:25,gap:24},accountProfile:{flexDirection:'row',alignItems:'center',gap:18},accountAvatar:{width:112,height:112,borderRadius:56},accountName:{...TYPE.screenTitle},accountPhone:{...TYPE.body,color:COLORS.muted,marginTop:5},viewProfile:{...TYPE.action,color:COLORS.red,marginTop:8},blackMembership:{height:78,borderRadius:18,backgroundColor:'#171717',flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:16},membershipMark:{width:38,height:38},membershipText:{flex:1,...TYPE.cardTitle,color:COLORS.white},membershipStatus:{...TYPE.small,color:COLORS.white},accountMenu:{shadowOpacity:.04},guestAccount:{flex:1,paddingHorizontal:28,alignItems:'center',justifyContent:'center',gap:18},guestAvatar:{width:135,height:135,borderRadius:68,backgroundColor:COLORS.surfaceStrong,alignItems:'center',justifyContent:'center'},guestAccountTitle:{...TYPE.screenTitle,textAlign:'center'},guestAccountText:{...TYPE.body,color:COLORS.muted,textAlign:'center',marginBottom:10},genericScroll:{padding:20,gap:20},orderCard:{minHeight:110,flexDirection:'row',alignItems:'center',gap:14,paddingHorizontal:15,shadowOpacity:0},orderImage:{width:76,height:76,borderRadius:17},orderTitle:{...TYPE.cardTitle},orderMeta:{...TYPE.small,color:COLORS.muted,marginTop:5},orderPrice:{...TYPE.bodyStrong,marginTop:5},
+  homeHeader:{height:64,paddingHorizontal:14,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},homeLocation:{flexDirection:'row',alignItems:'center',gap:6,flexShrink:1},homeLocationText:{...TYPE.cardTitle,flexShrink:1},balancePill:{height:42,borderWidth:1,borderColor:COLORS.line,borderRadius:14,flexDirection:'row',alignItems:'center',gap:7,paddingHorizontal:10,backgroundColor:COLORS.white},balanceMark:{width:25,height:25},balanceText:{...TYPE.bodyStrong},homeScroll:{paddingHorizontal:14,paddingBottom:34,gap:12},searchBar:{height:58,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:16},searchPlaceholder:{...TYPE.body,color:COLORS.mutedLight,flexShrink:1},serviceGrid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:10},kareebuPromo:{height:146,borderRadius:18,overflow:'hidden',backgroundColor:'#0D0D0E',position:'relative',...SHADOW},kareebuPromoVisual:{...StyleSheet.absoluteFill,width:'100%',height:'100%'},kareebuPromoCopy:{position:'absolute',left:17,top:13,bottom:13,width:'52%',justifyContent:'space-between'},kareebuPromoBrand:{fontFamily:FONT.bold,fontSize:22,lineHeight:24,fontWeight:'900',color:COLORS.white},kareebuPromoTier:{fontFamily:FONT.bold,fontSize:11,fontWeight:'900',letterSpacing:4.5,color:COLORS.yellow,marginTop:0},kareebuPromoBody:{fontFamily:FONT.regular,fontSize:11.5,lineHeight:15,color:'#F1F1F1',marginVertical:4},kareebuPromoButton:{height:30,alignSelf:'flex-start',borderRadius:9,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center',paddingHorizontal:11},kareebuPromoButtonText:{fontFamily:FONT.bold,fontSize:10.5,fontWeight:'900',color:COLORS.black},kareebuPromoMiniCard:{position:'absolute',right:13,bottom:13,width:78,height:45,borderRadius:9,borderWidth:1,borderColor:'#765D16',backgroundColor:'#141414',alignItems:'center',justifyContent:'center'},kareebuPromoCardBrand:{fontFamily:FONT.bold,fontSize:11,fontWeight:'900',color:COLORS.white},kareebuPromoCardTier:{fontFamily:FONT.bold,fontSize:7,fontWeight:'900',letterSpacing:2.2,color:COLORS.yellow,marginTop:2},recentActivityMap:{width:'100%',aspectRatio:1,borderRadius:20,overflow:'hidden',backgroundColor:COLORS.surface,marginBottom:14,...SHADOW},recentActivityMapImage:{width:'100%',height:'100%'},recentActivityMapLocation:{position:'absolute',left:12,top:12,height:34,borderRadius:17,paddingHorizontal:11,backgroundColor:'rgba(255,255,255,0.96)',flexDirection:'row',alignItems:'center',gap:5,borderWidth:1,borderColor:COLORS.line},recentActivityMapLocationText:{fontFamily:FONT.bold,fontSize:12.5,fontWeight:'800',color:COLORS.black},recentActivityMapExpand:{position:'absolute',right:12,top:12,width:34,height:34,borderRadius:17,backgroundColor:'rgba(255,255,255,0.96)',alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:COLORS.line},activityCard:{shadowOpacity:0,borderRadius:18},activityRow:{minHeight:66,flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:13},activityIcon:{width:36,height:36},activityImage:{width:45,height:45,borderRadius:22},activityTitle:{...TYPE.cardTitle,paddingRight:5},activityMeta:{...TYPE.small,color:COLORS.muted,marginTop:3},activityAmount:{...TYPE.bodyStrong},horizontalList:{gap:11,paddingRight:8},homeFoodCard:{width:158,borderWidth:1,borderColor:COLORS.line,borderRadius:17,backgroundColor:COLORS.white,overflow:'hidden',...SHADOW},homeFoodImage:{width:'100%',height:94,backgroundColor:COLORS.surface},homeFoodTitle:{...TYPE.cardTitle},homeFoodMeta:{...TYPE.small,color:COLORS.muted,marginTop:3},homeShopRow:{flexDirection:'row',justifyContent:'space-between'},homeShopCard:{width:'31%',alignItems:'center',borderWidth:1,borderColor:COLORS.line,borderRadius:18,padding:12,gap:7},homeShopLogo:{width:70,height:70,borderRadius:15},homeShopLabel:{fontFamily:FONT.medium,fontSize:13,fontWeight:'700'},
+  whereScroll:{paddingHorizontal:14,paddingBottom:24,gap:14},routeCard:{zIndex:2,shadowOpacity:.04},routeLineRow:{minHeight:70,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:15},routeDivider:{height:1,backgroundColor:COLORS.line,marginLeft:44,marginRight:15},routeLabel:{...TYPE.caption,color:COLORS.muted},routeValue:{...TYPE.cardTitle,marginTop:2},smallOutlineButton:{borderWidth:1,borderColor:COLORS.line,borderRadius:12,paddingHorizontal:11,paddingVertical:8},smallOutlineText:{...TYPE.label,color:COLORS.black},plusButton:{width:46,height:46,borderWidth:1,borderColor:COLORS.line,borderRadius:14,alignItems:'center',justifyContent:'center'},whereMap:{width:'100%',aspectRatio:1.35,marginTop:-2},suggestedCard:{paddingHorizontal:14,paddingTop:14,shadowOpacity:0},suggestedTitle:{...TYPE.sectionTitle,marginBottom:2},placeRow:{minHeight:70,flexDirection:'row',alignItems:'center',gap:13,borderBottomWidth:1,borderBottomColor:COLORS.line},placeTitle:{...TYPE.cardTitle},placeSubtitle:{...TYPE.small,color:COLORS.muted,marginTop:2},
+  rideScroll:{paddingHorizontal:14,paddingBottom:28,gap:13},rideList:{gap:9},rideOption:{minHeight:86,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:14},rideOptionSelected:{borderColor:COLORS.red,borderWidth:1.8,backgroundColor:'#FFF4F1'},rideIcon:{width:58,height:58},rideName:{...TYPE.cardTitle},rideEta:{...TYPE.small,color:COLORS.muted,marginTop:2},rideFare:{...TYPE.cardTitle,color:COLORS.black},rideRadio:{width:25,height:25,borderRadius:13,borderWidth:2,borderColor:COLORS.mutedLight,alignItems:'center',justifyContent:'center'},rideRadioSelected:{backgroundColor:COLORS.red,borderColor:COLORS.red},scheduleCard:{shadowOpacity:0},scheduleRow:{height:66,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:14},scheduleTitle:{...TYPE.cardTitle},scheduleSubtitle:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:3},paymentSummary:{minHeight:66,flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:14,shadowOpacity:0},paymentTitle:{...TYPE.cardTitle},paymentSubtitle:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:2},estimatedLabel:{...TYPE.caption,color:COLORS.muted},estimatedFare:{fontFamily:FONT.bold,fontSize:23,lineHeight:28,fontWeight:'900',color:COLORS.black,marginTop:1},
+  confirmScroll:{paddingHorizontal:14,paddingBottom:28,gap:15},confirmRouteCard:{padding:18,shadowOpacity:0},confirmRouteRow:{flexDirection:'row',alignItems:'center',gap:12,minHeight:42},confirmRouteText:{fontFamily:FONT.bold,fontSize:16,fontWeight:'800'},confirmRouteConnector:{width:2,height:20,backgroundColor:COLORS.lineDark,marginLeft:8},confirmRouteMeta:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:10,marginLeft:30},paymentChoices:{paddingHorizontal:14,shadowOpacity:0},paymentChoice:{minHeight:70,flexDirection:'row',alignItems:'center',gap:13,borderBottomWidth:1,borderBottomColor:COLORS.line},paymentChoiceSelected:{},priceTitle:{...TYPE.cardTitle,marginTop:3},priceRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',minHeight:30},priceLabel:{fontFamily:FONT.regular,fontSize:15,color:COLORS.muted},priceValue:{fontFamily:FONT.medium,fontSize:15,color:COLORS.black},totalRow:{borderTopWidth:1,borderTopColor:COLORS.line,marginTop:5,paddingTop:9},totalLabel:{fontFamily:FONT.bold,fontSize:16,fontWeight:'900'},totalValue:{fontFamily:FONT.bold,fontSize:17,fontWeight:'900'},cancelPolicy:{fontFamily:FONT.regular,fontSize:12,color:COLORS.muted,textAlign:'center'},
+  etaText:{fontFamily:FONT.bold,fontSize:17,fontWeight:'900',color:COLORS.red,textAlign:'center',marginBottom:10},driverScroll:{paddingHorizontal:14,paddingBottom:25,gap:13},driverMap:{width:'100%',height:310,borderRadius:22},driverProfile:{minHeight:108,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:14,shadowOpacity:.04},driverAvatar:{width:70,height:70,borderRadius:35},driverName:{fontFamily:FONT.bold,fontSize:21,fontWeight:'900'},driverRating:{fontFamily:FONT.medium,fontSize:15,color:COLORS.muted,marginTop:2},driverMeta:{fontFamily:FONT.regular,fontSize:14,color:COLORS.muted,marginTop:3},circleAction:{width:49,height:49,borderRadius:25,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center'},driverActionGrid:{flexDirection:'row',justifyContent:'space-between'},driverAction:{width:'23%',height:72,borderWidth:1,borderColor:COLORS.line,borderRadius:17,alignItems:'center',justifyContent:'center',gap:6},driverActionLabel:{fontFamily:FONT.regular,fontSize:12,color:COLORS.black},captainProfileLink:{height:44,borderRadius:14,borderWidth:1,borderColor:COLORS.line,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6},captainProfileLinkText:{fontFamily:FONT.bold,fontSize:12,fontWeight:'800',color:COLORS.red},ridePriceHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},tripScroll:{paddingHorizontal:14,paddingBottom:24,gap:13},tripMap:{width:'100%',height:284,borderRadius:22},tripSummary:{padding:17,shadowOpacity:.04},tripLabel:{fontFamily:FONT.regular,fontSize:17,color:COLORS.muted},tripDestination:{...TYPE.screenTitle,marginTop:4},tripRule:{height:1,backgroundColor:COLORS.line,marginVertical:18},tripStats:{flexDirection:'row',justifyContent:'space-between'},tripStatLabel:{fontFamily:FONT.regular,fontSize:14,color:COLORS.muted},tripStatValue:{fontFamily:FONT.bold,fontSize:18,fontWeight:'900',marginTop:7},tripButtons:{flexDirection:'row',gap:10,marginVertical:22},tripSecondary:{flex:1,height:54,borderWidth:1,borderColor:COLORS.line,borderRadius:16,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8},tripSecondaryText:{fontFamily:FONT.medium,fontSize:14,fontWeight:'700'},
+  completeScroll:{paddingHorizontal:14,paddingBottom:24,alignItems:'stretch',gap:17},completeBadge:{width:112,height:112,borderRadius:56,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center',alignSelf:'center',marginTop:15},completeThankYou:{fontFamily:FONT.bold,fontSize:22,fontWeight:'900',textAlign:'center'},completeRouteCard:{padding:18,gap:12,shadowOpacity:0},completePlace:{flexDirection:'row',alignItems:'center',gap:12},completePlaceText:{fontFamily:FONT.medium,fontSize:16,fontWeight:'700'},completeMeta:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginLeft:29},receiptCard:{padding:18,gap:8,shadowOpacity:0},receiptTitle:{...TYPE.cardTitle,marginBottom:5},paidWith:{flexDirection:'row',alignItems:'center',gap:12,borderTopWidth:1,borderTopColor:COLORS.line,paddingTop:14,marginTop:5},rateScroll:{paddingHorizontal:14,paddingBottom:25,gap:12},rateQuestion:{fontFamily:FONT.bold,fontSize:20,fontWeight:'900',textAlign:'center'},starsRow:{flexDirection:'row',justifyContent:'center',gap:5},rateWord:{fontFamily:FONT.medium,fontSize:15,color:COLORS.muted,textAlign:'center',marginTop:-12},tipCard:{padding:18,shadowOpacity:0},tipTitle:{...TYPE.cardTitle},tipSubtitle:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:3},tipRow:{flexDirection:'row',gap:8,marginVertical:18},tipOption:{flex:1,minHeight:42,borderWidth:1,borderColor:COLORS.line,borderRadius:11,alignItems:'center',justifyContent:'center'},tipOptionSelected:{borderColor:COLORS.red,backgroundColor:'#FFF2F2'},tipOptionText:{fontFamily:FONT.medium,fontSize:12,fontWeight:'700'},tipOptionTextSelected:{color:COLORS.red},
+  commerceScroll:{paddingHorizontal:14,paddingBottom:28,gap:12},commerceHeader:{minHeight:60,flexDirection:'row',alignItems:'center'},commerceTitle:{...TYPE.screenTitle,flex:1},commerceLocation:{flexDirection:'row',alignItems:'center',gap:6},commerceLocationText:{...TYPE.bodyStrong},cartButton:{width:42,alignItems:'flex-end'},categoryPanel:{minHeight:116,borderWidth:1,borderColor:COLORS.line,borderRadius:22,flexDirection:'row',alignItems:'center',justifyContent:'space-around',paddingHorizontal:5},categoryItem:{alignItems:'center',gap:8},categoryCircle:{width:49,height:49,borderRadius:25,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center'},categoryLabel:{...TYPE.label},categoryEmoji:{fontSize:24},commercePromo:{width:'100%',height:157,borderRadius:22},restaurantRow:{flexDirection:'row',justifyContent:'space-between'},restaurantCard:{width:'31%'},restaurantImage:{width:'100%',aspectRatio:.76,borderRadius:17},restaurantName:{...TYPE.bodyStrong,marginTop:9},restaurantRating:{...TYPE.small,color:COLORS.muted,marginTop:5},restaurantMeta:{...TYPE.caption,color:COLORS.muted,marginTop:4},bottomNav:{minHeight:78,paddingBottom:8,borderTopWidth:1,borderTopColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',justifyContent:'space-around'},bottomNavItem:{flex:1,alignItems:'center',justifyContent:'center',gap:4},bottomNavLabel:{...TYPE.label,fontFamily:FONT.regular,fontWeight:'400',color:COLORS.muted},bottomNavLabelActive:{color:COLORS.red,fontFamily:FONT.bold,fontWeight:'800'},
+  restaurantDetailScroll:{paddingHorizontal:14,paddingBottom:82},restaurantHero:{width:'100%',height:190,borderRadius:18},restaurantDetailName:{...TYPE.screenTitle,marginTop:11},restaurantDetailMeta:{...TYPE.small,color:COLORS.muted,marginTop:4},restaurantDetailSub:{...TYPE.small,color:COLORS.muted,marginTop:3},badgeRow:{flexDirection:'row',gap:6,marginTop:9,marginBottom:14},badge:{borderWidth:1,borderColor:COLORS.line,borderRadius:13,paddingHorizontal:9,paddingVertical:5},badgeText:{...TYPE.label},menuItem:{minHeight:78,flexDirection:'row',alignItems:'center',gap:10,borderBottomWidth:1,borderBottomColor:COLORS.line},menuImage:{width:60,height:60,borderRadius:13},menuName:{...TYPE.cardTitle},menuPrice:{...TYPE.small,color:COLORS.muted,marginTop:5},addButton:{width:34,height:34,borderWidth:1,borderColor:COLORS.line,borderRadius:17,alignItems:'center',justifyContent:'center'},viewCartBar:{position:'absolute',left:14,right:14,bottom:8,height:58,borderRadius:15,backgroundColor:COLORS.black,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:14},viewCartTitle:{...TYPE.bodyStrong,color:COLORS.white},viewCartMeta:{...TYPE.small,color:'#D8D8D8',marginTop:3},cartScroll:{paddingHorizontal:14,paddingBottom:22,gap:12},cartRestaurant:{...TYPE.sectionTitle},cartItem:{minHeight:78,flexDirection:'row',alignItems:'center',gap:10},cartImage:{width:60,height:60,borderRadius:13},quantity:{height:38,borderWidth:1,borderColor:COLORS.line,borderRadius:13,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:9},quantityText:{fontFamily:FONT.bold,fontWeight:'800'},cartTotals:{gap:5},orderTrackingScroll:{paddingHorizontal:14,paddingBottom:20,gap:9},orderId:{...TYPE.cardTitle},orderEta:{...TYPE.cardTitle,color:COLORS.red},orderRestaurant:{...TYPE.small,color:COLORS.muted},orderMap:{width:'100%',height:230,borderRadius:18,marginVertical:7},referralCard:{minHeight:74,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:16,backgroundColor:COLORS.yellowSoft,shadowOpacity:0},referralTitle:{...TYPE.cardTitle},referralBody:{...TYPE.small,color:COLORS.muted,marginTop:3},deliverLabel:{...TYPE.small,color:COLORS.muted,marginTop:-10},deliverRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:-12},deliverAddress:{...TYPE.bodyStrong},storeRow:{flexDirection:'row',justifyContent:'space-between'},storeCard:{width:'23%',alignItems:'center'},storeLogo:{width:'100%',aspectRatio:1,borderWidth:1,borderColor:COLORS.line,borderRadius:18},storeName:{...TYPE.label,marginTop:9},storeRating:{...TYPE.caption,color:COLORS.muted,marginTop:5},
+  parcelScroll:{paddingHorizontal:14,paddingBottom:22,gap:12},segmented:{height:46,borderWidth:1,borderColor:COLORS.line,borderRadius:14,flexDirection:'row',padding:3},segment:{flex:1,borderRadius:11,alignItems:'center',justifyContent:'center'},segmentActive:{backgroundColor:COLORS.white,...SHADOW},segmentText:{fontFamily:FONT.medium,fontSize:13,color:COLORS.muted},segmentTextActive:{color:COLORS.black,fontWeight:'800'},parcelCard:{minHeight:82,flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:13,shadowOpacity:0},parcelIcon:{width:38,alignItems:'center'},parcelLabel:{fontFamily:FONT.regular,fontSize:12,color:COLORS.muted},parcelValue:{fontFamily:FONT.bold,fontSize:15,fontWeight:'800',marginTop:3},parcelDetail:{fontFamily:FONT.regular,fontSize:11,color:COLORS.muted,marginTop:2},parcelEstimate:{fontFamily:FONT.regular,fontSize:12,color:COLORS.muted,textAlign:'center'},
+  walletScroll:{paddingHorizontal:14,paddingBottom:25,gap:12},walletCard:{height:210,borderRadius:22,backgroundColor:'#151515',padding:22,overflow:'hidden'},walletCardLabel:{fontFamily:FONT.regular,fontSize:17,color:COLORS.white},walletBalance:{...TYPE.display,color:COLORS.white,marginTop:10},walletCardSub:{fontFamily:FONT.regular,fontSize:17,color:COLORS.white,marginTop:5},topUpButton:{width:110,height:48,borderRadius:14,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center',marginTop:17},topUpText:{fontFamily:FONT.bold,fontSize:16,fontWeight:'900'},walletCardMark:{position:'absolute',right:18,bottom:16,width:50,height:50},walletActions:{flexDirection:'row',justifyContent:'space-between'},walletAction:{width:'24%',alignItems:'center',gap:8},walletActionLabel:{fontFamily:FONT.regular,fontSize:12,color:COLORS.muted,textAlign:'center'},walletSectionTitle:{...TYPE.sectionTitle},walletSectionHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},walletPayments:{paddingHorizontal:15,shadowOpacity:0},walletPayment:{minHeight:74,flexDirection:'row',alignItems:'center',gap:13,borderBottomWidth:1,borderBottomColor:COLORS.line},walletPaymentTitle:{...TYPE.cardTitle},walletPaymentSub:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,marginTop:3},walletRadio:{width:27,height:27,borderRadius:14,borderWidth:2,borderColor:COLORS.mutedLight,alignItems:'center',justifyContent:'center'},walletRadioSelected:{backgroundColor:COLORS.yellow,borderColor:COLORS.yellow},businessCard:{minHeight:75,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:16,shadowOpacity:0},businessIcon:{width:42,height:42,borderRadius:11,backgroundColor:COLORS.green,alignItems:'center',justifyContent:'center'},businessText:{flex:1,fontFamily:FONT.bold,fontSize:16,fontWeight:'800'},
+  accountScroll:{paddingHorizontal:14,paddingBottom:25,gap:12},accountProfile:{minHeight:86,flexDirection:'row',alignItems:'center',gap:12,paddingVertical:6},accountAvatar:{width:72,height:72,borderRadius:36},accountName:{...TYPE.screenTitle},accountPhone:{...TYPE.body,color:COLORS.muted,marginTop:5},viewProfile:{...TYPE.action,color:COLORS.red,marginTop:8},blackMembership:{height:72,borderRadius:16,backgroundColor:'#171717',flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:16},membershipMark:{width:38,height:38},membershipText:{flex:1,...TYPE.cardTitle,color:COLORS.white},membershipStatus:{...TYPE.small,color:COLORS.white},accountMenu:{shadowOpacity:.04},guestAccount:{flex:1,paddingHorizontal:14,alignItems:'center',justifyContent:'center',gap:12},guestAvatar:{width:92,height:92,borderRadius:46,backgroundColor:COLORS.surfaceStrong,alignItems:'center',justifyContent:'center'},guestAccountTitle:{...TYPE.screenTitle,textAlign:'center'},guestAccountText:{...TYPE.body,color:COLORS.muted,textAlign:'center',marginBottom:10},genericScroll:{padding:14,gap:12},orderCard:{minHeight:88,flexDirection:'row',alignItems:'center',gap:14,paddingHorizontal:15,shadowOpacity:0},orderImage:{width:62,height:62,borderRadius:14},orderTitle:{...TYPE.cardTitle},orderMeta:{...TYPE.small,color:COLORS.muted,marginTop:5},orderPrice:{...TYPE.bodyStrong,marginTop:5},
 
   homeStoreList:{gap:10,paddingRight:8},homeStoreCard:{width:142,borderWidth:1,borderColor:COLORS.line,borderRadius:17,backgroundColor:COLORS.white,padding:10,...SHADOW},homeStoreName:{...TYPE.cardTitle,marginTop:8},homeStoreMeta:{...TYPE.caption,color:COLORS.muted,marginTop:4},
   v35PopularStoresHeader:{flexDirection:'row',alignItems:'flex-end',justifyContent:'space-between',marginTop:4,marginBottom:12},v35PopularStoresTitle:{...TYPE.sectionTitle,color:COLORS.black},v35PopularStoresLocale:{...TYPE.caption,color:COLORS.muted,marginTop:2},
@@ -3582,7 +3861,7 @@ const styles = StyleSheet.create({
   v37BreezeLogo:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5},v37BreezeName:{fontFamily:FONT.bold,fontSize:15,fontWeight:'900',color:'#1B83C5'},v37BreezeSub:{fontFamily:FONT.bold,fontSize:6.5,fontWeight:'800',color:'#6A7C88',letterSpacing:1.1},
   storeBrandMark:{height:76,borderRadius:15,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5},storeBrandMarkCompact:{height:58},storeBrandLetter:{fontFamily:FONT.bold,fontSize:29,fontWeight:'900'},storeBrandLetterCompact:{fontSize:23},
   rideRouteSummary:{padding:15,shadowOpacity:0,backgroundColor:COLORS.surface},rideRouteTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},rideRouteEyebrow:{fontFamily:FONT.bold,fontSize:10,fontWeight:'900',letterSpacing:1.6,color:COLORS.muted},rideRouteEta:{fontFamily:FONT.bold,fontSize:12,fontWeight:'900',color:COLORS.green},rideRoutePlace:{...TYPE.cardTitle,marginTop:7},rideRouteMeta:{...TYPE.small,color:COLORS.muted,marginTop:4},
-  rideStatusBar:{paddingHorizontal:20,paddingBottom:9,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},rideStatusEyebrow:{fontFamily:FONT.bold,fontSize:10,fontWeight:'900',letterSpacing:1.5,color:COLORS.muted},rideStatusTitle:{...TYPE.sectionTitle,marginTop:2},liveChip:{height:30,borderRadius:15,backgroundColor:COLORS.greenSoft,flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:10},liveDot:{width:8,height:8,borderRadius:4,backgroundColor:COLORS.green},liveChipText:{fontFamily:FONT.bold,fontSize:11,fontWeight:'900',color:COLORS.green},pickupCodeCard:{minHeight:112,flexDirection:'row',alignItems:'center',gap:14,padding:16,shadowOpacity:0,backgroundColor:COLORS.yellowSoft},pickupCodeIcon:{width:44,height:44,borderRadius:14,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},pickupCodeLabel:{fontFamily:FONT.medium,fontSize:12,color:COLORS.muted},pickupCode:{fontFamily:FONT.bold,fontSize:27,fontWeight:'900',letterSpacing:6,marginTop:1},pickupCodeHelp:{fontFamily:FONT.regular,fontSize:11.5,lineHeight:15,color:COLORS.muted,marginTop:3},flowHelp:{fontFamily:FONT.regular,fontSize:11.5,lineHeight:16,color:COLORS.muted,textAlign:'center',paddingHorizontal:14,marginTop:7},
+  rideStatusBar:{paddingHorizontal:14,paddingBottom:9,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},rideStatusEyebrow:{fontFamily:FONT.bold,fontSize:10,fontWeight:'900',letterSpacing:1.5,color:COLORS.muted},rideStatusTitle:{...TYPE.sectionTitle,marginTop:2},liveChip:{height:30,borderRadius:15,backgroundColor:COLORS.greenSoft,flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:10},liveDot:{width:8,height:8,borderRadius:4,backgroundColor:COLORS.green},liveChipText:{fontFamily:FONT.bold,fontSize:11,fontWeight:'900',color:COLORS.green},pickupCodeCard:{minHeight:112,flexDirection:'row',alignItems:'center',gap:14,padding:16,shadowOpacity:0,backgroundColor:COLORS.yellowSoft},pickupCodeIcon:{width:44,height:44,borderRadius:14,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},pickupCodeLabel:{fontFamily:FONT.medium,fontSize:12,color:COLORS.muted},pickupCode:{fontFamily:FONT.bold,fontSize:27,fontWeight:'900',letterSpacing:6,marginTop:1},pickupCodeHelp:{fontFamily:FONT.regular,fontSize:11.5,lineHeight:15,color:COLORS.muted,marginTop:3},flowHelp:{fontFamily:FONT.regular,fontSize:11.5,lineHeight:16,color:COLORS.muted,textAlign:'center',paddingHorizontal:14,marginTop:7},
   categoryScroll:{gap:10,paddingRight:8},commerceCategory:{minWidth:72,alignItems:'center',gap:7},commerceCategoryIcon:{width:48,height:48,borderRadius:16,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center'},commerceCategoryIconActive:{backgroundColor:COLORS.orange,borderColor:COLORS.orange},shopCategoryIconActive:{backgroundColor:COLORS.yellow,borderColor:COLORS.yellow},commerceCategoryLabel:{...TYPE.label,color:COLORS.black},commerceCategoryLabelActive:{color:COLORS.orange},
   foodHero:{height:154,borderRadius:20,backgroundColor:COLORS.orange,overflow:'hidden',position:'relative'},foodHeroCopy:{position:'absolute',left:18,top:16,bottom:14,width:'62%',zIndex:2},foodHeroEyebrow:{fontFamily:FONT.bold,fontSize:10,fontWeight:'900',letterSpacing:1.6,color:'#FFE1CF'},foodHeroTitle:{...TYPE.sectionTitle,color:COLORS.white,marginTop:4},foodHeroBody:{...TYPE.small,color:'#FFF2E8',marginTop:5},foodHeroButton:{height:29,alignSelf:'flex-start',borderRadius:9,backgroundColor:COLORS.white,paddingHorizontal:11,alignItems:'center',justifyContent:'center',marginTop:'auto'},foodHeroButtonText:{fontFamily:FONT.bold,fontSize:11,fontWeight:'900',color:COLORS.orange},foodHeroImage:{position:'absolute',right:-10,bottom:-10,width:148,height:148},restaurantHorizontalList:{gap:13,paddingRight:8},restaurantCardWide:{width:205},restaurantImageWide:{width:205,height:126,borderRadius:17,backgroundColor:COLORS.surfaceStrong},restaurantNameWide:{...TYPE.cardTitle,marginTop:8},restaurantRatingWide:{...TYPE.small,color:COLORS.black,marginTop:4},restaurantMetaWide:{...TYPE.small,color:COLORS.muted,marginTop:3},quickPickRow:{flexDirection:'row',gap:9},quickPickCard:{flex:1,minHeight:88,borderRadius:16,padding:12,justifyContent:'space-between'},quickPickText:{...TYPE.label,color:COLORS.black},
   shopHero:{height:158,borderRadius:20,backgroundColor:COLORS.yellow,overflow:'hidden',position:'relative'},shopHeroCopy:{position:'absolute',left:18,top:15,bottom:14,width:'64%',zIndex:2},shopHeroEyebrow:{fontFamily:FONT.bold,fontSize:10,fontWeight:'900',letterSpacing:1.5,color:'#6B5200'},shopHeroTitle:{...TYPE.sectionTitle,color:COLORS.black,marginTop:4},shopHeroBody:{...TYPE.small,color:'#594700',marginTop:5},shopHeroButton:{height:29,alignSelf:'flex-start',borderRadius:9,backgroundColor:COLORS.black,paddingHorizontal:11,alignItems:'center',justifyContent:'center',marginTop:'auto'},shopHeroButtonText:{fontFamily:FONT.bold,fontSize:11,fontWeight:'900',color:COLORS.white},shopHeroImage:{position:'absolute',right:-8,bottom:-13,width:142,height:142},storeHorizontalList:{gap:12,paddingRight:8},storeCardWide:{width:162,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:COLORS.white,padding:12,...SHADOW},storeNameWide:{...TYPE.cardTitle,marginTop:10},storeRatingWide:{...TYPE.small,color:COLORS.black,marginTop:4},storeMetaWide:{...TYPE.small,color:COLORS.muted,marginTop:3},shopNeedGrid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:10},shopNeedCard:{width:'48.5%',minHeight:104,borderRadius:17,padding:14,justifyContent:'space-between'},shopNeedText:{...TYPE.cardTitle,color:COLORS.black},
@@ -3605,12 +3884,12 @@ const styles = StyleSheet.create({
   driverMapMarker:{width:52,height:52,borderRadius:26,backgroundColor:COLORS.white,borderWidth:2,borderColor:COLORS.red,alignItems:'center',justifyContent:'center',...SHADOW},
   driverMapMarkerImage:{width:40,height:40},
   locationPickerScreen:{flex:1,backgroundColor:COLORS.white},
-  locationPickerTop:{paddingHorizontal:18,paddingTop:8,paddingBottom:12,gap:12},
+  locationPickerTop:{paddingHorizontal:14,paddingTop:8,paddingBottom:12,gap:12},
   locationPickerBack:{width:44,height:44,borderRadius:22,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center'},
   locationPickerSearch:{height:58,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:16,...SHADOW},
   locationPickerSearchText:{...TYPE.body,color:COLORS.muted,flex:1},
   locationPickerMapWrap:{flex:1,paddingHorizontal:0},
-  locationPickerSheet:{paddingHorizontal:20,paddingTop:12,paddingBottom:14,gap:12,backgroundColor:COLORS.white,borderTopLeftRadius:24,borderTopRightRadius:24},
+  locationPickerSheet:{paddingHorizontal:14,paddingTop:12,paddingBottom:14,gap:12,backgroundColor:COLORS.white,borderTopLeftRadius:24,borderTopRightRadius:24},
   locationPickerHandle:{alignSelf:'center',width:42,height:4,borderRadius:2,backgroundColor:COLORS.lineDark,marginBottom:2},
   locationPickerTitle:{...TYPE.sectionTitle},
   locationPickerBody:{...TYPE.small,color:COLORS.muted},
@@ -3697,7 +3976,7 @@ const styles = StyleSheet.create({
   v25SplashLoaderDot:{width:8,height:8,borderRadius:4,backgroundColor:'rgba(255,255,255,.45)'},
   v25SplashLoaderDotActive:{width:25,height:8,borderRadius:4,backgroundColor:COLORS.red},
 
-  v25WelcomeScreen:{flex:1,paddingHorizontal:24,paddingTop:8,paddingBottom:10,backgroundColor:COLORS.white},
+  v25WelcomeScreen:{flex:1,paddingHorizontal:14,paddingTop:8,paddingBottom:10,backgroundColor:COLORS.white},
   v25WelcomeBrandRow:{height:54,width:210,alignSelf:'center',alignItems:'center',justifyContent:'center',borderRadius:15,backgroundColor:COLORS.black,paddingHorizontal:12},
   v25WelcomeBrandMark:{width:30,height:30},
   v25WelcomeBrandText:{fontFamily:FONT.bold,fontSize:23,fontWeight:'900',letterSpacing:-.5,color:COLORS.black},
@@ -3716,7 +3995,7 @@ const styles = StyleSheet.create({
 
 
   // Kareebu+ v3.2 — approved welcome-screen reference match.
-  v32WelcomeScreen:{flex:1,paddingHorizontal:24,paddingTop:6,paddingBottom:8,backgroundColor:COLORS.white},
+  v32WelcomeScreen:{flex:1,paddingHorizontal:14,paddingTop:6,paddingBottom:8,backgroundColor:COLORS.white},
   v32WelcomeBrandBlock:{height:68,alignItems:'center',justifyContent:'center',marginTop:2},
   v32WelcomeLogo:{width:216,height:58},
   v32WelcomeCopy:{alignItems:'center',marginTop:3},
@@ -3746,7 +4025,7 @@ const styles = StyleSheet.create({
   v36CountryMapFadeTop:{position:'absolute',left:0,right:0,top:0,height:54,backgroundColor:'rgba(252,251,248,.16)'},
   v36CountryMapFadeBottom:{position:'absolute',left:0,right:0,bottom:0,height:150,backgroundColor:'rgba(252,251,248,.74)'},
   v36CountryNameOverlay:{position:'absolute',left:0,right:0,top:'43%',alignItems:'center'},
-  v36CountryNameOverlayText:{fontFamily:FONT.bold,fontSize:33,lineHeight:39,fontWeight:'900',letterSpacing:-.8,color:COLORS.black,textShadowColor:'rgba(255,255,255,.88)',textShadowRadius:7,textShadowOffset:{width:0,height:1}},
+  v36CountryNameOverlayText:{fontFamily:FONT.bold,fontSize:30,lineHeight:35,fontWeight:'900',letterSpacing:-.8,color:COLORS.black,textShadowColor:'rgba(255,255,255,.88)',textShadowRadius:7,textShadowOffset:{width:0,height:1}},
   v36CountryCarouselViewport:{position:'absolute',left:0,right:0,bottom:2,height:252,overflow:'hidden',justifyContent:'center'},
   v36CountryCarousel:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:14},
   v36CountryCard:{borderRadius:29,borderWidth:6,borderColor:COLORS.white,backgroundColor:COLORS.white,overflow:'hidden',...SHADOW},
@@ -3765,7 +4044,7 @@ const styles = StyleSheet.create({
   v36BlackContinuePressed:{opacity:.82,transform:[{scale:.996}]},
   v36BlackContinueText:{fontFamily:FONT.bold,fontSize:18,lineHeight:22,fontWeight:'900',color:COLORS.white},
 
-  v36CityScreen:{flex:1,backgroundColor:COLORS.white,paddingHorizontal:22,paddingBottom:14},
+  v36CityScreen:{flex:1,backgroundColor:COLORS.white,paddingHorizontal:14,paddingBottom:14},
   v36CityHeader:{height:72,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingTop:8},
   v36CityBack:{width:42,height:42,borderRadius:21,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center'},
   v36CityHeaderSpacer:{width:42,height:42},
@@ -3806,7 +4085,7 @@ const styles = StyleSheet.create({
   v36MapPickerHint:{top:'39%',backgroundColor:'#FFE9CF',borderRadius:13,paddingHorizontal:14,paddingVertical:10},
   v36MapPickerHintText:{fontFamily:FONT.medium,fontSize:15,lineHeight:19,fontWeight:'600',color:'#C85B2C'},
 
-  countryScreen:{flex:1,paddingHorizontal:22,paddingBottom:16,backgroundColor:COLORS.white},
+  countryScreen:{flex:1,paddingHorizontal:14,paddingBottom:16,backgroundColor:COLORS.white},
   countryBrandRow:{height:58,width:'100%',alignSelf:'center',flexDirection:'row',alignItems:'center',justifyContent:'center',position:'relative',marginTop:2},
   countryStepPill:{position:'absolute',right:0,top:13,height:30,borderRadius:15,backgroundColor:COLORS.surface,paddingHorizontal:11,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:COLORS.line},
   countryStepPillText:{...TYPE.caption,fontWeight:'800',color:COLORS.muted},
@@ -3850,7 +4129,7 @@ const styles = StyleSheet.create({
   useCurrentLocationRow:{minHeight:68,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:16},
   useCurrentLocationText:{flex:1,...TYPE.bodyStrong,color:COLORS.black},
 
-  onboardingCityScreen:{flex:1,backgroundColor:COLORS.white,paddingHorizontal:22,paddingBottom:12},
+  onboardingCityScreen:{flex:1,backgroundColor:COLORS.white,paddingHorizontal:14,paddingBottom:12},
   onboardingCityHeader:{minHeight:126,flexDirection:'row',alignItems:'flex-start',paddingTop:12},
   onboardingCityBack:{width:46,height:46,borderRadius:23,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center',marginTop:2},
   onboardingCityHeadingWrap:{flex:1,alignItems:'center',paddingHorizontal:8},
@@ -3902,7 +4181,7 @@ const styles = StyleSheet.create({
   placesSuggestionSubtitle:{...TYPE.small,color:COLORS.muted,marginTop:2},
   googlePlacesAttribution:{...TYPE.caption,color:COLORS.muted,textAlign:'right',paddingHorizontal:12,paddingTop:8,paddingBottom:2},
   onboardingLocationMapWrap:{flex:1,marginTop:0},
-  onboardingLocationSheet:{position:'absolute',left:0,right:0,bottom:0,minHeight:294,paddingHorizontal:24,paddingTop:12,paddingBottom:16,backgroundColor:COLORS.white,borderTopLeftRadius:30,borderTopRightRadius:30,...SHADOW},
+  onboardingLocationSheet:{position:'absolute',left:0,right:0,bottom:0,minHeight:294,paddingHorizontal:14,paddingTop:12,paddingBottom:16,backgroundColor:COLORS.white,borderTopLeftRadius:30,borderTopRightRadius:30,...SHADOW},
   onboardingLocationHandle:{alignSelf:'center',width:46,height:5,borderRadius:3,backgroundColor:COLORS.lineDark,marginBottom:18},
   onboardingLocationSheetIntro:{flexDirection:'row',alignItems:'flex-start',gap:15,marginBottom:18},
   onboardingLocationPinBubble:{width:64,height:64,borderRadius:32,backgroundColor:'#FFF4EC',alignItems:'center',justifyContent:'center',position:'relative'},
@@ -3915,7 +4194,7 @@ const styles = StyleSheet.create({
   onboardingLocationSkipText:{fontFamily:FONT.medium,fontSize:14,lineHeight:19,fontWeight:'700',color:COLORS.black,textDecorationLine:'underline',textDecorationStyle:'dotted'},
   onboardingLocationDebug:{position:'absolute',width:1,height:1,opacity:0},
 
-  v25HomeHeader:{paddingHorizontal:20,paddingTop:6,paddingBottom:8,gap:7,backgroundColor:COLORS.white},
+  v25HomeHeader:{paddingHorizontal:14,paddingTop:6,paddingBottom:8,gap:7,backgroundColor:COLORS.white},
   v25HomeBrandRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
   v25HomeBrandLockup:{height:38,width:38,borderRadius:12,backgroundColor:COLORS.black,alignItems:'center',justifyContent:'center'},
   v25HomeBrandMark:{width:28,height:28},
@@ -3923,8 +4202,8 @@ const styles = StyleSheet.create({
   v25HomeLocation:{alignSelf:'flex-start',flexDirection:'row',alignItems:'center',gap:3,minHeight:28,paddingHorizontal:2},
   v25HomeLocationLabel:{...TYPE.small,color:COLORS.muted},
   v25HomeLocationText:{...TYPE.bodyStrong,color:COLORS.black,flexShrink:1},
-  v25HomeScroll:{paddingHorizontal:20,paddingBottom:28,gap:18},
-  v25SearchBar:{height:54,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:15,...SHADOW},
+  v25HomeScroll:{paddingHorizontal:14,paddingBottom:28,gap:12},
+  v25SearchBar:{height:54,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:12,...SHADOW},
   v25SearchPlaceholder:{...TYPE.body,color:COLORS.mutedLight,flex:1},
   v25ServiceGrid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:9},
   v25ServiceCard:{width:'23.3%',minHeight:92,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center',paddingVertical:8,gap:4,...SHADOW},
@@ -3959,8 +4238,8 @@ const styles = StyleSheet.create({
   v25RedeemTitle:{...TYPE.cardTitle,color:COLORS.black},
   v25RedeemBody:{...TYPE.caption,color:COLORS.muted,marginTop:2},
 
-  v25CommerceScroll:{paddingHorizontal:20,paddingBottom:26,gap:16},
-  v25CommerceHeader:{marginHorizontal:-20,paddingHorizontal:20,paddingTop:3,paddingBottom:4},
+  v25CommerceScroll:{paddingHorizontal:14,paddingBottom:26,gap:16},
+  v25CommerceHeader:{marginHorizontal:-14,paddingHorizontal:14,paddingTop:3,paddingBottom:4},
   v25CommerceTopRow:{minHeight:58,flexDirection:'row',alignItems:'center',gap:12},
   v25CommerceBack:{width:40,height:40,borderRadius:20,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center',backgroundColor:COLORS.white},
   v25CommerceTitle:{...TYPE.navTitle,color:COLORS.black},
@@ -4097,22 +4376,22 @@ const styles = StyleSheet.create({
   v26FoodCategoryCircleActive:{borderWidth:2,borderColor:COLORS.red,backgroundColor:COLORS.yellowSoft},
   v26FoodCategoryLabelActive:{color:COLORS.red,fontFamily:FONT.bold,fontWeight:'800'},
   // Kareebu+ v3.1 compact production-style Home dashboard.
-  v31HomeHeader:{paddingHorizontal:18,paddingTop:14,paddingBottom:8,gap:7,backgroundColor:'#FFFFFF'},
-  v31HomeTopRow:{height:46,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
-  v31HomeLogoSurface:{width:126,height:40,backgroundColor:'#FFFFFF',alignItems:'flex-start',justifyContent:'center',overflow:'hidden'},
-  v31HomeWordmark:{width:120,height:36},
-  v31BalancePill:{height:40,borderRadius:14,borderWidth:1,borderColor:COLORS.line,backgroundColor:'#FFFFFF',flexDirection:'row',alignItems:'center',gap:7,paddingHorizontal:11,...SHADOW},
-  v31BalanceMark:{width:25,height:25},
-  v31BalanceText:{fontFamily:FONT.bold,fontSize:15,lineHeight:19,fontWeight:'900',color:COLORS.black},
-  v31LocationUtilityRow:{minHeight:42,flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:10},
+  v31HomeHeader:{paddingHorizontal:14,paddingTop:7,paddingBottom:4,gap:3,backgroundColor:'#FFFFFF'},
+  v31HomeTopRow:{height:40,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
+  v31HomeLogoSurface:{width:112,height:34,backgroundColor:'#FFFFFF',alignItems:'flex-start',justifyContent:'center',overflow:'hidden'},
+  v31HomeWordmark:{width:108,height:32},
+  v31BalancePill:{height:34,borderRadius:12,borderWidth:1,borderColor:COLORS.line,backgroundColor:'#FFFFFF',flexDirection:'row',alignItems:'center',gap:7,paddingHorizontal:11,...SHADOW},
+  v31BalanceMark:{width:21,height:21},
+  v31BalanceText:{fontFamily:FONT.bold,fontSize:12.5,lineHeight:16,fontWeight:'900',color:COLORS.black},
+  v31LocationUtilityRow:{minHeight:36,flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:10},
   v31HomeLocation:{flex:1,minWidth:0,flexDirection:'row',alignItems:'center',gap:5},
-  v31HomeLocationLabel:{fontFamily:FONT.regular,fontSize:13,lineHeight:18,color:COLORS.muted},
-  v31HomeLocationText:{fontFamily:FONT.bold,fontSize:14,lineHeight:19,fontWeight:'800',color:COLORS.black,flexShrink:1},
+  v31HomeLocationLabel:{fontFamily:FONT.regular,fontSize:11,lineHeight:14,color:COLORS.muted},
+  v31HomeLocationText:{fontFamily:FONT.bold,fontSize:12,lineHeight:15,fontWeight:'800',color:COLORS.black,flexShrink:1},
   v31HeaderActions:{flexDirection:'row',alignItems:'center',gap:8},
-  v31HeaderCircle:{width:36,height:36,borderRadius:18,borderWidth:1,borderColor:COLORS.line,backgroundColor:'#FFFFFF',alignItems:'center',justifyContent:'center'},
-  v31HeaderMarkButton:{width:38,height:38,borderRadius:13,backgroundColor:COLORS.black,alignItems:'center',justifyContent:'center'},
-  v31HeaderMark:{width:27,height:27},
-  v31HomeScroll:{paddingHorizontal:18,paddingTop:6,paddingBottom:24,gap:15,backgroundColor:'#FFFFFF'},
+  v31HeaderCircle:{width:32,height:32,borderRadius:16,borderWidth:1,borderColor:COLORS.line,backgroundColor:'#FFFFFF',alignItems:'center',justifyContent:'center'},
+  v31HeaderMarkButton:{width:32,height:32,borderRadius:11,backgroundColor:COLORS.black,alignItems:'center',justifyContent:'center'},
+  v31HeaderMark:{width:23,height:23},
+  v31HomeScroll:{paddingHorizontal:14,paddingTop:6,paddingBottom:24,gap:15,backgroundColor:'#FFFFFF'},
   v31GreetingBlock:{gap:1},
   v31HomeGreeting:{fontFamily:FONT.bold,fontSize:22,lineHeight:27,fontWeight:'900',letterSpacing:-.3,color:COLORS.black},
   v31HomeGreetingSub:{fontFamily:FONT.regular,fontSize:13,lineHeight:18,color:COLORS.muted},
@@ -4230,13 +4509,22 @@ const styles = StyleSheet.create({
   v30EmptyTitle:{...TYPE.cardTitle,color:COLORS.black},
   v30EmptyBody:{...TYPE.small,color:COLORS.muted,textAlign:'center'},
   v30HeaderHeart:{width:42,height:42,borderRadius:21,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center',backgroundColor:COLORS.white},
+  v33RestaurantHeaderActions:{flexDirection:'row',alignItems:'center',gap:8},
+  v33MenuSearch:{height:50,borderWidth:1,borderColor:COLORS.line,borderRadius:16,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',gap:9,paddingHorizontal:13,marginBottom:14},
+  v33MenuSearchInput:{flex:1,...TYPE.body,color:COLORS.black,paddingVertical:0},
+  v33MenuEmpty:{paddingVertical:48,alignItems:'center',gap:7},
+  v33MenuEmptyTitle:{...TYPE.cardTitle,color:COLORS.black,marginTop:4},
+  v33MenuEmptyBody:{...TYPE.small,color:COLORS.muted},
   v30RestaurantHeroWrap:{position:'relative'},
   v30RestaurantHeroBadge:{position:'absolute',left:12,top:12,height:32,borderRadius:16,backgroundColor:'rgba(11,11,13,.92)',flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:9},
   v30RestaurantHeroMark:{width:20,height:20},
   v30RestaurantHeroBadgeText:{...TYPE.caption,color:COLORS.white,fontWeight:'800'},
   v30RestaurantOfferBadge:{position:'absolute',left:12,bottom:12,backgroundColor:COLORS.yellow,borderRadius:9,paddingHorizontal:10,paddingVertical:6},
   v30RestaurantOfferBadgeText:{...TYPE.label,color:COLORS.black,fontWeight:'900'},
-  v30RestaurantInfoStrip:{minHeight:70,borderRadius:17,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',justifyContent:'space-around',paddingHorizontal:12,marginBottom:16},
+  v30RestaurantInfoStrip:{minHeight:56,borderRadius:14,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',justifyContent:'space-around',paddingHorizontal:10,marginBottom:10},
+  v30RestaurantActionRail:{flexDirection:'row',gap:8,marginTop:-6,marginBottom:10},
+  v30RestaurantAction:{flex:1,minHeight:40,borderRadius:12,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6},
+  v30RestaurantActionText:{fontFamily:FONT.bold,fontWeight:'800',fontSize:11,color:COLORS.black},
   v30InfoValue:{...TYPE.bodyStrong,color:COLORS.black,textAlign:'center'},
   v30InfoLabel:{...TYPE.caption,color:COLORS.muted,textAlign:'center',marginTop:2},
   v30InfoRule:{width:1,height:34,backgroundColor:COLORS.lineDark},
@@ -4351,7 +4639,7 @@ const styles = StyleSheet.create({
   v38MobileMoneyLogo:{width:42,height:42,borderRadius:13,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},
   v38MobileMoneyLogoText:{fontFamily:FONT.bold,fontSize:20,fontWeight:'900',color:COLORS.black},
   v38SectionLocale:{fontFamily:FONT.regular,fontSize:10.5,lineHeight:14,color:COLORS.muted,marginTop:1},
-  v38ServicesScroll:{paddingHorizontal:18,paddingTop:8,paddingBottom:100},
+  v38ServicesScroll:{paddingHorizontal:14,paddingTop:8,paddingBottom:100},
   v38ServicesIntro:{fontFamily:FONT.regular,fontSize:13,lineHeight:19,color:COLORS.muted,marginBottom:16},
   v38ServicesGrid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:10},
   v38ServiceCard:{width:'48.5%',minHeight:156,borderRadius:20,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:14,...SHADOW},
@@ -4359,7 +4647,7 @@ const styles = StyleSheet.create({
   v38ServiceImage:{width:42,height:42},
   v38ServiceTitle:{fontFamily:FONT.bold,fontSize:16,lineHeight:20,fontWeight:'900',color:COLORS.black},
   v38ServiceBody:{fontFamily:FONT.regular,fontSize:11.5,lineHeight:16,color:COLORS.muted,minHeight:34,marginTop:4,marginBottom:6},
-  v38StorefrontScroll:{paddingHorizontal:18,paddingBottom:118,gap:15},
+  v38StorefrontScroll:{paddingHorizontal:14,paddingBottom:118,gap:15},
   v38StorefrontHero:{alignItems:'center',paddingTop:2,paddingBottom:5},
   v38StorefrontLogo:{width:92,height:58,borderRadius:16,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center',padding:8},
   v38StorefrontName:{fontFamily:FONT.bold,fontSize:21,lineHeight:25,fontWeight:'900',color:COLORS.black,textAlign:'center',marginTop:9},
@@ -4370,8 +4658,8 @@ const styles = StyleSheet.create({
   v38StorefrontInfoLabel:{fontFamily:FONT.regular,fontSize:10.5,lineHeight:14,color:COLORS.muted,textAlign:'center'},
   v38StorefrontInfoValue:{fontFamily:FONT.bold,fontSize:12.5,lineHeight:17,fontWeight:'800',color:COLORS.black,textAlign:'center',marginTop:3,maxWidth:105},
   v38ProductGrid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:10},
-  v38ProductCard:{width:'48.5%',minHeight:220,borderRadius:18,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:12},
-  v38ProductVisual:{height:72,borderRadius:15,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center',marginBottom:10},
+  v38ProductCard:{width:'48.5%',minHeight:202,borderRadius:16,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:12},
+  v38ProductVisual:{height:68,borderRadius:14,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center',marginBottom:10},
   v38ProductName:{fontFamily:FONT.bold,fontSize:14,lineHeight:18,fontWeight:'800',color:COLORS.black,minHeight:36},
   v38ProductDetail:{fontFamily:FONT.regular,fontSize:10.5,lineHeight:14,color:COLORS.muted,marginTop:2},
   v38ProductPrice:{fontFamily:FONT.bold,fontSize:13.5,lineHeight:18,fontWeight:'900',color:COLORS.black,marginTop:7},
@@ -4385,7 +4673,7 @@ const styles = StyleSheet.create({
   v38StoreBasketLabel:{flex:1,fontFamily:FONT.bold,fontSize:14,fontWeight:'900',color:COLORS.white},
   v38StoreBasketTotal:{fontFamily:FONT.bold,fontSize:13,fontWeight:'900',color:COLORS.white},
   v38BasketBackdrop:{flex:1,backgroundColor:'rgba(11,11,13,.34)',justifyContent:'flex-end'},
-  v38BasketSheet:{maxHeight:'78%',backgroundColor:COLORS.white,borderTopLeftRadius:28,borderTopRightRadius:28,paddingHorizontal:18,paddingTop:10,paddingBottom:22},
+  v38BasketSheet:{maxHeight:'78%',backgroundColor:COLORS.white,borderTopLeftRadius:28,borderTopRightRadius:28,paddingHorizontal:14,paddingTop:10,paddingBottom:22},
   v38BasketHandle:{width:42,height:5,borderRadius:3,backgroundColor:COLORS.lineDark,alignSelf:'center',marginBottom:14},
   v38BasketHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:10},
   v38BasketTitle:{fontFamily:FONT.bold,fontSize:20,lineHeight:25,fontWeight:'900',color:COLORS.black},
@@ -4470,7 +4758,7 @@ const styles = StyleSheet.create({
 
 
   // v4.0 reference-aligned onboarding, marketplace, rides and AI recommendations.
-  v40WelcomeScreen:{flex:1,backgroundColor:COLORS.white,paddingHorizontal:24,paddingTop:18,paddingBottom:14},
+  v40WelcomeScreen:{flex:1,backgroundColor:COLORS.white,paddingHorizontal:14,paddingTop:18,paddingBottom:14},
   v40WelcomeBrandBlock:{height:74,alignItems:'center',justifyContent:'flex-end'},
   v40WelcomeLogo:{width:220,height:62},
   v40WelcomeCopy:{alignItems:'center',paddingTop:8},
@@ -4494,18 +4782,18 @@ const styles = StyleSheet.create({
   v40CountrySupport:{fontFamily:FONT.regular,fontSize:14,lineHeight:20,color:COLORS.muted,textAlign:'center',paddingHorizontal:42,marginTop:12,marginBottom:14},
   v40CountryContinue:{height:58,borderRadius:17,backgroundColor:COLORS.black,alignItems:'center',justifyContent:'center',marginHorizontal:2,marginBottom:3},
 
-  v40HomeScroll:{paddingHorizontal:18,paddingTop:4,paddingBottom:34,gap:18},
-  v40HomeSearch:{height:54,borderRadius:18,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:15,...SHADOW},
-  v40HomeSearchText:{flex:1,fontFamily:FONT.regular,fontSize:13,lineHeight:18,color:COLORS.muted},
-  v40AiStrip:{minHeight:60,borderRadius:18,backgroundColor:COLORS.black,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12,paddingVertical:9},
-  v40AiStripIcon:{width:38,height:38,borderRadius:13,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},
+  v40HomeScroll:{paddingHorizontal:14,paddingTop:2,paddingBottom:24,gap:12},
+  v40HomeSearch:{height:44,borderRadius:14,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:12,...SHADOW},
+  v40HomeSearchText:{flex:1,fontFamily:FONT.regular,fontSize:12,lineHeight:15,color:COLORS.muted},
+  v40AiStrip:{minHeight:50,borderRadius:14,backgroundColor:COLORS.black,flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:10,paddingVertical:7},
+  v40AiStripIcon:{width:34,height:34,borderRadius:11,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},
   v40AiStripTitle:{fontFamily:FONT.bold,fontSize:13.5,fontWeight:'900',color:COLORS.white},
   v40AiStripBody:{fontFamily:FONT.regular,fontSize:10.5,lineHeight:14,color:'#DADADC',marginTop:2},
   v40ServiceGrid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:10},
-  v40HomeHeroBanner:{minHeight:205,borderRadius:22,backgroundColor:'#FFF3DF',overflow:'hidden',flexDirection:'row',position:'relative',borderWidth:1,borderColor:'#F3E3CB'},
-  v40HomeHeroCopy:{width:'55%',padding:18,paddingRight:5,zIndex:2},
+  v40HomeHeroBanner:{minHeight:172,borderRadius:18,backgroundColor:'#FFF3DF',overflow:'hidden',flexDirection:'row',position:'relative',borderWidth:1,borderColor:'#F3E3CB'},
+  v40HomeHeroCopy:{width:'55%',padding:14,paddingRight:5,zIndex:2},
   v40HomeHeroLogo:{width:78,height:24,alignSelf:'flex-start',marginBottom:6},
-  v40HomeHeroTitle:{fontFamily:FONT.bold,fontSize:22,lineHeight:25,fontWeight:'900',color:COLORS.black},
+  v40HomeHeroTitle:{fontFamily:FONT.bold,fontSize:19,lineHeight:22,fontWeight:'900',color:COLORS.black},
   v40HomeHeroTitleAccent:{color:COLORS.red},
   v40HomeHeroDiscount:{alignSelf:'flex-start',fontFamily:FONT.bold,fontSize:12,fontWeight:'900',color:COLORS.black,backgroundColor:COLORS.yellow,borderRadius:7,paddingHorizontal:8,paddingVertical:4,marginTop:7},
   v40HomeHeroBody:{fontFamily:FONT.regular,fontSize:10.5,lineHeight:15,color:'#4E4A45',marginTop:7},
@@ -4517,25 +4805,25 @@ const styles = StyleSheet.create({
   v40HomeHeroProductA:{position:'absolute',right:-10,bottom:4,width:126,height:150,opacity:.95},
   v40HomeHeroProductB:{position:'absolute',left:-5,bottom:4,width:88,height:105},
   v40SectionHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:10},
-  v40SectionTitle:{fontFamily:FONT.bold,fontSize:18,lineHeight:23,fontWeight:'900',color:COLORS.black},
+  v40SectionTitle:{fontFamily:FONT.bold,fontSize:17,lineHeight:21,fontWeight:'900',color:COLORS.black},
   v40SectionSub:{fontFamily:FONT.regular,fontSize:10.5,lineHeight:14,color:COLORS.muted,marginTop:2},
   v40AccentText:{color:COLORS.red},
   v40FindsRow:{gap:9,paddingRight:8},
-  v40FindCard:{width:112,minHeight:134,borderRadius:17,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:9,alignItems:'center'},
+  v40FindCard:{width:104,minHeight:122,borderRadius:14,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:9,alignItems:'center'},
   v40FindLogo:{height:47,width:'100%',alignItems:'center',justifyContent:'center'},
   v40FindName:{fontFamily:FONT.bold,fontSize:11,fontWeight:'800',color:COLORS.black,marginTop:5,maxWidth:'100%'},
   v40FindMeta:{fontFamily:FONT.regular,fontSize:9,lineHeight:12,color:COLORS.muted,marginTop:4},
   v40FindDelivery:{fontFamily:FONT.medium,fontSize:8.8,lineHeight:12,color:COLORS.muted,marginTop:3},
   v40FindDeliveryFree:{color:'#197842'},
-  v40PopularStoreList:{borderRadius:18,borderWidth:1,borderColor:COLORS.line,overflow:'hidden',backgroundColor:COLORS.white},
-  v40PopularStoreRow:{minHeight:68,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:10,paddingVertical:8,borderBottomWidth:1,borderBottomColor:COLORS.line},
+  v40PopularStoreList:{borderRadius:14,borderWidth:1,borderColor:COLORS.line,overflow:'hidden',backgroundColor:COLORS.white},
+  v40PopularStoreRow:{minHeight:60,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:10,paddingVertical:8,borderBottomWidth:1,borderBottomColor:COLORS.line},
   v40PopularStoreLogo:{width:48,height:48,borderRadius:13,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center',overflow:'hidden'},
   v40PopularStoreName:{fontFamily:FONT.bold,fontSize:12.5,fontWeight:'900',color:COLORS.black},
   v40PopularStoreMeta:{fontFamily:FONT.regular,fontSize:9.5,lineHeight:13,color:COLORS.muted,marginTop:3},
   v40PopularStoreRight:{maxWidth:120,alignItems:'flex-end'},
   v40PopularStoreRating:{fontFamily:FONT.bold,fontSize:10.5,fontWeight:'800',color:COLORS.black},
   v40PopularStoreDeal:{fontFamily:FONT.medium,fontSize:8.5,lineHeight:11,color:COLORS.black,backgroundColor:'#FFF4D9',borderRadius:7,paddingHorizontal:6,paddingVertical:3,marginTop:5,maxWidth:120},
-  v40WeekendPanel:{minHeight:180,borderRadius:20,backgroundColor:'#FFF4E5',padding:12,flexDirection:'row',gap:8,overflow:'hidden'},
+  v40WeekendPanel:{minHeight:154,borderRadius:16,backgroundColor:'#FFF4E5',padding:12,flexDirection:'row',gap:8,overflow:'hidden'},
   v40WeekendLead:{width:92,justifyContent:'center'},
   v40WeekendTitle:{fontFamily:FONT.bold,fontSize:21,lineHeight:21,fontWeight:'900',color:COLORS.black},
   v40WeekendBody:{fontFamily:FONT.regular,fontSize:9.5,lineHeight:13,color:COLORS.muted,marginTop:6},
@@ -4550,7 +4838,7 @@ const styles = StyleSheet.create({
   v40HomeEndLogo:{width:120,height:34},
   v40HomeEndText:{fontFamily:FONT.regular,fontSize:10.5,color:COLORS.muted,marginTop:4},
 
-  v40WhereHeader:{height:62,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:18,borderBottomWidth:1,borderBottomColor:COLORS.line,backgroundColor:COLORS.white},
+  v40WhereHeader:{height:58,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:14,borderBottomWidth:1,borderBottomColor:COLORS.line,backgroundColor:COLORS.white},
   v40CircleBack:{width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center'},
   v40CircleBackPlaceholder:{width:40,height:40},
   v40WhereTitle:{fontFamily:FONT.bold,fontSize:20,fontWeight:'900',color:COLORS.black},
@@ -4570,7 +4858,7 @@ const styles = StyleSheet.create({
   v40WhereEtaText:{fontFamily:FONT.bold,fontSize:12,fontWeight:'900',color:COLORS.black},
   v40WhereRouteMeta:{position:'absolute',left:14,bottom:14,backgroundColor:'rgba(255,255,255,.94)',borderRadius:12,flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:9,paddingVertical:6,maxWidth:'78%'},
   v40WhereRouteMetaText:{fontFamily:FONT.regular,fontSize:9.5,color:COLORS.black},
-  v40WhereSheet:{flex:1,minHeight:300,marginTop:-16,borderTopLeftRadius:28,borderTopRightRadius:28,backgroundColor:COLORS.white,paddingHorizontal:18,paddingTop:10,paddingBottom:14,...SHADOW},
+  v40WhereSheet:{flex:1,minHeight:300,marginTop:-16,borderTopLeftRadius:28,borderTopRightRadius:28,backgroundColor:COLORS.white,paddingHorizontal:14,paddingTop:10,paddingBottom:14,...SHADOW},
   v40WhereHandle:{width:46,height:5,borderRadius:3,backgroundColor:COLORS.lineDark,alignSelf:'center',marginBottom:12},
   v40WhereSuggestedTitle:{fontFamily:FONT.bold,fontSize:18,fontWeight:'900',color:COLORS.black,marginBottom:5},
   v40WhereSuggestionScroll:{flex:1,minHeight:170},
@@ -4616,7 +4904,7 @@ const styles = StyleSheet.create({
   v40RideFareValue:{fontFamily:FONT.bold,fontSize:18,fontWeight:'900',color:COLORS.black},
   v40RideFareNote:{fontFamily:FONT.regular,fontSize:9.5,lineHeight:13,color:COLORS.muted,textAlign:'center'},
 
-  v40CommerceHeader:{paddingHorizontal:18,paddingTop:8,paddingBottom:7,backgroundColor:COLORS.white},
+  v40CommerceHeader:{paddingHorizontal:14,paddingTop:8,paddingBottom:7,backgroundColor:COLORS.white},
   v40CommerceTopRow:{height:42,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
   v40CommerceBrandWrap:{width:142,height:38,alignItems:'flex-start',justifyContent:'center'},
   v40CommerceWordmark:{width:135,height:34},
@@ -4625,31 +4913,31 @@ const styles = StyleSheet.create({
   v40CommerceLocationRow:{minHeight:36,flexDirection:'row',alignItems:'center',gap:4},
   v40CommerceLocationPrefix:{fontFamily:FONT.regular,fontSize:12.5,color:COLORS.black},
   v40CommerceLocationText:{fontFamily:FONT.bold,fontSize:12.5,fontWeight:'900',color:COLORS.black,maxWidth:210},
-  v40CommerceScroll:{paddingBottom:22,gap:14},
-  v40CommerceSearch:{height:52,borderRadius:18,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:14,marginHorizontal:18},
+  v40CommerceScroll:{paddingBottom:18,gap:10},
+  v40CommerceSearch:{height:44,borderRadius:14,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12,marginHorizontal:14},
   v40CommerceSearchInput:{flex:1,fontFamily:FONT.regular,fontSize:13,color:COLORS.black},
-  v40FoodPromoRow:{gap:10,paddingHorizontal:18,paddingRight:22},
-  v40FoodPromoCard:{width:210,height:118,borderRadius:18,padding:14,flexDirection:'row',alignItems:'center',overflow:'hidden'},
+  v40FoodPromoRow:{gap:8,paddingHorizontal:14,paddingRight:20},
+  v40FoodPromoCard:{width:186,height:102,borderRadius:14,padding:14,flexDirection:'row',alignItems:'center',overflow:'hidden'},
   v40FoodPromoEyebrow:{fontFamily:FONT.bold,fontSize:13,fontWeight:'900'},
   v40FoodPromoTitle:{fontFamily:FONT.bold,fontSize:20,lineHeight:22,fontWeight:'900',color:COLORS.black},
   v40FoodPromoBody:{fontFamily:FONT.regular,fontSize:10.5,lineHeight:14,color:COLORS.black,marginTop:6,maxWidth:126},
   v40FoodPromoIcon:{width:54,height:54,borderRadius:18,backgroundColor:'rgba(255,255,255,.72)',alignItems:'center',justifyContent:'center'},
-  v40FoodFeaturedPanel:{marginHorizontal:18,borderRadius:20,backgroundColor:'#FFF9F0',padding:13},
+  v40FoodFeaturedPanel:{marginHorizontal:14,borderRadius:16,backgroundColor:'#FFF9F0',padding:13},
   v40RestaurantBrandRow:{gap:9,paddingTop:10},
   v40RestaurantBrandTile:{width:94,alignItems:'center'},
   v40RestaurantBrandLogo:{width:88,height:74,borderRadius:14,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center',paddingHorizontal:6},
   v40RestaurantBrandText:{fontFamily:FONT.bold,fontSize:12,lineHeight:14,fontWeight:'900',color:COLORS.black,textAlign:'center'},
   v40RestaurantOfferTag:{marginTop:-8,height:23,borderRadius:6,backgroundColor:'#C9FA28',flexDirection:'row',alignItems:'center',gap:3,paddingHorizontal:7},
   v40RestaurantOfferTagText:{fontFamily:FONT.bold,fontSize:8.5,fontWeight:'800',color:COLORS.black},
-  v40FoodCategoryRow:{gap:14,paddingHorizontal:18},
-  v40FoodCategory:{width:70,alignItems:'center'},
-  v40FoodCategoryCircle:{width:64,height:64,borderRadius:32,borderWidth:1,borderColor:COLORS.line,overflow:'hidden',backgroundColor:COLORS.white},
+  v40FoodCategoryRow:{gap:10,paddingHorizontal:14},
+  v40FoodCategory:{width:60,alignItems:'center'},
+  v40FoodCategoryCircle:{width:54,height:54,borderRadius:27,borderWidth:1,borderColor:COLORS.line,overflow:'hidden',backgroundColor:COLORS.white},
   v40FoodCategoryCircleActive:{borderColor:COLORS.red,borderWidth:2},
   v40FoodCategoryImage:{width:'100%',height:'100%'},
   v40FoodCategoryText:{fontFamily:FONT.regular,fontSize:10.5,color:COLORS.black,textAlign:'center',marginTop:5},
   v40FoodCategoryTextActive:{fontFamily:FONT.bold,fontWeight:'800',color:COLORS.red},
-  v40FilterRow:{gap:8,paddingHorizontal:18},
-  v40RestaurantList:{marginHorizontal:18,gap:10},
+  v40FilterRow:{gap:7,paddingHorizontal:14},
+  v40RestaurantList:{marginHorizontal:14,gap:8},
   v40RestaurantRow:{minHeight:135,borderRadius:18,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',overflow:'hidden'},
   v40RestaurantImageWrap:{width:128,position:'relative'},
   v40RestaurantImage:{width:'100%',height:'100%'},
@@ -4665,10 +4953,10 @@ const styles = StyleSheet.create({
   v40RestaurantReasonText:{fontFamily:FONT.regular,fontSize:9,color:COLORS.black},
   v40RestaurantCuisine:{fontFamily:FONT.regular,fontSize:9.5,color:COLORS.muted,marginTop:6},
 
-  v40ShopCategoryRow:{gap:14,paddingHorizontal:18},
+  v40ShopCategoryRow:{gap:10,paddingHorizontal:14},
   v40ShopCategory:{width:64,alignItems:'center'},
-  v40ShopCategoryCircle:{width:58,height:58,borderRadius:29,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center'},
-  v40ShopCategoryCircleActive:{borderColor:COLORS.red,borderWidth:2},
+  v40ShopCategoryCircle:{width:54,height:54,borderRadius:27,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center'},
+  v40ShopCategoryCircleActive:{borderColor:COLORS.yellow,backgroundColor:COLORS.yellowSoft,borderWidth:2},
   v40ShopCategoryText:{fontFamily:FONT.regular,fontSize:9.5,color:COLORS.black,textAlign:'center',marginTop:5},
   v40ShopCategoryTextActive:{fontFamily:FONT.bold,fontWeight:'800',color:COLORS.red},
   v40ShopHero:{height:190,borderRadius:20,marginHorizontal:18,padding:17,overflow:'hidden',position:'relative',flexDirection:'row'},
@@ -4684,14 +4972,14 @@ const styles = StyleSheet.create({
   v40PharmacyBrandCard:{width:'31.5%',height:91,borderRadius:15,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center',padding:7},
   v40PharmacyBrandLogo:{height:49,width:'100%',alignItems:'center',justifyContent:'center'},
   v40PharmacyBrandEta:{fontFamily:FONT.regular,fontSize:9.5,color:COLORS.muted,marginTop:4},
-  v40TopShopRow:{gap:9,paddingHorizontal:18},
+  v40TopShopRow:{gap:9,paddingHorizontal:14},
   v40TopShopCard:{width:106,height:120,borderRadius:16,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:8,alignItems:'center'},
   v40TopShopLogo:{height:50,width:'100%',alignItems:'center',justifyContent:'center'},
   v40TopShopName:{fontFamily:FONT.bold,fontSize:10.5,lineHeight:13,fontWeight:'800',color:COLORS.black,textAlign:'center',marginTop:4},
   v40TopShopEta:{fontFamily:FONT.regular,fontSize:9,color:COLORS.muted,marginTop:4},
   v40BrowseTitle:{fontFamily:FONT.bold,fontSize:17,fontWeight:'900',color:COLORS.black,marginHorizontal:18},
   v40ShopList:{marginHorizontal:18,borderRadius:18,borderWidth:1,borderColor:COLORS.line,overflow:'hidden',backgroundColor:COLORS.white},
-  v40ShopRow:{minHeight:91,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:10,paddingVertical:9,borderBottomWidth:1,borderBottomColor:COLORS.line},
+  v40ShopRow:{minHeight:84,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:10,paddingVertical:9,borderBottomWidth:1,borderBottomColor:COLORS.line},
   v40ShopRowLogo:{width:58,height:58,borderRadius:14,backgroundColor:COLORS.white,alignItems:'center',justifyContent:'center',overflow:'hidden'},
   v40ShopNameRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:6},
   v40ShopName:{flex:1,fontFamily:FONT.bold,fontSize:13,fontWeight:'900',color:COLORS.black},
@@ -4715,7 +5003,7 @@ const styles = StyleSheet.create({
   v40AiRecommendationActionText:{fontFamily:FONT.bold,fontSize:10.5,fontWeight:'900',color:COLORS.red},
 
   v404ScheduleBackdrop:{flex:1,backgroundColor:'rgba(0,0,0,.36)',justifyContent:'flex-end'},
-  v404ScheduleSheet:{backgroundColor:COLORS.white,borderTopLeftRadius:26,borderTopRightRadius:26,paddingHorizontal:18,paddingTop:10,paddingBottom:Platform.OS==='android'?28:20},
+  v404ScheduleSheet:{backgroundColor:COLORS.white,borderTopLeftRadius:26,borderTopRightRadius:26,paddingHorizontal:14,paddingTop:10,paddingBottom:Platform.OS==='android'?28:20},
   v404ScheduleHandle:{width:42,height:4,borderRadius:2,backgroundColor:COLORS.lineDark,alignSelf:'center',marginBottom:14},
   v404ScheduleTitle:{...TYPE.navTitle,color:COLORS.black},
   v404ScheduleBody:{...TYPE.small,color:COLORS.muted,marginTop:4,marginBottom:12},
@@ -4729,7 +5017,7 @@ const styles = StyleSheet.create({
   v404ScheduledSummaryValue:{...TYPE.bodyStrong,color:COLORS.black,marginTop:2},
 
   v404ModalBackdrop:{flex:1,backgroundColor:'rgba(0,0,0,.38)',justifyContent:'flex-end'},
-  v404TopUpSheet:{backgroundColor:COLORS.white,borderTopLeftRadius:26,borderTopRightRadius:26,paddingHorizontal:18,paddingTop:10,paddingBottom:Platform.OS==='android'?30:22},
+  v404TopUpSheet:{backgroundColor:COLORS.white,borderTopLeftRadius:26,borderTopRightRadius:26,paddingHorizontal:14,paddingTop:10,paddingBottom:Platform.OS==='android'?30:22},
   v404SheetHandle:{width:42,height:4,borderRadius:2,backgroundColor:COLORS.lineDark,alignSelf:'center',marginBottom:14},
   v404TopUpTitle:{...TYPE.navTitle,color:COLORS.black},
   v404TopUpBody:{...TYPE.small,color:COLORS.muted,marginTop:4,marginBottom:14},
@@ -4738,7 +5026,7 @@ const styles = StyleSheet.create({
   v404TopUpOptionText:{...TYPE.bodyStrong,color:COLORS.black},
   v404TopUpCancel:{height:48,alignItems:'center',justifyContent:'center',marginTop:10},
   v404TopUpCancelText:{...TYPE.action,color:COLORS.red},
-  v404PaymentSheet:{backgroundColor:COLORS.white,borderTopLeftRadius:26,borderTopRightRadius:26,paddingHorizontal:18,paddingTop:10,paddingBottom:Platform.OS==='android'?30:22},
+  v404PaymentSheet:{backgroundColor:COLORS.white,borderTopLeftRadius:26,borderTopRightRadius:26,paddingHorizontal:14,paddingTop:10,paddingBottom:Platform.OS==='android'?30:22},
   v404PaymentOption:{minHeight:72,borderTopWidth:1,borderTopColor:COLORS.line,flexDirection:'row',alignItems:'center',gap:12},
   v404PaymentOptionTitle:{...TYPE.bodyStrong,color:COLORS.black},
   v404PaymentOptionMeta:{...TYPE.caption,color:COLORS.muted,marginTop:2},

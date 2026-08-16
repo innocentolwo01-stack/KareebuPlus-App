@@ -252,37 +252,37 @@ export function KareebuDineOutSection({
 
 const styles = StyleSheet.create({
   section: {
-    marginTop: 22,
-    marginHorizontal: -16,
+    marginTop: 14,
+    marginHorizontal: -14,
     paddingBottom: 6,
     backgroundColor: '#FFFFFF',
   },
 
   sectionHeader: {
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    paddingHorizontal: 14,
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
   },
   sectionTitle: {
     color: '#1F2224',
-    fontSize: 24,
-    lineHeight: 29,
+    fontSize: 18,
+    lineHeight: 22,
     fontWeight: '800',
     letterSpacing: -0.4,
   },
   sectionSubtitle: {
     marginTop: 2,
     color: '#72767A',
-    fontSize: 13.5,
-    lineHeight: 18,
+    fontSize: 11.5,
+    lineHeight: 15,
     fontWeight: '500',
   },
   seeAll: {
     color: '#E94843',
     fontSize: 14,
-    lineHeight: 18,
+    lineHeight: 15,
     fontWeight: '800',
   },
 
@@ -293,20 +293,20 @@ const styles = StyleSheet.create({
   },
   hero: {
     width: '100%',
-    height: 126,
-    backgroundColor: '#07594E',
+    height: 104,
+    backgroundColor: '#171717',
   },
 
   restaurantRail: {
-    paddingTop: 14,
-    paddingLeft: 16,
+    paddingTop: 10,
+    paddingLeft: 14,
     paddingRight: 34,
   },
   restaurantGap: {
-    width: 12,
+    width: 9,
   },
   restaurantCard: {
-    borderRadius: 18,
+    borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: '#FFFFFF',
     borderWidth: StyleSheet.hairlineWidth,
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   },
   restaurantImageFrame: {
     width: '100%',
-    height: 158,
+    height: 126,
     backgroundColor: '#ECEDEE',
   },
   restaurantImage: {
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   plusBadgeText: {
-    color: '#008D79',
+    color: '#19A85A',
     fontSize: 12.5,
     fontWeight: '900',
   },
@@ -360,8 +360,8 @@ const styles = StyleSheet.create({
   },
   restaurantName: {
     color: '#242629',
-    fontSize: 17,
-    lineHeight: 21,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '800',
   },
   ratingRow: {
@@ -371,15 +371,15 @@ const styles = StyleSheet.create({
   },
   rating: {
     color: '#008F7B',
-    fontSize: 13.5,
-    lineHeight: 18,
+    fontSize: 11.5,
+    lineHeight: 15,
     fontWeight: '800',
   },
   reviews: {
     marginLeft: 3,
     color: '#008F7B',
     fontSize: 12.5,
-    lineHeight: 18,
+    lineHeight: 15,
     fontWeight: '600',
   },
   metaDot: {
@@ -391,8 +391,8 @@ const styles = StyleSheet.create({
   },
   eta: {
     color: '#008F7B',
-    fontSize: 13.5,
-    lineHeight: 18,
+    fontSize: 11.5,
+    lineHeight: 15,
     fontWeight: '800',
   },
   detailRow: {
@@ -423,8 +423,8 @@ const styles = StyleSheet.create({
   },
 
   editorialHeader: {
-    paddingHorizontal: 16,
-    marginTop: 22,
+    paddingHorizontal: 14,
+    marginTop: 14,
     marginBottom: 10,
   },
   editorialHeading: {
@@ -434,15 +434,15 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   editorialRail: {
-    paddingLeft: 16,
+    paddingLeft: 14,
     paddingRight: 34,
   },
   editorialGap: {
-    width: 12,
+    width: 9,
   },
   editorialCard: {
     height: 210,
-    borderRadius: 18,
+    borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: '#362821',
   },
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.94)',
   },
   editorialTopBadgeText: {
-    color: '#07594E',
+    color: '#171717',
     fontSize: 12,
     lineHeight: 15,
     fontWeight: '800',
@@ -487,8 +487,8 @@ const styles = StyleSheet.create({
     maxWidth: '90%',
     marginTop: 4,
     color: 'rgba(255,255,255,0.92)',
-    fontSize: 13.5,
-    lineHeight: 18,
+    fontSize: 11.5,
+    lineHeight: 15,
     fontWeight: '500',
   },
 

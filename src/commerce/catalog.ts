@@ -12,6 +12,10 @@ export type CommerceProduct = {
   badge?: string;
   variants?: Array<{ id: string; label: string; priceDelta: number }>;
   prescriptionRequired?: boolean;
+  brand?: string;
+  rating?: number;
+  reviewCount?: number;
+  stockLabel?: string;
 };
 
 const pharmacyProducts: CommerceProduct[] = [
@@ -55,11 +59,52 @@ const beautyProducts: CommerceProduct[] = [
   { id:'hair-care', name:'Hair care duo', detail:'Shampoo + conditioner', description:'Everyday shampoo and conditioner duo.', basePrice:39000, category:'Hair care', icon:'cut-outline' },
 ];
 
+// KAREEBU_V6_REALISTIC_PRODUCTS
+const kareebuExtraGroceryProducts: CommerceProduct[] = [
+  { id:'jesa-milk-1l', name:'Jesa Fresh Milk', detail:'1 litre', description:'Fresh full-cream milk in a 1 litre pack.', basePrice:5200, category:'Dairy', icon:'water-outline', brand:'Jesa', rating:4.8, reviewCount:214, stockLabel:'In stock' },
+  { id:'fresh-dairy-yoghurt', name:'Fresh Dairy Vanilla Yoghurt', detail:'500 ml', description:'Smooth vanilla yoghurt, chilled and ready to enjoy.', basePrice:7500, category:'Dairy', icon:'snow-outline', brand:'Fresh Dairy', rating:4.7, reviewCount:128, stockLabel:'In stock' },
+  { id:'eggs-tray-30', name:'Grade A Eggs', detail:'Tray of 30', description:'Fresh Grade A eggs packed in a full tray.', basePrice:18000, category:'Fresh produce', icon:'ellipse-outline', rating:4.8, reviewCount:342, stockLabel:'Fresh today' },
+  { id:'matooke-family', name:'Fresh Matooke', detail:'Family bunch · approx. 4–5 kg', description:'Fresh green matooke selected for everyday family meals.', basePrice:22000, category:'Fresh produce', icon:'leaf-outline', badge:'Local favourite', rating:4.9, reviewCount:267, stockLabel:'Fresh today' },
+  { id:'tomatoes-1kg', name:'Fresh Tomatoes', detail:'1 kg', description:'Firm ripe tomatoes selected for cooking and salads.', basePrice:6500, category:'Fresh produce', icon:'nutrition-outline', rating:4.7, reviewCount:189, stockLabel:'Fresh today' },
+  { id:'avocado-4pack', name:'Hass Avocados', detail:'Pack of 4', description:'Four ripe-ready avocados selected for quality.', basePrice:9000, category:'Fresh produce', icon:'leaf-outline', rating:4.8, reviewCount:156, stockLabel:'In stock' },
+  { id:'rwenzori-water-6', name:'Rwenzori Mineral Water', detail:'6 × 1.5 litre', description:'Six large bottles of mineral water.', basePrice:14500, category:'Drinks', icon:'water-outline', brand:'Rwenzori', rating:4.9, reviewCount:411, stockLabel:'In stock' },
+  { id:'mukwano-oil-3l', name:'Mukwano Vegetable Oil', detail:'3 litres', description:'Everyday vegetable cooking oil in a family-size bottle.', basePrice:28500, category:'Pantry', icon:'water-outline', brand:'Mukwano', rating:4.7, reviewCount:198, stockLabel:'In stock' },
+  { id:'sugar-2kg', name:'White Sugar', detail:'2 kg', description:'Fine white granulated sugar for home use.', basePrice:11500, category:'Pantry', icon:'cube-outline', rating:4.6, reviewCount:94, stockLabel:'In stock' },
+  { id:'maize-flour-2kg', name:'Premium Maize Flour', detail:'2 kg', description:'Fine maize flour for posho and everyday cooking.', basePrice:9800, category:'Pantry', icon:'basket-outline', rating:4.8, reviewCount:163, stockLabel:'In stock' },
+];
+
+const kareebuExtraPharmacyProducts: CommerceProduct[] = [
+  { id:'oral-rehydration-10', name:'Oral Rehydration Salts', detail:'10 sachets', description:'Oral rehydration salts for replacing fluids and electrolytes. Use as directed.', basePrice:12000, category:'Medicines', icon:'medical-outline', rating:4.8, reviewCount:87, stockLabel:'In stock' },
+  { id:'antiseptic-500', name:'Antiseptic Liquid', detail:'500 ml', description:'Multipurpose antiseptic liquid for household first-aid and hygiene use.', basePrice:18500, category:'First aid', icon:'medkit-outline', rating:4.7, reviewCount:132, stockLabel:'In stock' },
+  { id:'digital-thermometer', name:'Digital Thermometer', detail:'Fast-read digital display', description:'Compact digital thermometer for home temperature checks.', basePrice:26000, category:'First aid', icon:'thermometer-outline', badge:'Useful at home', rating:4.6, reviewCount:74, stockLabel:'In stock' },
+  { id:'mosquito-repellent', name:'Mosquito Repellent Spray', detail:'150 ml', description:'Everyday insect repellent spray for exposed skin and outdoor use.', basePrice:22000, category:'Personal care', icon:'shield-outline', rating:4.6, reviewCount:116, stockLabel:'In stock' },
+  { id:'spf50-sunscreen', name:'SPF 50 Sunscreen', detail:'100 ml', description:'Broad-spectrum high-protection sunscreen for daily outdoor use.', basePrice:48000, category:'Skin care', icon:'sunny-outline', rating:4.7, reviewCount:91, stockLabel:'Low stock' },
+  { id:'allergy-relief', name:'Allergy Relief Tablets', detail:'10 tablets', description:'Over-the-counter allergy relief. Check the pack and pharmacist advice before use.', basePrice:13500, category:'Medicines', icon:'medical-outline', rating:4.6, reviewCount:68, stockLabel:'In stock' },
+];
+
+const kareebuExtraMarketplaceProducts: CommerceProduct[] = [
+  { id:'usb-c-65w', name:'65W USB-C Fast Charger', detail:'USB-C PD wall adapter', description:'Compact 65W Power Delivery charger for compatible phones, tablets and laptops.', basePrice:125000, category:'Electronics', icon:'flash-outline', badge:'Fast charge', rating:4.7, reviewCount:182, stockLabel:'In stock' },
+  { id:'smartwatch-active', name:'Active Smartwatch', detail:'1.8-inch display · fitness tracking', description:'Everyday smartwatch with activity, sleep and notification features.', basePrice:165000, category:'Electronics', icon:'watch-outline', rating:4.5, reviewCount:143, stockLabel:'In stock' },
+  { id:'wireless-mouse', name:'Silent Wireless Mouse', detail:'2.4 GHz · USB receiver', description:'Compact wireless mouse with quiet clicks and adjustable sensitivity.', basePrice:55000, category:'Accessories', icon:'hardware-chip-outline', rating:4.6, reviewCount:201, stockLabel:'In stock' },
+  { id:'laptop-sleeve-14', name:'14-inch Laptop Sleeve', detail:'Padded water-resistant sleeve', description:'Soft-lined protective sleeve for 13–14 inch laptops.', basePrice:72000, category:'Accessories', icon:'briefcase-outline', rating:4.7, reviewCount:96, stockLabel:'In stock' },
+  { id:'hdmi-2m', name:'High-Speed HDMI Cable', detail:'2 metres', description:'High-speed HDMI cable for TVs, monitors and game consoles.', basePrice:32000, category:'Accessories', icon:'link-outline', rating:4.6, reviewCount:118, stockLabel:'In stock' },
+  { id:'mini-fan-rechargeable', name:'Rechargeable Mini Fan', detail:'USB-C · 3 speeds', description:'Portable rechargeable fan with three speed settings.', basePrice:68000, category:'Electronics', icon:'sync-circle-outline', rating:4.5, reviewCount:84, stockLabel:'In stock' },
+];
+
+const kareebuExtraBeautyProducts: CommerceProduct[] = [
+  { id:'body-lotion-400', name:'Deep Moisture Body Lotion', detail:'400 ml', description:'Everyday body lotion for long-lasting moisturisation.', basePrice:36000, category:'Body care', icon:'water-outline', rating:4.8, reviewCount:224, stockLabel:'In stock' },
+  { id:'gentle-shampoo-400', name:'Gentle Daily Shampoo', detail:'400 ml', description:'Everyday cleansing shampoo for regular hair care.', basePrice:32000, category:'Hair care', icon:'sparkles-outline', rating:4.6, reviewCount:138, stockLabel:'In stock' },
+  { id:'conditioner-400', name:'Moisture Conditioner', detail:'400 ml', description:'Conditioning care for softer, easier-to-manage hair.', basePrice:34000, category:'Hair care', icon:'water-outline', rating:4.6, reviewCount:112, stockLabel:'In stock' },
+  { id:'lip-balm-spf', name:'Moisture Lip Balm', detail:'4.8 g', description:'Pocket-size moisturising lip care for everyday use.', basePrice:12000, category:'Personal care', icon:'heart-outline', rating:4.7, reviewCount:173, stockLabel:'In stock' },
+  { id:'roll-on-deodorant', name:'Fresh Roll-on Deodorant', detail:'50 ml', description:'Everyday roll-on deodorant with a clean fresh scent.', basePrice:15500, category:'Personal care', icon:'sparkles-outline', rating:4.6, reviewCount:154, stockLabel:'In stock' },
+  { id:'face-spf-moisturiser', name:'Daily Face Moisturiser SPF 30', detail:'50 ml', description:'Light daily facial moisturiser with broad-spectrum sun protection.', basePrice:52000, category:'Skin care', icon:'sunny-outline', badge:'Daily essential', rating:4.8, reviewCount:119, stockLabel:'In stock' },
+];
+
 export function commerceProductsFor(store: DemoShop): CommerceProduct[] {
-  if (store.category === 'Pharmacy' || store.category === 'Nutrition' || store.category === 'Eye care') return pharmacyProducts;
-  if (store.category === 'Groceries') return groceryProducts;
-  if (store.category === 'Marketplace' || store.category === 'Electronics') return marketplaceProducts;
-  if (store.category === 'Beauty') return beautyProducts;
+  if (store.category === 'Pharmacy' || store.category === 'Nutrition' || store.category === 'Eye care') return [...pharmacyProducts, ...kareebuExtraPharmacyProducts];
+  if (store.category === 'Groceries') return [...groceryProducts, ...kareebuExtraGroceryProducts];
+  if (store.category === 'Marketplace' || store.category === 'Electronics') return [...marketplaceProducts, ...kareebuExtraMarketplaceProducts];
+  if (store.category === 'Beauty') return [...beautyProducts, ...kareebuExtraBeautyProducts];
   return [...groceryProducts.slice(0,4), ...marketplaceProducts.slice(0,4)];
 }
 
@@ -121,7 +166,7 @@ export function commerceLongDescriptionFor(product: CommerceProduct) {
 }
 
 export function commerceProductMetadataFor(product: CommerceProduct): ProductMetadata {
-  const brand = productBrands[product.id] ?? { name:'Kareebu Marketplace', manufacturer:'Marketplace seller', origin:'Varies by seller' };
+  const brand = productBrands[product.id] ?? (product.brand ? { name:product.brand, manufacturer:product.brand, origin:'As labelled on product' } : { name:'Kareebu Marketplace', manufacturer:'Marketplace seller', origin:'Varies by seller' });
   const isFood = ['Dairy','Bakery','Pantry','Fresh produce','Drinks'].includes(product.category);
   const isMedicine = ['Vitamins','Medicines','Prescription','First aid'].includes(product.category);
   const isElectronic = product.category === 'Electronics' || product.category === 'Accessories';
@@ -137,8 +182,8 @@ export function commerceProductMetadataFor(product: CommerceProduct): ProductMet
     unitType:isFood ? (product.detail.toLowerCase().includes('kg') ? 'kg' : product.detail.toLowerCase().includes('litre') || product.detail.toLowerCase().includes('ml') ? 'volume' : 'pack') : 'item',
     stock,
     maximumCartQuantity:isMedicine ? 4 : isElectronic ? 5 : 12,
-    averageRating:isElectronic ? 4.5 : isMedicine ? 4.7 : 4.6,
-    ratingCount:isElectronic ? 184 : isMedicine ? 92 : 236,
+    averageRating:product.rating ?? (isElectronic ? 4.5 : isMedicine ? 4.7 : 4.6),
+    ratingCount:product.reviewCount ?? (isElectronic ? 184 : isMedicine ? 92 : 236),
     verifiedSeller:true,
     freeDelivery:product.basePrice >= 60000,
     taxRatePercent:18,

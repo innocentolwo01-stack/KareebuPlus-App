@@ -18,3 +18,5 @@ ios/build/
 
 /android
 /ios
+
+.kareebu-backups/

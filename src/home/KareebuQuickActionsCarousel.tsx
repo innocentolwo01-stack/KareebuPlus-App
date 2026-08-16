@@ -92,22 +92,22 @@ export function KareebuQuickActionsCarousel({
 
 const styles = StyleSheet.create({
   bleed: {
-    marginHorizontal: -16,
-    marginTop: 12,
+    marginHorizontal: -14,
+    marginTop: 8,
   },
   rail: {
-    paddingLeft: 16,
+    paddingLeft: 14,
     paddingRight: 32,
-    gap: 10,
+    gap: 8,
   },
   card: {
-    width: 184,
-    height: 78,
-    borderRadius: 15,
+    width: 162,
+    height: 66,
+    borderRadius: 13,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#E3E5E6',
     backgroundColor: '#FFFFFF',
-    paddingLeft: 14,
+    paddingLeft: 11,
     paddingRight: 8,
     flexDirection: 'row',
     alignItems: 'center',
@@ -128,20 +128,20 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     color: '#73777C',
-    fontSize: 13.5,
-    lineHeight: 18,
+    fontSize: 11.5,
+    lineHeight: 15,
     fontWeight: '500',
   },
   title: {
     color: '#242528',
     marginTop: 1,
-    fontSize: 15.5,
-    lineHeight: 19,
+    fontSize: 13.5,
+    lineHeight: 17,
     fontWeight: '700',
   },
   image: {
-    width: 48,
-    height: 48,
+    width: 42,
+    height: 42,
     flexShrink: 0,
   },
 });

@@ -6,14 +6,34 @@ const feature = fs.readFileSync('src/food/screens.tsx', 'utf8');
 const catalog = fs.readFileSync('src/food/catalog.ts', 'utf8');
 const pricing = fs.readFileSync('src/food/pricing.ts', 'utf8');
 const types = fs.readFileSync('src/types.ts', 'utf8');
+const discoveryTypes = fs.readFileSync('src/food/discovery/types.ts', 'utf8');
+const discoveryController = fs.readFileSync('src/food/discovery/controller.ts', 'utf8');
+const discoveryHome = fs.readFileSync('src/food/discovery/FoodDiscoveryHome.tsx', 'utf8');
+const discoverySurfaces = fs.readFileSync('src/food/discovery/surfaces.tsx', 'utf8');
+const discoverySections = fs.readFileSync('src/food/discovery/widgets/sections.tsx', 'utf8');
 
 const checks = [
-  ['Food module: Find your food', screens, 'Find your food'],
-  ['Food module: Featured restaurants', screens, 'Featured restaurants'],
-  ['Food module: Just for you', screens, 'Just for you'],
-  ['Food module: Quick delivery', screens, 'Quick delivery'],
-  ['Food module: Trending dishes', screens, 'Trending dishes'],
-  ['Food module: Explore restaurants', screens, 'Explore restaurants'],
+  ['Food AppEngine-style document', discoveryTypes, "page: 'food-discovery-home'"],
+  ['Food-specific search surface', discoverySurfaces, 'Search restaurants or dishes'],
+  ['Search query state', discoveryController, "const [query, setQuery]"],
+  ['Restaurant search results', discoveryController, 'restaurantSearchResults'],
+  ['Dish search results', discoveryController, 'dishSearchResults'],
+  ['Dish result deep-link handoff', discoverySurfaces, 'openFoodItem'],
+  ['Filter and sort surface', discoverySurfaces, 'Filter & sort'],
+  ['Rating filter', discoveryController, 'minRating'],
+  ['Offer filter', discoveryController, 'offersOnly'],
+  ['Kareebu+ filter', discoveryController, 'plusOnly'],
+  ['Free delivery filter', discoveryController, 'freeDeliveryOnly'],
+  ['Fastest sort', discoveryController, "filters.sort === 'Fastest'"],
+  ['Category listing navigation', discoveryController, 'openCategory'],
+  ['Nearby listing navigation', discoveryController, 'openNearby'],
+  ['Best seller listing navigation', discoveryController, 'openBestSellers'],
+  ['Promo-specific navigation', discoveryController, 'openPromo'],
+  ['Popular brand navigation', discoverySections, 'controller.openBrand'],
+  ['Dismissible membership banner', discoveryHome, 'setMembershipVisible(false)'],
+  ['Restaurant menu search', screens, 'Search ${restaurant.name}'],
+  ['Restaurant category filtering', screens, 'activeMenuCategory'],
+  ['Restaurant share', screens, 'Share.share'],
   ['Restaurant item opens details', screens, "actions.go('foodItem')"],
   ['Item details route', types, "| 'foodItem'"],
   ['Checkout route', types, "| 'foodCheckout'"],
@@ -41,9 +61,9 @@ const checks = [
 
 const missing = checks.filter(([, haystack, needle]) => !haystack.includes(needle));
 if (missing.length) {
-  for (const [label, , needle] of missing) console.error(`Missing Food parity requirement: ${label} (${needle})`);
+  for (const [label, , needle] of missing) console.error(`Missing Food functional parity requirement: ${label} (${needle})`);
   process.exit(1);
 }
 
-console.log(`Food parity validation passed: ${checks.length}/${checks.length} implementation checks present.`);
-console.log('Scope: Food discovery -> restaurant -> item customisation -> cart -> checkout -> confirmation -> tracking handoff.');
+console.log(`Food functional parity validation passed: ${checks.length}/${checks.length} implementation checks present.`);
+console.log('Scope: discovery/search/filter/listing -> restaurant/menu search -> item customisation -> cart -> checkout -> confirmation -> tracking handoff.');

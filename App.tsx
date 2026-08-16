@@ -1,7 +1,8 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Linking, View } from 'react-native';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { AppActions, AppData, renderScreen } from './src/screens';
-import { RideId, Screen } from './src/types';
+import { RideId, Screen, SupportTicket, WalletTransaction } from './src/types';
 import { VehicleMode } from './src/ride/vehicle';
 import { createRidePlan, RidePlan, RideProduct, RideReceipt } from './src/ride/mobility';
 import type { CaptainRideStatus } from './src/ride/captainDriverParity';
@@ -9,7 +10,9 @@ import { PlaceSelection } from './src/places/types';
 import { createFoodCheckoutDraft, FoodCartLine, FoodCheckoutDraft, FoodOrder } from './src/food/types';
 import { createCommerceCheckoutDraft, createParcelDraft, createServiceRequest, CommerceCartLine, CommerceCheckoutDraft, CommerceOrder, ParcelDraft, ParcelOrder, RentalBooking, ServiceBooking, ServiceRequest } from './src/parity/types';
 import * as NativeSplashScreen from 'expo-splash-screen';
+import { resolveKareebuDeepLink } from './src/routing/kareebuDeepLinks';
 
+import { KareebuLaunchGate } from './src/onboarding/KareebuLaunchGate';
 // Keep the native launch layer in place until the first React Native splash
 // frame has actually been laid out. This prevents a white/blank flash between
 // Android's system splash and the exact branded in-app splash.
@@ -70,6 +73,8 @@ export default function App() {
   const [serviceRequest, setServiceRequest] = useState<ServiceRequest>(() => createServiceRequest('Kampala'));
   const [lastServiceBooking, setLastServiceBooking] = useState<ServiceBooking | null>(null);
   const [rewardPoints, setRewardPoints] = useState(1280);
+  const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>([]);
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
   const currentScreenRef = useRef<Screen>('splash');
   const nativeSplashHiddenRef = useRef(false);
 
@@ -142,7 +147,9 @@ export default function App() {
     serviceRequest,
     lastServiceBooking,
     rewardPoints,
-  }), [guest, authReturn, locationReturn, country, city, phone, otp, fullName, email, locationAllowed, notificationsAllowed, destinationPlace, deliveryPlace, focusedPlace, selectedVehicleMode, selectedRide, selectedPayment, walletBalance, scheduledTrip, rating, tip, selectedRestaurantId, selectedFoodItemId, foodCartLines, foodCheckout, lastFoodOrder, selectedShopId, shopCategoryPreset, cartQuantities, favoriteRestaurantIds, favoriteShopIds, selectedCommerceProductId, commerceCartLines, commerceCheckout, lastCommerceOrder, parcelDraft, lastParcelOrder, selectedRideBidId, rideProduct, ridePriority, ridePromoCode, ridePlan, lastRideReceipt, captainRideStatus, selectedRentalVehicleId, lastRentalBooking, selectedServiceId, selectedProviderId, serviceRequest, lastServiceBooking, rewardPoints]);
+    walletTransactions,
+    supportTickets,
+  }), [guest, authReturn, locationReturn, country, city, phone, otp, fullName, email, locationAllowed, notificationsAllowed, destinationPlace, deliveryPlace, focusedPlace, selectedVehicleMode, selectedRide, selectedPayment, walletBalance, scheduledTrip, rating, tip, selectedRestaurantId, selectedFoodItemId, foodCartLines, foodCheckout, lastFoodOrder, selectedShopId, shopCategoryPreset, cartQuantities, favoriteRestaurantIds, favoriteShopIds, selectedCommerceProductId, commerceCartLines, commerceCheckout, lastCommerceOrder, parcelDraft, lastParcelOrder, selectedRideBidId, rideProduct, ridePriority, ridePromoCode, ridePlan, lastRideReceipt, captainRideStatus, selectedRentalVehicleId, lastRentalBooking, selectedServiceId, selectedProviderId, serviceRequest, lastServiceBooking, rewardPoints, walletTransactions, supportTickets]);
 
   const actions: AppActions = useMemo(() => ({
     go: navigate,
@@ -230,6 +237,8 @@ export default function App() {
     updateServiceRequest: (patch: Partial<ServiceRequest>) => setServiceRequest((current) => ({ ...current, ...patch })),
     placeServiceBooking: setLastServiceBooking,
     setRewardPoints,
+    recordWalletTransaction: (transaction) => setWalletTransactions((current) => [{ ...transaction, id: `WT-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, createdAt: new Date().toISOString() }, ...current].slice(0, 100)),
+    createSupportTicket: (ticket) => setSupportTickets((current) => { const created: SupportTicket = { ...ticket, id: `KT-${String(Date.now()).slice(-6)}`, status: 'Open', createdAt: new Date().toISOString() }; return [created, ...current].slice(0, 50); }),
     setCartItemQuantity: (itemId: string, quantity: number) => setCartQuantities((current) => {
       const next = { ...current };
       if (quantity <= 0) delete next[itemId]; else next[itemId] = quantity;
@@ -239,6 +248,17 @@ export default function App() {
     toggleFavoriteShop: (shopId: string) => setFavoriteShopIds((current) => current.includes(shopId) ? current.filter((id) => id !== shopId) : [...current, shopId]),
   }), [navigate, city]);
 
+  useEffect(() => {
+    const open = (url: string | null | undefined) => {
+      if (!url) return;
+      const target = resolveKareebuDeepLink(url);
+      if (target) navigate(target);
+    };
+    Linking.getInitialURL().then(open).catch(() => undefined);
+    const subscription = Linking.addEventListener('url', ({ url }) => open(url));
+    return () => subscription.remove();
+  }, [navigate]);
+
   const onRootLayout = useCallback(() => {
     if (nativeSplashHiddenRef.current) return;
     nativeSplashHiddenRef.current = true;
@@ -246,11 +266,16 @@ export default function App() {
   }, []);
 
   return (
-    <View
-      onLayout={onRootLayout}
-      style={{ flex: 1, backgroundColor: screen === 'splash' ? '#030303' : '#FFFFFF' }}
-    >
-      {renderScreen(screen, data, actions)}
-    </View>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <View
+        onLayout={onRootLayout}
+        style={{ flex: 1, backgroundColor: screen === 'splash' ? '#030303' : '#FFFFFF' }}
+      >
+        {/* KAREEBU_V6_LAUNCH_GATE */}
+        <KareebuLaunchGate screen={screen} data={data} actions={actions}>
+          {renderScreen(screen, data, actions)}
+        </KareebuLaunchGate>
+      </View>
+    </SafeAreaProvider>
   );
 }
