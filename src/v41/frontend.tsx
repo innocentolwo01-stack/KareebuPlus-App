@@ -4,6 +4,7 @@ import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header, PrimaryButton, RoundedCard, ScreenShell, SectionTitle } from '../components';
 import { COLORS, FONT, SHADOW, TYPE } from '../theme';
 import { formatMoney } from '../locale';
+import { MarketplaceCategoryGrid, MarketplaceCategoryHeader, MarketplaceMembershipStrip, MarketplacePromoBanner, MarketplacePromoGrid, MarketplaceRecommendedRail, marketplaceSemanticForCategory } from '../marketplace/MarketplaceCategoryChrome';
 import type { Screen } from '../types';
 
 export type V41FrontendData = {
@@ -83,21 +84,62 @@ function StoreCard({ store, onPress }: { store: typeof stores[number]; onPress: 
 }
 
 export function CategoriesScreen({ data, actions }: { data: V41FrontendData; actions: V41FrontendActions }) {
-  return <ScreenShell><Header title="Categories" onBack={() => actions.go('home')}/><ScrollView style={styles.flex} contentContainerStyle={styles.scroll}><V41SearchBar placeholder="Search categories" onPress={() => actions.go('search')}/><View style={styles.categoryGrid}>{categories.map((item)=><Pressable key={item.id} onPress={()=>actions.go('categoryItems')} style={styles.categoryCard}><View style={[styles.categoryIcon,{backgroundColor:item.color}]}><Ionicons name={item.icon} size={31} color={COLORS.black}/></View><Text style={styles.categoryName}>{item.name}</Text></Pressable>)}</View><SectionTitle title="Popular near you"/><View style={styles.storeList}>{stores.slice(0,3).map((store)=><StoreCard key={store.id} store={store} onPress={()=>actions.go(store.type==='Restaurant'?'food':'shops')}/>)}</View></ScrollView></ScreenShell>;
+  return <ScreenShell><ScrollView style={styles.flex} contentContainerStyle={{paddingBottom:34}} showsVerticalScrollIndicator={false}>
+    <MarketplaceCategoryHeader location={`${data.city}, ${data.country}`} searchPlaceholder="Type to search..." onSearchPress={()=>actions.go('search')} onBack={()=>actions.go('home')} onMenu={()=>actions.go('allStores')} onLocation={()=>actions.go('locationPicker')}/>
+    <View style={{paddingHorizontal:14}}>
+      <MarketplacePromoBanner category="Shops" onPress={()=>actions.go('offers')}/>
+      <MarketplaceRecommendedRail merchants={stores.map((store)=>({id:store.id,name:store.name,meta:`${store.rating.toFixed(1)} ★ · ${store.eta}`,semantic:marketplaceSemanticForCategory(store.type)}))} onPress={(id)=>actions.go(id==='javas'?'food':'shops')}/>
+      <MarketplaceCategoryGrid tiles={categories.map((item)=>({id:item.id,label:item.name,semantic:marketplaceSemanticForCategory(item.name)}))} onPress={()=>actions.go('categoryItems')}/>
+      <MarketplacePromoGrid category="Shops" onPress={()=>actions.go('campaigns')}/>
+      <MarketplaceMembershipStrip onPress={()=>actions.go('plusManage')}/>
+    </View>
+  </ScrollView></ScreenShell>;
 }
 
 export function CategoryItemsScreen({ data, actions }: { data: V41FrontendData; actions: V41FrontendActions }) {
   const [filter,setFilter]=useState('Popular');
-  return <ScreenShell><Header title="Category" onBack={()=>actions.go('categories')}/><ScrollView style={styles.flex} contentContainerStyle={styles.scroll}><View style={styles.categoryHero}><Ionicons name="basket-outline" size={44}/><View><Text style={styles.heroEyebrow}>GROCERY</Text><Text style={styles.heroTitle}>Everyday essentials</Text><Text style={styles.heroBody}>Fast delivery around {data.city}</Text></View></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>{['Popular','Top rated','Under 30 min','Offers'].map(x=><V41Chip key={x} label={x} active={filter===x} onPress={()=>setFilter(x)}/>)}</ScrollView><SectionTitle title="Top stores"/><View style={styles.storeList}>{stores.filter(s=>s.type!=='Restaurant').map(s=><StoreCard key={s.id} store={s} onPress={()=>actions.go('shops')}/>)}</View><SectionTitle title="Popular products"/><View style={styles.productGrid}>{demoProducts.slice(0,3).map(p=><ProductCard key={p.id} product={p} country={data.country} onPress={()=>actions.go('shops')}/>)}</View></ScrollView></ScreenShell>;
+  return <ScreenShell><ScrollView style={styles.flex} contentContainerStyle={{paddingBottom:34}} showsVerticalScrollIndicator={false}>
+    <MarketplaceCategoryHeader location={`${data.city}, ${data.country}`} searchPlaceholder="Search this category..." onSearchPress={()=>actions.go('search')} onBack={()=>actions.go('categories')} onMenu={()=>actions.go('categories')} onLocation={()=>actions.go('locationPicker')}/>
+    <View style={{paddingHorizontal:14}}>
+      <MarketplacePromoBanner category="Groceries" onPress={()=>setFilter('Offers')}/>
+      <MarketplaceRecommendedRail title="Recommended Shops" merchants={stores.map((store)=>({id:store.id,name:store.name,meta:`${store.rating.toFixed(1)} ★ · ${store.eta}`,semantic:marketplaceSemanticForCategory(store.type)}))} onPress={()=>actions.go('shops')}/>
+      <MarketplaceCategoryGrid tiles={categories.map((item)=>({id:item.id,label:item.name,semantic:marketplaceSemanticForCategory(item.name)}))} selectedId="grocery" onPress={()=>actions.go('categoryItems')}/>
+      <MarketplacePromoGrid category="Groceries" onPress={()=>setFilter('Offers')}/>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>{['Popular','Top rated','Under 30 min','Offers'].map(x=><V41Chip key={x} label={x} active={filter===x} onPress={()=>setFilter(x)}/>)}</ScrollView>
+      <SectionTitle title="Popular products"/>
+      <View style={styles.productGrid}>{demoProducts.map(p=><ProductCard key={p.id} product={p} country={data.country} onPress={()=>actions.go('shops')}/>)}</View>
+      <MarketplaceMembershipStrip onPress={()=>actions.go('plusManage')}/>
+    </View>
+  </ScrollView></ScreenShell>;
 }
 
-export function BrandsScreen({ actions }: { data: V41FrontendData; actions: V41FrontendActions }) {
-  const brands=[['Capital Shoppers','cart-outline'],['Goodlife','medical-outline'],['Jumia','bag-handle-outline'],['Cafe Javas','cafe-outline'],['Pizza Hut','pizza-outline'],['Kareebu Local','storefront-outline']];
-  return <ScreenShell><Header title="Brands" onBack={()=>actions.go('home')}/><ScrollView style={styles.flex} contentContainerStyle={styles.scroll}><V41SearchBar placeholder="Search brands"/><View style={styles.brandGrid}>{brands.map(([name,icon])=><Pressable key={name} onPress={()=>actions.go('brandItems')} style={styles.brandCard}><View style={styles.brandLogo}><Ionicons name={icon as any} size={31}/></View><Text style={styles.brandName}>{name}</Text></Pressable>)}</View></ScrollView></ScreenShell>;
+export function BrandsScreen({ data, actions }: { data: V41FrontendData; actions: V41FrontendActions }) {
+  const brands=[['Capital Shoppers','Groceries'],['Goodlife','Pharmacy'],['Jumia','Marketplace'],['Cafe Javas','Food'],['Pizza Inn','Food'],['Kareebu Local','Shops']];
+  return <ScreenShell><ScrollView style={styles.flex} contentContainerStyle={{paddingBottom:34}} showsVerticalScrollIndicator={false}>
+    <MarketplaceCategoryHeader location={`${data.city}, ${data.country}`} searchPlaceholder="Search brands..." onSearchPress={()=>actions.go('search')} onBack={()=>actions.go('home')} onMenu={()=>actions.go('categories')} onLocation={()=>actions.go('locationPicker')}/>
+    <View style={{paddingHorizontal:14}}>
+      <MarketplacePromoBanner category="Brands" onPress={()=>actions.go('offers')}/>
+      <MarketplaceRecommendedRail title="Recommended brands" merchants={brands.map(([name,type],index)=>({id:String(index),name,semantic:marketplaceSemanticForCategory(type),meta:'Popular on Kareebu+'}))} onPress={()=>actions.go('brandItems')}/>
+      <MarketplaceCategoryGrid tiles={categories.map((item)=>({id:item.id,label:item.name,semantic:marketplaceSemanticForCategory(item.name)}))} onPress={()=>actions.go('categoryItems')}/>
+      <MarketplacePromoGrid category="Shops" onPress={()=>actions.go('campaigns')}/>
+      <MarketplaceMembershipStrip onPress={()=>actions.go('plusManage')}/>
+    </View>
+  </ScrollView></ScreenShell>;
 }
 
 export function BrandItemsScreen({ data, actions }: { data: V41FrontendData; actions: V41FrontendActions }) {
-  return <ScreenShell><Header title="Goodlife Pharmacy" onBack={()=>actions.go('brands')}/><ScrollView style={styles.flex} contentContainerStyle={styles.scroll}><View style={styles.brandHero}><View style={styles.brandHeroIcon}><Ionicons name="medical" size={38} color={COLORS.green}/></View><View style={styles.flex}><Text style={styles.heroTitle}>Goodlife Pharmacy</Text><Text style={styles.storeMeta}>Verified · ★ 4.9 · 20–28 min</Text></View><Pressable onPress={()=>actions.go('favourites')}><Ionicons name="heart-outline" size={25}/></Pressable></View><SectionTitle title="Featured products"/><View style={styles.productGrid}>{demoProducts.filter(p=>p.id==='wellness-pack').concat(demoProducts.slice(0,3)).map((p,i)=><ProductCard key={`${p.id}-${i}`} product={p} country={data.country} onPress={()=>actions.go('shops')}/>)}</View></ScrollView></ScreenShell>;
+  return <ScreenShell><ScrollView style={styles.flex} contentContainerStyle={{paddingBottom:34}} showsVerticalScrollIndicator={false}>
+    <MarketplaceCategoryHeader location={`${data.city}, ${data.country}`} searchPlaceholder="Search Goodlife Pharmacy..." onSearchPress={()=>actions.go('search')} onBack={()=>actions.go('brands')} onMenu={()=>actions.go('categories')} onLocation={()=>actions.go('locationPicker')}/>
+    <View style={{paddingHorizontal:14}}>
+      <MarketplacePromoBanner category="Pharmacy" onPress={()=>actions.go('offers')}/>
+      <MarketplaceRecommendedRail title="Recommended in health" merchants={stores.map((store)=>({id:store.id,name:store.name,meta:`${store.rating.toFixed(1)} ★ · ${store.eta}`,semantic:marketplaceSemanticForCategory(store.type)}))} onPress={()=>actions.go('shops')}/>
+      <MarketplaceCategoryGrid tiles={categories.map((item)=>({id:item.id,label:item.name,semantic:marketplaceSemanticForCategory(item.name)}))} selectedId="pharmacy" onPress={()=>actions.go('categoryItems')}/>
+      <MarketplacePromoGrid category="Pharmacy" onPress={()=>actions.go('campaigns')}/>
+      <SectionTitle title="Featured products"/>
+      <View style={styles.productGrid}>{demoProducts.filter(p=>p.id==='wellness-pack').concat(demoProducts.slice(0,3)).map((p,i)=><ProductCard key={`${p.id}-${i}`} product={p} country={data.country} onPress={()=>actions.go('shops')}/>)}</View>
+      <MarketplaceMembershipStrip onPress={()=>actions.go('plusManage')}/>
+    </View>
+  </ScrollView></ScreenShell>;
 }
 
 export function CampaignsScreen({ data, actions }: { data: V41FrontendData; actions: V41FrontendActions }) {
@@ -119,14 +161,37 @@ export function OffersScreen({ data, actions }: { data: V41FrontendData; actions
   return <ScreenShell><Header title="Offers" onBack={()=>actions.go('home')}/><ScrollView style={styles.flex} contentContainerStyle={styles.scroll}><View style={styles.offerHero}><Text style={styles.heroEyebrow}>OFFERS AROUND {data.city.toUpperCase()}</Text><Text style={styles.heroTitle}>Save across Kareebu+</Text><Text style={styles.heroBody}>Food, shops, rides, parcels and services in one place.</Text></View>{offers.map(([code,title,meta])=><RoundedCard key={code} style={styles.couponCard}><View style={styles.couponIcon}><Image source={uiAssets.coupon} style={styles.smallAsset} resizeMode="contain"/></View><View style={styles.flex}><Text style={styles.couponTitle}>{title}</Text><Text style={styles.couponMeta}>{meta}</Text><Text style={styles.couponCode}>{code}</Text></View><Pressable onPress={()=>Alert.alert('Offer saved',`${code} is ready to use at checkout.`)}><Text style={styles.actionText}>Save</Text></Pressable></RoundedCard>)}</ScrollView></ScreenShell>;
 }
 
-export function AllStoresScreen({ actions }: { data: V41FrontendData; actions: V41FrontendActions }) {
+export function AllStoresScreen({ data, actions }: { data: V41FrontendData; actions: V41FrontendActions }) {
   const [filter,setFilter]=useState('All');
-  return <ScreenShell><Header title="All stores" onBack={()=>actions.go('home')}/><ScrollView style={styles.flex} contentContainerStyle={styles.scroll}><V41SearchBar placeholder="Search stores and restaurants" onPress={()=>actions.go('search')}/><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>{['All','Food','Grocery','Pharmacy','Shopping'].map(x=><V41Chip key={x} label={x} active={filter===x} onPress={()=>setFilter(x)}/>)}</ScrollView><View style={styles.storeList}>{stores.filter(s=>filter==='All'||s.type.toLowerCase().includes(filter.toLowerCase())||(filter==='Food'&&s.type==='Restaurant')).map(s=><StoreCard key={s.id} store={s} onPress={()=>actions.go(s.type==='Restaurant'?'food':'shops')}/>)}</View></ScrollView></ScreenShell>;
+  const visible=stores.filter(s=>filter==='All'||s.type.toLowerCase().includes(filter.toLowerCase())||(filter==='Food'&&s.type==='Restaurant'));
+  return <ScreenShell><ScrollView style={styles.flex} contentContainerStyle={{paddingBottom:34}} showsVerticalScrollIndicator={false}>
+    <MarketplaceCategoryHeader location={`${data.city}, ${data.country}`} searchPlaceholder="Search stores and restaurants..." onSearchPress={()=>actions.go('search')} onBack={()=>actions.go('home')} onMenu={()=>actions.go('categories')} onLocation={()=>actions.go('locationPicker')}/>
+    <View style={{paddingHorizontal:14}}>
+      <MarketplacePromoBanner category={filter==='All'?'Shops':filter} onPress={()=>actions.go('offers')}/>
+      <MarketplaceRecommendedRail title="Recommended Shops" merchants={stores.map((store)=>({id:store.id,name:store.name,meta:`${store.rating.toFixed(1)} ★ · ${store.eta}`,semantic:marketplaceSemanticForCategory(store.type)}))} onPress={(id)=>{const store=stores.find(s=>s.id===id);actions.go(store?.type==='Restaurant'?'food':'shops')}}/>
+      <MarketplaceCategoryGrid tiles={categories.map((item)=>({id:item.id,label:item.name,semantic:marketplaceSemanticForCategory(item.name)}))} onPress={()=>actions.go('categoryItems')}/>
+      <MarketplacePromoGrid category={filter==='All'?'Shops':filter} onPress={()=>actions.go('campaigns')}/>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>{['All','Food','Grocery','Pharmacy','Shopping'].map(x=><V41Chip key={x} label={x} active={filter===x} onPress={()=>setFilter(x)}/>)}</ScrollView>
+      <View style={styles.storeList}>{visible.map(s=><StoreCard key={s.id} store={s} onPress={()=>actions.go(s.type==='Restaurant'?'food':'shops')}/>)}</View>
+      <MarketplaceMembershipStrip onPress={()=>actions.go('plusManage')}/>
+    </View>
+  </ScrollView></ScreenShell>;
 }
 
 export function ItemViewAllScreen({ data, actions }: { data: V41FrontendData; actions: V41FrontendActions }) {
   const [sort,setSort]=useState('Recommended');
-  return <ScreenShell><Header title="Popular items" onBack={()=>actions.go('home')}/><ScrollView style={styles.flex} contentContainerStyle={styles.scroll}><View style={styles.rowBetween}><Text style={styles.resultCount}>48 items</Text><Pressable onPress={()=>setSort(sort==='Recommended'?'Price: low to high':sort==='Price: low to high'?'Top rated':'Recommended')} style={styles.sortButton}><Ionicons name="swap-vertical-outline" size={17}/><Text style={styles.sortText}>{sort}</Text></Pressable></View><View style={styles.productGrid}>{[...demoProducts,...demoProducts].map((p,i)=><ProductCard key={`${p.id}-${i}`} product={p} country={data.country} onPress={()=>actions.go('shops')}/>)}</View></ScrollView></ScreenShell>;
+  return <ScreenShell><ScrollView style={styles.flex} contentContainerStyle={{paddingBottom:34}} showsVerticalScrollIndicator={false}>
+    <MarketplaceCategoryHeader location={`${data.city}, ${data.country}`} searchPlaceholder="Search products..." onSearchPress={()=>actions.go('search')} onBack={()=>actions.go('home')} onMenu={()=>actions.go('categories')} onLocation={()=>actions.go('locationPicker')}/>
+    <View style={{paddingHorizontal:14}}>
+      <MarketplacePromoBanner category="Shops" onPress={()=>actions.go('offers')}/>
+      <MarketplaceRecommendedRail merchants={stores.map((store)=>({id:store.id,name:store.name,meta:`${store.rating.toFixed(1)} ★ · ${store.eta}`,semantic:marketplaceSemanticForCategory(store.type)}))} onPress={()=>actions.go('shops')}/>
+      <MarketplaceCategoryGrid tiles={categories.map((item)=>({id:item.id,label:item.name,semantic:marketplaceSemanticForCategory(item.name)}))} onPress={()=>actions.go('categoryItems')}/>
+      <MarketplacePromoGrid category="Shops" onPress={()=>actions.go('campaigns')}/>
+      <View style={styles.rowBetween}><Text style={styles.resultCount}>48 items</Text><Pressable onPress={()=>setSort(sort==='Recommended'?'Price: low to high':sort==='Price: low to high'?'Top rated':'Recommended')} style={styles.sortButton}><Ionicons name="swap-vertical-outline" size={17}/><Text style={styles.sortText}>{sort}</Text></Pressable></View>
+      <View style={styles.productGrid}>{[...demoProducts,...demoProducts].map((p,i)=><ProductCard key={`${p.id}-${i}`} product={p} country={data.country} onPress={()=>actions.go('shops')}/>)}</View>
+      <MarketplaceMembershipStrip onPress={()=>actions.go('plusManage')}/>
+    </View>
+  </ScrollView></ScreenShell>;
 }
 
 export function SearchFiltersScreen({ actions }: { data: V41FrontendData; actions: V41FrontendActions }) {

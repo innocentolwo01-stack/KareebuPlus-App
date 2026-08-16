@@ -19,6 +19,7 @@ import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomTab, Screen } from './types';
 import { COLORS, CONTROL, FONT, LAYOUT, RADIUS, SHADOW, TYPE } from './theme';
 import { assets } from './assets';
+import { useAppNavigation, useRegisterBackControl } from './navigation/AppNavigation';
 
 export function ScreenShell({
   children,
@@ -75,11 +76,14 @@ export function Header({
   onBack?: () => void;
   right?: React.ReactNode;
 }) {
+  const navigation = useAppNavigation();
+  const resolvedBack = onBack ?? (navigation?.canGoBack ? navigation.goBack : undefined);
+  useRegisterBackControl(Boolean(resolvedBack));
   return (
     <View style={styles.header}>
       <View style={styles.headerSide}>
-        {onBack ? (
-          <Pressable onPress={onBack} hitSlop={12} style={styles.headerIconButton}>
+        {resolvedBack ? (
+          <Pressable onPress={resolvedBack} hitSlop={12} style={styles.headerIconButton}>
             <Feather name="arrow-left" size={24} color={COLORS.black} />
           </Pressable>
         ) : null}
@@ -246,7 +250,10 @@ const tabConfig: Record<BottomTab, { label: string; icon: keyof typeof Ionicons.
   account: { label: 'Account', icon: 'person-outline', semantic: 'account', screen: 'account' },
 };
 
-export function BottomNav({ active, go }: { active: BottomTab; go: (screen: Screen) => void }) {
+export function BottomNav({ active, go, persistent = false }: { active: BottomTab; go: (screen: Screen) => void; persistent?: boolean }) {
+  // V6.18: screen-local BottomNav instances are suppressed because the
+  // app root now owns one navigation bar for every customer route.
+  if (!persistent) return null;
   return (
     <View style={styles.bottomNav}>
       {(Object.keys(tabConfig) as BottomTab[]).map((key) => {

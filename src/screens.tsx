@@ -46,6 +46,8 @@ import { usePlaceAutocomplete } from './places/usePlaceAutocomplete';
 import { routingAttribution } from './routing/provider';
 import { useRouteEstimate } from './routing/useRouteEstimate';
 import { COLORS, FONT, SHADOW, TYPE } from './theme';
+import { MarketplaceCategoryGrid, MarketplaceCategoryHeader, MarketplaceMembershipStrip, MarketplacePromoBanner, MarketplacePromoGrid, MarketplaceRecommendedRail, marketplaceSemanticForCategory } from './marketplace/MarketplaceCategoryChrome';
+import { useRegisterBackControl } from './navigation/AppNavigation';
 import { dialCodeFor, formatMoney, localeProfile, primaryMobileMoneyFor, secondaryMobileMoneyFor } from './locale';
 import { DEMO_PROMOTIONS, DEMO_RESTAURANTS as BASE_DEMO_RESTAURANTS, DEMO_SHOPS, HOME_REAL_BRANDS, HOME_RETAIL_PROMOTIONS, DemoMenuItem, DemoRestaurant, DemoShop, HomeRealBrand, HomeRetailPromotion, demoDirections } from './demoData';
 import { askKareebuAssistant, KareebuAssistantAction, KareebuAssistantRecommendation } from './ai/kareebuAssistant';
@@ -144,6 +146,8 @@ import { KareebuServiceCarousel } from './home/KareebuServiceCarousel';
 import { KareebuQuickActionsCarousel } from './home/KareebuQuickActionsCarousel';
 import { KareebuTopPicks } from './home/KareebuTopPicks';
 import { KareebuDineOutSection } from './home/KareebuDineOutSection';
+import { KareebuCareemDiscoveryScreen } from './discovery/KareebuCareemDiscoveryScreen';
+import { KAREEBU_CATALOG_VERTICALS, type KareebuDomainId, type UnifiedCatalogItem } from './catalog/master/kareebuUnifiedCatalog';
 import { KareebuTopOffers } from './home/KareebuTopOffers';
 import { KareebuRidesHomeScreen } from './ride/kareebuRidesHome';
 import { KareebuFoodDiscoveryHome } from './food/discovery/FoodDiscoveryHome';
@@ -360,8 +364,12 @@ const serviceData: Array<{ label: string; image: ImageSourcePropType; screen: Sc
   { label: 'Food', image: assets.service.food, screen: 'food' },
   { label: 'Shops', image: assets.service.shops, screen: 'shops' },
   { label: 'Send', image: assets.service.send, screen: 'parcel' },
-  { label: 'Groceries', image: assets.service.groceries, screen: 'shops' },
+  { label: 'Groceries', image: assets.service.groceries, screen: 'groceries' },
   { label: 'Pay', image: assets.service.pay, screen: 'wallet' },
+  { label: 'DineOut', image: assets.service.dineout, screen: 'dineOut' },
+  { label: 'Electronics', image: assets.service.electronics, screen: 'electronics' },
+  { label: 'Home & Care', image: assets.service.homeCare, screen: 'homeCare' },
+  { label: 'Fix', image: assets.service.fix, screen: 'fix' },
   { label: 'All services', image: assets.service.all, screen: 'services' },
 ];
 
@@ -369,7 +377,7 @@ const homeServiceData: Array<{ label: string; screen: Screen; image?: ImageSourc
   { label: 'Food', screen: 'food', image: assets.service.food },
   { label: 'Rides', screen: 'mobilityHome', image: assets.service.rides },
   { label: 'Boda', screen: 'mobilityHome', image: assets.service.boda },
-  { label: 'Groceries', screen: 'shops', image: assets.service.groceries },
+  { label: 'Groceries', screen: 'groceries', image: assets.service.groceries },
   { label: 'Pharmacies', screen: 'shops', icon: 'medical-outline' },
   { label: 'Stores', screen: 'shops', image: assets.service.shops },
   { label: 'Send', screen: 'parcel', image: assets.service.send },
@@ -978,6 +986,7 @@ function CountryPreviewVisual({ country, selected }: { country: string; selected
 }
 
 export function CountryScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+  useRegisterBackControl(data.locationReturn !== 'home');
   const flags: Record<string, string> = { Uganda: '🇺🇬', Kenya: '🇰🇪', Tanzania: '🇹🇿' };
   const [pickerOpen, setPickerOpen] = useState(false);
   const selectedCountry = countryData.find((item) => item.name === data.country) ?? countryData[0];
@@ -1092,6 +1101,7 @@ function CityThumb({ city, selected }: { city: string; selected: boolean }) {
 }
 
 export function CityScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+  useRegisterBackControl(true);
   const cities = countryCities[data.country] ?? countryCities.Uganda;
   const [query, setQuery] = useState('');
   const [locating, setLocating] = useState(false);
@@ -1700,6 +1710,8 @@ function MerchantRatingPanel({ rating, reviews }: { rating: number; reviews: str
 }
 
 const V614_DISH_PHOTOS = {
+  breakfast: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?auto=format&fit=crop&w=700&q=88',
+  wrap: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=700&q=88',
   chicken: 'https://images.unsplash.com/photo-1567121938596-6d9d015d348b?auto=format&fit=crop&w=700&q=88',
   pizza: 'https://images.unsplash.com/photo-1705537748124-926009973f94?auto=format&fit=crop&w=700&q=88',
   burger: 'https://images.unsplash.com/photo-1768204039115-34f404d3a59d?auto=format&fit=crop&w=700&q=88',
@@ -1712,14 +1724,16 @@ const V614_DISH_PHOTOS = {
 
 function dishPhotoUri(item: DemoMenuItem, restaurant: DemoRestaurant) {
   const haystack = `${item.name} ${item.category} ${item.description}`.toLowerCase();
+  if (haystack.includes('breakfast') || haystack.includes('egg') || haystack.includes('pancake')) return V614_DISH_PHOTOS.breakfast;
+  if (haystack.includes('rolex') || haystack.includes('chapati') || haystack.includes('wrap')) return V614_DISH_PHOTOS.wrap;
   if (haystack.includes('pizza')) return V614_DISH_PHOTOS.pizza;
   if (haystack.includes('chicken') || haystack.includes('wing')) return V614_DISH_PHOTOS.chicken;
-  if (haystack.includes('burger') || haystack.includes('sandwich') || haystack.includes('wrap')) return V614_DISH_PHOTOS.burger;
+  if (haystack.includes('burger') || haystack.includes('sandwich')) return V614_DISH_PHOTOS.burger;
   if (haystack.includes('salad') || haystack.includes('healthy') || haystack.includes('bowl')) return V614_DISH_PHOTOS.healthy;
   if (haystack.includes('cake') || haystack.includes('dessert') || haystack.includes('brownie') || haystack.includes('cheesecake')) return V614_DISH_PHOTOS.dessert;
   if (haystack.includes('coffee') || haystack.includes('latte') || haystack.includes('juice') || haystack.includes('drink')) return V614_DISH_PHOTOS.coffee;
   if (haystack.includes('thai') || haystack.includes('noodle') || haystack.includes('curry')) return V614_DISH_PHOTOS.noodles;
-  return restaurant.photoUrl ?? V614_DISH_PHOTOS.african;
+  return V614_DISH_PHOTOS.african;
 }
 
 function RestaurantDishPhoto({
@@ -2099,6 +2113,7 @@ export function HomeScreen({ data, actions }: { data: AppData; actions: AppActio
     if (label === 'Boda') selectVehicleMode(actions, 'BODA');
     if (label === 'Rides') selectVehicleMode(actions, 'RIDE');
     if (label === 'Groceries') actions.setShopCategoryPreset('Groceries');
+    if (label === 'Healthcare') actions.setShopCategoryPreset('Pharmacy');
     if (label === 'Pharmacies') actions.setShopCategoryPreset('Pharmacy');
     if (label === 'Stores') actions.setShopCategoryPreset('All');
     if (label === 'More') return actions.go('services');
@@ -2263,6 +2278,7 @@ function GlobalSearchResult({ item, onPress }: { item: GlobalSearchItem; onPress
 }
 
 export function GlobalSearchScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+  useRegisterBackControl(true);
   const [query,setQuery]=useState('');
   const normalized=query.trim().toLowerCase();
   const localStoreIdSet = useMemo(() => new Set(localeStoreIds(data.country, data.city)), [data.country, data.city]);
@@ -2375,6 +2391,7 @@ type AssistantMessage = {
 };
 
 export function KareebuAssistantScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+  useRegisterBackControl(true);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<AssistantMessage[]>([
@@ -2505,18 +2522,47 @@ function storefrontProducts(store: DemoShop): StorefrontProduct[] {
   ];
 }
 
+
+function V615RestaurantDishPhoto({ item, restaurant }: { item: DemoMenuItem; restaurant: DemoRestaurant }) {
+  return (
+    <ResilientMerchantPhoto
+      uri={dishPhotoUri(item, restaurant)}
+      fallback={assets.food[item.image]}
+      style={styles.v615MenuPhoto}
+    />
+  );
+}
+
+function V615StoreProductPhoto({
+  store,
+  item,
+}: {
+  store: DemoShop;
+  item: { name: string; category: string; detail: string };
+}) {
+  return (
+    <ResilientMerchantPhoto
+      uri={productPhotoUri(store, item)}
+      fallback={assets.service.shops}
+      style={styles.v615ProductPhoto}
+    />
+  );
+}
+
 export function StorefrontScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+  useRegisterBackControl(true);
   const local = localeStores(data.country, data.city);
   const store = local.find((item)=>item.id===data.selectedShopId) ?? local[0] ?? DEMO_SHOPS[0]!;
   const [query,setQuery]=useState('');
   const [category,setCategory]=useState('All');
+  const [deliverySlot,setDeliverySlot]=useState('Now');
   const favorite=data.favoriteShopIds.includes(store.id);
   const allProducts=commerceProductsFor(store);
   const categories=Array.from(new Set(allProducts.map((item)=>item.category)));
   const searchRef=useRef<TextInput>(null);
   const insets=useSafeAreaInsets();
   const { height }=useWindowDimensions();
-  const heroHeight=Math.max(455,Math.min(555,height*0.59));
+  const heroHeight=Math.max(330,Math.min(420,height*0.38));
   const storeName=localisedStoreName(store,data.country);
   const lines=data.commerceCartLines.filter((line)=>line.storeId===store.id);
   const count=lines.reduce((sum,line)=>sum+line.quantity,0);
@@ -2527,9 +2573,22 @@ export function StorefrontScreen({ data, actions }: { data: AppData; actions: Ap
     const matchesQuery=!term||`${item.name} ${item.detail} ${item.category} ${item.brand ?? ''}`.toLowerCase().includes(term);
     return matchesCategory&&matchesQuery;
   });
+  const deliveryFee=demandAdjustedDeliveryFee(store.deliveryFee,'store-delivery');
+  const scheduleStore=()=>Alert.alert(
+    'Schedule delivery',
+    `Choose when you want ${storeName} delivered.`,
+    [
+      {text:'Now',onPress:()=>setDeliverySlot('Now')},
+      {text:'In 30 minutes',onPress:()=>setDeliverySlot('In 30 min')},
+      {text:'Tonight',onPress:()=>setDeliverySlot('Tonight')},
+      {text:'Tomorrow',onPress:()=>setDeliverySlot('Tomorrow')},
+      {text:'Cancel',style:'cancel'},
+    ],
+  );
+  const groupOrder=()=>void Share.share({message:`Join my Kareebu+ group order from ${storeName}.`});
 
   return (
-    <View style={styles.v614MerchantScreen}>
+    <View style={styles.v615MerchantScreen}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content"/>
       <ScrollView
         style={styles.flex}
@@ -2537,109 +2596,124 @@ export function StorefrontScreen({ data, actions }: { data: AppData; actions: Ap
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.v614Hero,{height:heroHeight}]}>
-          <ShopPhoto store={store} style={styles.v614HeroPhoto} logo={false}/>
-          <View pointerEvents="none" style={styles.v614HeroShade}/>
-          <View style={[styles.v614TopBar,{top:Math.max(insets.top,18)+14}]}>
-            <Pressable onPress={()=>actions.go('shops')} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Back">
+        <View style={[styles.v615Hero,{height:heroHeight}]}>
+          <ShopPhoto store={store} style={styles.v615HeroPhoto} logo={false}/>
+          <View pointerEvents="none" style={styles.v615HeroShade}/>
+          <View style={[styles.v615TopBar,{top:Math.max(insets.top,18)+14}]}>
+            <Pressable onPress={()=>actions.go('shops')} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Back">
               <Feather name="arrow-left" size={28} color={COLORS.black}/>
             </Pressable>
-            <View style={styles.v614TopButtonGroup}>
-              <Pressable onPress={()=>Share.share({message:`${storeName} on Kareebu+ · ${store.category}`})} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Share store">
+            <View style={styles.v615TopButtonGroup}>
+              <Pressable onPress={()=>Share.share({message:`${storeName} on Kareebu+ · ${store.category}`})} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Share store">
                 <Feather name="share-2" size={22} color={COLORS.black}/>
               </Pressable>
-              <Pressable onPress={()=>actions.toggleFavoriteShop(store.id)} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Favourite store">
+              <Pressable onPress={()=>actions.toggleFavoriteShop(store.id)} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Favourite store">
                 <Ionicons name={favorite?'heart':'heart-outline'} size={27} color={favorite?COLORS.red:COLORS.black}/>
               </Pressable>
-              <Pressable onPress={()=>searchRef.current?.focus()} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Search store">
+              <Pressable onPress={()=>searchRef.current?.focus()} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Search store">
                 <Feather name="search" size={25} color={COLORS.black}/>
               </Pressable>
             </View>
           </View>
         </View>
 
-        <View style={styles.v614Sheet}>
-          <View style={styles.v614LogoCard}>
+        <View style={styles.v615Sheet}>
+          <View style={styles.v615LogoCard}>
             <PopularStoreLogo store={store}/>
           </View>
 
-          <View style={styles.v614IdentityRow}>
-            <View style={styles.v614IdentityCopy}>
-              <Text numberOfLines={2} style={styles.v614MerchantName}>{storeName}</Text>
-              <View style={styles.v614CategoryLine}>
-                <View style={styles.v614PartnerBadge}><Text style={styles.v614PartnerBadgeText}>K+</Text></View>
-                <Text numberOfLines={2} style={styles.v614CategoryText}>{store.category}, {store.inventoryHint ?? 'Everyday essentials'}</Text>
+          <View style={styles.v615IdentityRow}>
+            <View style={styles.v615IdentityCopy}>
+              <View style={styles.v615NameLine}>
+                <Text numberOfLines={2} style={styles.v615MerchantName}>{storeName}</Text>
+                <View style={styles.v615PlusPill}><Text style={styles.v615PlusPillMark}>K+</Text><Text style={styles.v615PlusPillText}>Kareebu Plus</Text></View>
               </View>
-              <Text style={styles.v614LocationText}>{store.location ?? data.city} ({store.eta})</Text>
+              <View style={styles.v615CategoryLine}>
+                <View style={styles.v615PartnerBadge}><Text style={styles.v615PartnerBadgeText}>K+</Text></View>
+                <Text numberOfLines={2} style={styles.v615CategoryText}>{store.category} · {store.inventoryHint ?? 'Everyday essentials'}</Text>
+              </View>
+              <Text style={styles.v615LocationText}>{store.location ?? data.city} · {store.eta}</Text>
             </View>
             <MerchantRatingPanel rating={store.rating} reviews={store.reviews ?? 'New'}/>
           </View>
 
-          <View style={styles.v614Hairline}/>
-
-          <View style={styles.v614PlainInfoRow}>
-            <View style={styles.v614PlainInfoIcon}><Ionicons name="bicycle-outline" size={20} color={COLORS.black}/></View>
-            <View style={styles.flex}>
-              <Text style={styles.v614PlainInfoTitle}>{store.eta} delivery</Text>
-              <Text style={styles.v614PlainInfoMeta}>{store.deliveryFee===0?'Free delivery':`${formatMoney(data.country,demandAdjustedDeliveryFee(store.deliveryFee,'store-delivery'))} delivery`} · Minimum {formatMoney(data.country,store.minOrder)}</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color={COLORS.muted}/>
+          <View style={styles.v615ActionRow}>
+            <Pressable onPress={scheduleStore} style={({pressed})=>[styles.v615OutlineAction,pressed&&styles.v615Pressed]}>
+              <Feather name="calendar" size={19} color={COLORS.black}/>
+              <Text style={styles.v615OutlineActionText}>{deliverySlot==='Now'?'Schedule':deliverySlot}</Text>
+              <Feather name="chevron-down" size={17} color={COLORS.black}/>
+            </Pressable>
+            <Pressable onPress={groupOrder} style={({pressed})=>[styles.v615OutlineAction,pressed&&styles.v615Pressed]}>
+              <Ionicons name="person-add-outline" size={20} color={COLORS.black}/>
+              <Text style={styles.v615OutlineActionText}>Group order</Text>
+            </Pressable>
           </View>
 
-          <View style={styles.v614PlainInfoRow}>
-            <View style={styles.v614PlainInfoIcon}><Ionicons name="pricetag-outline" size={20} color={COLORS.black}/></View>
-            <View style={styles.flex}>
-              <Text style={styles.v614PlainInfoTitle}>Offers from {storeName}</Text>
-              <Text style={styles.v614PlainInfoMeta}>{store.deal}</Text>
+          <View style={styles.v615StatsPanel}>
+            <View style={styles.v615StatCell}>
+              <Text style={styles.v615StatLabel}>{deliverySlot==='Now'?'Deliver Now':deliverySlot}</Text>
+              <Text style={styles.v615StatValueAccent}>{store.eta}</Text>
+            </View>
+            <View style={styles.v615StatDivider}/>
+            <View style={styles.v615StatCell}>
+              <Text style={styles.v615StatLabel}>Minimum Order</Text>
+              <Text style={styles.v615StatValue}>{formatMoney(data.country,store.minOrder)}</Text>
+            </View>
+            <View style={styles.v615StatDivider}/>
+            <View style={styles.v615StatCell}>
+              <Text style={styles.v615StatLabel}>Delivery Fee</Text>
+              <Text style={styles.v615StatValue}>{store.deliveryFee===0?'Free':formatMoney(data.country,deliveryFee)}</Text>
             </View>
           </View>
 
-          <View style={styles.v614SearchBox}>
-            <Feather name="search" size={21} color={COLORS.black}/>
+          <Pressable onPress={()=>Alert.alert('Offers',store.deal)} style={({pressed})=>[styles.v615OfferStrip,pressed&&styles.v615Pressed]}>
+            <Ionicons name="pricetag-outline" size={23} color={COLORS.black}/>
+            <Text numberOfLines={2} style={styles.v615OfferText}><Text style={styles.v615OfferStrong}>Offers</Text> — {store.deal}</Text>
+            <Feather name="chevron-right" size={21} color={COLORS.black}/>
+          </Pressable>
+
+          <View style={styles.v615SearchBox}>
+            <Feather name="search" size={22} color={COLORS.black}/>
             <TextInput
               ref={searchRef}
               value={query}
               onChangeText={setQuery}
               placeholder={`Search ${storeName}`}
-              placeholderTextColor={COLORS.mutedLight}
-              style={styles.v614SearchInput}
+              placeholderTextColor={COLORS.muted}
+              style={styles.v615SearchInput}
             />
             {query?<Pressable onPress={()=>setQuery('')} hitSlop={8}><Ionicons name="close-circle" size={20} color={COLORS.muted}/></Pressable>:null}
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v614TabRail}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v615TabRail}>
             {['All',...categories].map((item)=>(
-              <Pressable key={item} onPress={()=>setCategory(item)} style={[styles.v614Tab,category===item&&styles.v614TabActive]}>
-                <Text style={[styles.v614TabText,category===item&&styles.v614TabTextActive]}>{item}</Text>
+              <Pressable key={item} onPress={()=>setCategory(item)} style={[styles.v615Tab,category===item&&styles.v615TabActive]}>
+                <Text style={[styles.v615TabText,category===item&&styles.v615TabTextActive]}>{item}</Text>
               </Pressable>
             ))}
           </ScrollView>
 
-          <View style={styles.v614SectionHeader}>
-            <Text style={styles.v614SectionTitle}>Products</Text>
-            <Text style={styles.v614SectionCount}>{filtered.length} items</Text>
+          <View style={styles.v615SectionHeader}>
+            <Text style={styles.v615SectionTitle}>Products</Text>
+            <Text style={styles.v615SectionCount}>{filtered.length} items</Text>
           </View>
 
-          <View style={styles.v614ProductList}>
+          <View style={styles.v615ProductList}>
             {filtered.map((item)=>{
               const qty=lines.filter((line)=>line.productId===item.id).reduce((sum,line)=>sum+line.quantity,0);
               return (
-                <Pressable
-                  key={item.id}
-                  onPress={()=>{actions.selectCommerceProduct(item.id);actions.go('commerceProduct')}}
-                  style={({pressed})=>[styles.v614ProductRow,pressed&&styles.v614RowPressed]}
-                >
-                  <View style={styles.v614ProductCopy}>
-                    {item.badge?<Text style={styles.v614ItemBadge}>{item.badge}</Text>:null}
-                    <Text numberOfLines={2} style={styles.v614ItemName}>{item.name}</Text>
-                    <Text numberOfLines={2} style={styles.v614ItemDescription}>{item.detail}{item.brand?` · ${item.brand}`:''}</Text>
-                    <Text style={styles.v614ItemPrice}>{formatMoney(data.country,item.basePrice)}</Text>
-                    {typeof item.rating==='number'?<Text style={styles.v614ItemRating}>★ {item.rating.toFixed(1)}{typeof item.reviewCount==='number'?` · ${item.reviewCount} reviews`:''}</Text>:null}
+                <Pressable key={item.id} onPress={()=>{actions.selectCommerceProduct(item.id);actions.go('commerceProduct')}} style={({pressed})=>[styles.v615ProductRow,pressed&&styles.v615Pressed]}>
+                  <View style={styles.v615ProductCopy}>
+                    {item.badge?<Text style={styles.v615ItemBadge}>{item.badge}</Text>:null}
+                    <Text numberOfLines={2} style={styles.v615ItemName}>{item.name}</Text>
+                    <Text numberOfLines={2} style={styles.v615ItemDescription}>{item.detail}{item.brand?` · ${item.brand}`:''}</Text>
+                    <Text style={styles.v615ItemPrice}>{formatMoney(data.country,item.basePrice)}</Text>
+                    {typeof item.rating==='number'?<Text style={styles.v615ItemRating}>★ {item.rating.toFixed(1)}{typeof item.reviewCount==='number'?` · ${item.reviewCount} reviews`:''}</Text>:null}
                   </View>
-                  <View style={styles.v614ProductVisual}>
-                    <StoreProductPhoto store={store} item={item}/>
-                    <View style={[styles.v614AddButton,qty>0&&styles.v614AddButtonActive]}>
-                      <Text style={[styles.v614AddButtonText,qty>0&&styles.v614AddButtonTextActive]}>{qty>0?qty:'+'}</Text>
+                  <View style={styles.v615ProductVisual}>
+                    <V615StoreProductPhoto store={store} item={item}/>
+                    <View style={[styles.v615AddButton,qty>0&&styles.v615AddButtonActive]}>
+                      <Text style={[styles.v615AddButtonText,qty>0&&styles.v615AddButtonTextActive]}>{qty>0?qty:'+'}</Text>
                     </View>
                   </View>
                 </Pressable>
@@ -2650,10 +2724,10 @@ export function StorefrontScreen({ data, actions }: { data: AppData; actions: Ap
       </ScrollView>
 
       {count>0?(
-        <Pressable onPress={()=>actions.go('commerceCart')} style={[styles.v614BasketBar,{bottom:Math.max(8,insets.bottom+6)}]}>
-          <View style={styles.v614BasketCount}><Text style={styles.v614BasketCountText}>{count}</Text></View>
-          <View style={styles.flex}><Text style={styles.v614BasketTitle}>View basket</Text><Text style={styles.v614BasketMeta}>{storeName}</Text></View>
-          <Text style={styles.v614BasketTotal}>{formatMoney(data.country,total)}</Text>
+        <Pressable onPress={()=>actions.go('commerceCart')} style={[styles.v615BasketBar,{bottom:Math.max(8,insets.bottom+6)}]}>
+          <View style={styles.v615BasketCount}><Text style={styles.v615BasketCountText}>{count}</Text></View>
+          <View style={styles.flex}><Text style={styles.v615BasketTitle}>View basket</Text><Text style={styles.v615BasketMeta}>{storeName}</Text></View>
+          <Text style={styles.v615BasketTotal}>{formatMoney(data.country,total)}</Text>
           <Feather name="chevron-right" size={21} color={COLORS.white}/>
         </Pressable>
       ):null}
@@ -2662,6 +2736,7 @@ export function StorefrontScreen({ data, actions }: { data: AppData; actions: Ap
 }
 
 export function LocationPickerScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+  useRegisterBackControl(true);
   const cityRegion = CITY_REGIONS[data.city] ?? KAMPALA_REGION;
   // Manual city selection should never trigger a surprise permission prompt.
   // GPS is requested only when the customer explicitly taps “Use my location” on the city screen.
@@ -2833,6 +2908,7 @@ function PlaceRow({ icon, title, subtitle, onPress }: { icon: keyof typeof Ionic
 }
 
 export function WhereToScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+  useRegisterBackControl(true);
   const cityRegion = CITY_REGIONS[data.city] ?? KAMPALA_REGION;
   const places = useMemo(() => localRideSuggestions(data), [data.city, data.country]);
   const [destination, setDestination] = useState(data.destinationPlace?.name ?? '');
@@ -2938,6 +3014,7 @@ function RideVehicleVisual({ rideId }: { rideId: RideId }) {
 }
 
 export function ChooseRideScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+  useRegisterBackControl(true);
   const selected = rideData.find((ride) => ride.id === data.selectedRide) ?? rideData[0];
   const routeState = useRouteEstimate(pickupCoordinate(data), destinationCoordinate(data), data.selectedVehicleMode);
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -3420,6 +3497,81 @@ function restaurantReason(restaurant: DemoRestaurant) {
 // Careem is used only as an architecture/UX reference.
 // This implementation is native to Kareebu's React Native / Expo TypeScript stack.
 
+// KAREEBU_CAREEM_DISCOVERY_ROUTE_ADAPTER_V73
+function KareebuDomainDiscoveryRoute({
+  domainId,
+  data,
+  actions,
+  initialVerticalTitle,
+}: {
+  domainId: KareebuDomainId;
+  data: AppData;
+  actions: AppActions;
+  initialVerticalTitle?: string;
+}) {
+  const selectStoreForItem = (item: UnifiedCatalogItem) => {
+    const vertical = KAREEBU_CATALOG_VERTICALS.find((node) => node.id === item.verticalId);
+    const label = (vertical?.title ?? initialVerticalTitle ?? '').toLowerCase();
+    const desired =
+      domainId === 'groceries' ? ['Groceries'] :
+      domainId === 'electronics' ? ['Electronics','Marketplace'] :
+      /pharm|health|wellness/.test(label) ? ['Pharmacy'] :
+      /beauty/.test(label) ? ['Beauty'] :
+      /pet/.test(label) ? ['Pets'] :
+      /home/.test(label) ? ['Home'] :
+      ['Marketplace','Electronics','Groceries'];
+
+    const stores = localeStores(data.country, data.city);
+    return (
+      desired.map((category) => stores.find((store) => store.category === category)).find(Boolean) ??
+      desired.map((category) => DEMO_SHOPS.find((store) => store.category === category)).find(Boolean) ??
+      stores[0] ??
+      DEMO_SHOPS[0]
+    );
+  };
+
+  const openItem = (item: UnifiedCatalogItem) => {
+    if (domainId === 'dineout' || domainId === 'food') {
+      const restaurants = DEMO_RESTAURANTS;
+      const index = Math.abs(item.id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)) % Math.max(1, restaurants.length);
+      const restaurant = restaurants[index];
+      if (restaurant) {
+        actions.selectRestaurant(restaurant.id);
+        actions.go('restaurant');
+      }
+      return;
+    }
+
+    if (domainId === 'home-care' || domainId === 'fix') {
+      const value = `${item.name} ${item.subcategoryId}`.toLowerCase();
+      const serviceId =
+        /plumb|tap|pipe|drain|toilet|sink/.test(value) ? 'plumbing' :
+        /electrical|power|socket|switch|light|wiring/.test(value) ? 'electrical' :
+        /ac|air.condition|cooling/.test(value) ? 'ac' :
+        'cleaning';
+      actions.selectService(serviceId);
+      actions.go('serviceProviders');
+      return;
+    }
+
+    const store = selectStoreForItem(item);
+    if (store) actions.selectShop(store.id);
+    actions.selectCommerceProduct(item.id);
+    actions.go('commerceProduct');
+  };
+
+  return (
+    <KareebuCareemDiscoveryScreen
+      domainId={domainId}
+      city={data.city}
+      country={data.country}
+      initialVerticalTitle={initialVerticalTitle}
+      onOpenItem={openItem}
+      onOpenMembership={() => actions.go('membership')}
+    />
+  );
+}
+
 export function FoodScreen({
   data,
   actions,
@@ -3510,11 +3662,13 @@ function FoodBottomNav({ go, active }: { go: (screen: Screen) => void; active: '
 }
 
 export function RestaurantScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+  useRegisterBackControl(true);
   const restaurant = DEMO_RESTAURANTS.find((item) => item.id === data.selectedRestaurantId) ?? DEMO_RESTAURANTS[0]!;
   const favorite = data.favoriteRestaurantIds.includes(restaurant.id);
   const categories = Array.from(new Set(restaurant.menu.map((item) => item.category)));
   const [activeMenuCategory, setActiveMenuCategory] = useState('All');
   const [menuQuery, setMenuQuery] = useState('');
+  const [deliverySlot,setDeliverySlot]=useState('Now');
   const restaurantLines = data.foodCartLines.filter((line) => line.restaurantId === restaurant.id);
   const cartCount = restaurantLines.reduce((sum, line) => sum + line.quantity, 0);
   const cartTotal = calculateFoodCartSubtotal(restaurantLines);
@@ -3528,13 +3682,26 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
   });
   const insets=useSafeAreaInsets();
   const { height }=useWindowDimensions();
-  const heroHeight=Math.max(455,Math.min(555,height*0.59));
+  const heroHeight=Math.max(330,Math.min(420,height*0.38));
   const menuSearchRef=useRef<TextInput>(null);
   const restaurantName=localisedRestaurantName(restaurant,data.country,data.city);
-  const deliveryLabel=restaurant.deliveryFee===0?'Free delivery':`${formatMoney(data.country,demandAdjustedDeliveryFee(restaurant.deliveryFee,'food-delivery'))} delivery`;
+  const deliveryFee=demandAdjustedDeliveryFee(restaurant.deliveryFee,'food-delivery');
+  const typicalSpend=restaurant.menu.find((item)=>item.popular)?.price ?? restaurant.menu[0]?.price ?? 0;
+  const scheduleOrder=()=>Alert.alert(
+    'Schedule order',
+    `Choose when you want your ${restaurantName} order delivered.`,
+    [
+      {text:'Now',onPress:()=>setDeliverySlot('Now')},
+      {text:'In 30 minutes',onPress:()=>setDeliverySlot('In 30 min')},
+      {text:'Tonight',onPress:()=>setDeliverySlot('Tonight')},
+      {text:'Tomorrow',onPress:()=>setDeliverySlot('Tomorrow')},
+      {text:'Cancel',style:'cancel'},
+    ],
+  );
+  const groupOrder=()=>void Share.share({message:`Join my Kareebu+ group order from ${restaurantName}.`});
 
   return (
-    <View style={styles.v614MerchantScreen}>
+    <View style={styles.v615MerchantScreen}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content"/>
       <ScrollView
         style={styles.flex}
@@ -3542,116 +3709,135 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.v614Hero,{height:heroHeight}]}>
-          <RestaurantPhoto restaurant={restaurant} style={styles.v614HeroPhoto}/>
-          <View pointerEvents="none" style={styles.v614HeroShade}/>
-          <View style={[styles.v614TopBar,{top:Math.max(insets.top,18)+14}]}>
-            <Pressable onPress={()=>actions.go('food')} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Back">
+        <View style={[styles.v615Hero,{height:heroHeight}]}>
+          <RestaurantPhoto restaurant={restaurant} style={styles.v615HeroPhoto}/>
+          <View pointerEvents="none" style={styles.v615HeroShade}/>
+          <View style={[styles.v615TopBar,{top:Math.max(insets.top,18)+14}]}>
+            <Pressable onPress={()=>actions.go('food')} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Back">
               <Feather name="arrow-left" size={28} color={COLORS.black}/>
             </Pressable>
-            <View style={styles.v614TopButtonGroup}>
-              <Pressable onPress={()=>Share.share({message:`${restaurantName} on Kareebu+ · ${restaurant.cuisine}`})} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Share restaurant">
+            <View style={styles.v615TopButtonGroup}>
+              <Pressable onPress={()=>Share.share({message:`${restaurantName} on Kareebu+ · ${restaurant.cuisine}`})} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Share restaurant">
                 <Feather name="share-2" size={22} color={COLORS.black}/>
               </Pressable>
-              <Pressable onPress={()=>actions.toggleFavoriteRestaurant(restaurant.id)} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Favourite restaurant">
+              <Pressable onPress={()=>actions.toggleFavoriteRestaurant(restaurant.id)} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Favourite restaurant">
                 <Ionicons name={favorite?'heart':'heart-outline'} size={27} color={favorite?COLORS.red:COLORS.black}/>
               </Pressable>
-              <Pressable onPress={()=>menuSearchRef.current?.focus()} style={({pressed})=>[styles.v614TopButton,pressed&&styles.v614TopButtonPressed]} accessibilityLabel="Search menu">
+              <Pressable onPress={()=>menuSearchRef.current?.focus()} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Search menu">
                 <Feather name="search" size={25} color={COLORS.black}/>
               </Pressable>
             </View>
           </View>
         </View>
 
-        <View style={styles.v614Sheet}>
-          <View style={styles.v614LogoCard}>
+        <View style={styles.v615Sheet}>
+          <View style={styles.v615LogoCard}>
             <RestaurantIdentityLogo restaurant={restaurant}/>
           </View>
 
-          <View style={styles.v614IdentityRow}>
-            <View style={styles.v614IdentityCopy}>
-              <Text numberOfLines={2} style={styles.v614MerchantName}>{restaurantName}</Text>
-              <View style={styles.v614CategoryLine}>
-                <View style={styles.v614PartnerBadge}><Text style={styles.v614PartnerBadgeText}>K+</Text></View>
-                <Text numberOfLines={2} style={styles.v614CategoryText}>{restaurant.cuisine}</Text>
+          <View style={styles.v615IdentityRow}>
+            <View style={styles.v615IdentityCopy}>
+              <View style={styles.v615NameLine}>
+                <Text numberOfLines={2} style={styles.v615MerchantName}>{restaurantName}</Text>
+                {restaurant.plus?<View style={styles.v615PlusPill}><Text style={styles.v615PlusPillMark}>K+</Text><Text style={styles.v615PlusPillText}>Kareebu Plus</Text></View>:null}
               </View>
-              <Text style={styles.v614LocationText}>{restaurant.neighborhood ?? data.city} ({restaurant.distance})</Text>
+              <View style={styles.v615CategoryLine}>
+                <View style={styles.v615PartnerBadge}><Text style={styles.v615PartnerBadgeText}>K+</Text></View>
+                <Text numberOfLines={2} style={styles.v615CategoryText}>{restaurant.cuisine}</Text>
+              </View>
+              <Text style={styles.v615LocationText}>{restaurant.neighborhood ?? data.city} ({restaurant.distance})</Text>
             </View>
             <MerchantRatingPanel rating={restaurant.rating} reviews={restaurant.reviews}/>
           </View>
 
-          <View style={styles.v614Hairline}/>
+          <View style={styles.v615ActionRow}>
+            <Pressable onPress={scheduleOrder} style={({pressed})=>[styles.v615OutlineAction,pressed&&styles.v615Pressed]}>
+              <Feather name="calendar" size={19} color={COLORS.black}/>
+              <Text style={styles.v615OutlineActionText}>{deliverySlot==='Now'?'Schedule':deliverySlot}</Text>
+              <Feather name="chevron-down" size={17} color={COLORS.black}/>
+            </Pressable>
+            <Pressable onPress={groupOrder} style={({pressed})=>[styles.v615OutlineAction,pressed&&styles.v615Pressed]}>
+              <Ionicons name="person-add-outline" size={20} color={COLORS.black}/>
+              <Text style={styles.v615OutlineActionText}>Group order</Text>
+            </Pressable>
+          </View>
 
-          <View style={styles.v614PlainInfoRow}>
-            <View style={styles.v614PlainInfoIcon}><Ionicons name="bicycle-outline" size={20} color={COLORS.black}/></View>
-            <View style={styles.flex}>
-              <Text style={styles.v614PlainInfoTitle}>{restaurant.eta} delivery</Text>
-              <Text style={styles.v614PlainInfoMeta}>{deliveryLabel} · {restaurant.priceLevel ?? '$$'}</Text>
+          <View style={styles.v615StatsPanel}>
+            <View style={styles.v615StatCell}>
+              <Text style={styles.v615StatLabel}>{deliverySlot==='Now'?'Deliver Now':deliverySlot}</Text>
+              <Text style={styles.v615StatValueAccent}>{restaurant.eta}</Text>
             </View>
-            <Feather name="chevron-right" size={20} color={COLORS.muted}/>
+            <View style={styles.v615StatDivider}/>
+            <View style={styles.v615StatCell}>
+              <Text style={styles.v615StatLabel}>Price For One</Text>
+              <Text style={styles.v615StatValue}>{formatMoney(data.country,typicalSpend)}</Text>
+            </View>
+            <View style={styles.v615StatDivider}/>
+            <View style={styles.v615StatCell}>
+              <Text style={styles.v615StatLabel}>Delivery Fee</Text>
+              <Text style={styles.v615StatValue}>{restaurant.deliveryFee===0?'Free':formatMoney(data.country,deliveryFee)}</Text>
+            </View>
           </View>
 
           {restaurant.offer?(
-            <View style={styles.v614PlainInfoRow}>
-              <View style={styles.v614PlainInfoIcon}><Ionicons name="pricetag-outline" size={20} color={COLORS.black}/></View>
-              <View style={styles.flex}>
-                <Text style={styles.v614PlainInfoTitle}>Offers</Text>
-                <Text style={styles.v614PlainInfoMeta}>{restaurant.offer}</Text>
-              </View>
-            </View>
+            <Pressable onPress={()=>Alert.alert('Offers',restaurant.offer ?? '')} style={({pressed})=>[styles.v615OfferStrip,pressed&&styles.v615Pressed]}>
+              <Ionicons name="pricetag-outline" size={23} color={COLORS.black}/>
+              <Text numberOfLines={2} style={styles.v615OfferText}><Text style={styles.v615OfferStrong}>Offers</Text> — {restaurant.offer}</Text>
+              <Feather name="chevron-right" size={21} color={COLORS.black}/>
+            </Pressable>
           ):null}
 
-          <View style={styles.v614SearchBox}>
-            <Feather name="search" size={21} color={COLORS.black}/>
+          <View style={styles.v615SearchBox}>
+            <Feather name="search" size={22} color={COLORS.black}/>
             <TextInput
               ref={menuSearchRef}
               value={menuQuery}
               onChangeText={setMenuQuery}
               placeholder={`Search ${restaurant.name}`}
               placeholderTextColor={COLORS.muted}
-              style={styles.v614SearchInput}
+              style={styles.v615SearchInput}
             />
             {menuQuery?<Pressable onPress={()=>setMenuQuery('')} hitSlop={8}><Feather name="x-circle" size={19} color={COLORS.muted}/></Pressable>:null}
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v614TabRail}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v615TabRail}>
             {['All', ...categories].map((category)=>(
-              <Pressable key={category} onPress={()=>setActiveMenuCategory(category)} style={[styles.v614Tab,activeMenuCategory===category&&styles.v614TabActive]}>
-                <Text style={[styles.v614TabText,activeMenuCategory===category&&styles.v614TabTextActive]}>{category}</Text>
+              <Pressable key={category} onPress={()=>setActiveMenuCategory(category)} style={[styles.v615Tab,activeMenuCategory===category&&styles.v615TabActive]}>
+                <Text style={[styles.v615TabText,activeMenuCategory===category&&styles.v615TabTextActive]}>{category}</Text>
               </Pressable>
             ))}
           </ScrollView>
 
-          <View style={styles.v614SectionHeader}>
-            <Text style={styles.v614SectionTitle}>Menu</Text>
-            <Text style={styles.v614SectionCount}>{visibleMenu.length} items</Text>
+          <View style={styles.v615SectionHeader}>
+            <Text style={styles.v615SectionTitle}>Menu</Text>
+            <Text style={styles.v615SectionCount}>{visibleMenu.length} items</Text>
           </View>
 
           {visibleMenu.length===0?(
-            <View style={styles.v614EmptyState}>
+            <View style={styles.v615EmptyState}>
               <Feather name="search" size={28} color={COLORS.muted}/>
-              <Text style={styles.v614EmptyTitle}>No matching dishes</Text>
-              <Text style={styles.v614EmptyBody}>Try another search or menu category.</Text>
+              <Text style={styles.v615EmptyTitle}>No matching dishes</Text>
+              <Text style={styles.v615EmptyBody}>Try another search or menu category.</Text>
             </View>
           ):(
-            <View style={styles.v614MenuList}>
+            <View style={styles.v615MenuList}>
               {visibleMenu.map((item)=>{
                 const quantity=itemQuantity(item.id);
                 return (
-                  <Pressable key={item.id} onPress={()=>openItem(item)} style={({pressed})=>[styles.v614MenuRow,pressed&&styles.v614RowPressed]}>
-                    <View style={styles.v614MenuCopy}>
-                      {item.badge?<Text style={styles.v614ItemBadge}>{item.badge}</Text>:null}
-                      <View style={styles.v614ItemNameRow}>
-                        <Text numberOfLines={2} style={styles.v614ItemName}>{item.name}</Text>
-                        {item.popular?<View style={styles.v614PopularDot}><Text style={styles.v614PopularDotText}>Popular</Text></View>:null}
+                  <Pressable key={item.id} onPress={()=>openItem(item)} style={({pressed})=>[styles.v615MenuRow,pressed&&styles.v615Pressed]}>
+                    <View style={styles.v615MenuCopy}>
+                      {item.popular?<Text style={styles.v615PopularLabel}>Popular</Text>:item.badge?<Text style={styles.v615ItemBadge}>{item.badge}</Text>:null}
+                      <View style={styles.v615ItemNameRow}>
+                        <Text numberOfLines={2} style={styles.v615ItemName}>{item.name}</Text>
+                        {item.popular?<View style={styles.v615PopularPill}><Text style={styles.v615PopularPillText}>Popular</Text></View>:null}
                       </View>
-                      <Text numberOfLines={2} style={styles.v614ItemDescription}>{item.description}</Text>
-                      <Text style={styles.v614ItemPrice}>{formatMoney(data.country,item.price)}</Text>
+                      <Text numberOfLines={2} style={styles.v615ItemDescription}>{item.description}</Text>
+                      <Text style={styles.v615ItemPrice}>{formatMoney(data.country,item.price)}</Text>
                     </View>
-                    <View style={styles.v614MenuVisual}>
-                      <RestaurantDishPhoto item={item} restaurant={restaurant}/>
-                      <View style={[styles.v614AddButton,quantity>0&&styles.v614AddButtonActive]}>
-                        <Text style={[styles.v614AddButtonText,quantity>0&&styles.v614AddButtonTextActive]}>{quantity>0?quantity:'+'}</Text>
+                    <View style={styles.v615MenuVisual}>
+                      <V615RestaurantDishPhoto item={item} restaurant={restaurant}/>
+                      <View style={[styles.v615AddButton,quantity>0&&styles.v615AddButtonActive]}>
+                        <Text style={[styles.v615AddButtonText,quantity>0&&styles.v615AddButtonTextActive]}>{quantity>0?quantity:'+'}</Text>
                       </View>
                     </View>
                   </Pressable>
@@ -3663,10 +3849,10 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
       </ScrollView>
 
       {cartCount>0?(
-        <Pressable onPress={()=>actions.go('cart')} style={[styles.v614BasketBar,{bottom:Math.max(8,insets.bottom+6)}]}>
-          <View style={styles.v614BasketCount}><Text style={styles.v614BasketCountText}>{cartCount}</Text></View>
-          <View style={styles.flex}><Text style={styles.v614BasketTitle}>View cart</Text><Text style={styles.v614BasketMeta}>{restaurantName}</Text></View>
-          <Text style={styles.v614BasketTotal}>{formatMoney(data.country,cartTotal)}</Text>
+        <Pressable onPress={()=>actions.go('cart')} style={[styles.v615BasketBar,{bottom:Math.max(8,insets.bottom+6)}]}>
+          <View style={styles.v615BasketCount}><Text style={styles.v615BasketCountText}>{cartCount}</Text></View>
+          <View style={styles.flex}><Text style={styles.v615BasketTitle}>View cart</Text><Text style={styles.v615BasketMeta}>{restaurantName}</Text></View>
+          <Text style={styles.v615BasketTotal}>{formatMoney(data.country,cartTotal)}</Text>
           <Feather name="chevron-right" size={21} color={COLORS.white}/>
         </Pressable>
       ):null}
@@ -3764,29 +3950,75 @@ export function ShopsScreen({ data, actions }: { data: AppData; actions: AppActi
       return q&&c&&f;
     });
   },[query,activeCategory,activeFilter,countryStores,data.country]);
-  const topStores = (activeCategory==='All'?countryStores:countryStores.filter((shop)=>shop.category===activeCategory)).slice(0,9);
-  const cartCount = Object.values(data.cartQuantities).reduce((sum, quantity) => sum + quantity, 0);
+  const topStores=(activeCategory==='All'?countryStores:countryStores.filter((shop)=>shop.category===activeCategory)).slice(0,8);
+  const tiles=categories.slice(0,8).map((label)=>({id:label,label,semantic:marketplaceSemanticForCategory(label)}));
+  const recommended=topStores.slice(0,6).map((shop)=>({
+    id:shop.id,
+    name:localisedStoreName(shop,data.country),
+    meta:`${shop.rating.toFixed(1)} ★ · ${shop.eta}`,
+    semantic:marketplaceSemanticForCategory(shop.category),
+  }));
+  const currentPromoCategory=activeCategory==='All'?'Shops':activeCategory;
+
   return (
     <ScreenShell>
-      <ScrollView style={styles.flex} contentContainerStyle={styles.v40CommerceScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <CommerceHeader title="Shops" location={data.deliveryPlace?.name || data.city} cart cartCount={cartCount} go={actions.go} onLocation={() => { actions.setLocationReturn('shops'); actions.go('locationPicker'); }} />
-        <View style={styles.v40CommerceSearch}><Feather name="search" size={21} color={COLORS.black}/><TextInput value={query} onChangeText={setQuery} placeholder={activeCategory==='Pharmacy'?'Search for medicines or pharmacies':'Search stores, products or categories'} placeholderTextColor={COLORS.mutedLight} style={styles.v40CommerceSearchInput}/>{query?<Pressable onPress={()=>setQuery('')}><Ionicons name="close-circle" size={20} color={COLORS.muted}/></Pressable>:null}</View>
+      <ScrollView style={styles.flex} contentContainerStyle={{paddingBottom:34}} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <MarketplaceCategoryHeader
+          location={data.deliveryPlace?.name || `${data.city}, ${data.country}`}
+          searchPlaceholder={activeCategory==='Pharmacy'?'Search medicines, pharmacies or wellness':'Type to search...'}
+          searchValue={query}
+          onSearchChange={setQuery}
+          onBack={()=>actions.go('home')}
+          onMenu={()=>actions.go('categories')}
+          onLocation={()=>{actions.setLocationReturn('shops');actions.go('locationPicker')}}
+        />
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40ShopCategoryRow}>{categories.map((label)=>{const selected=activeCategory===label;const icon=(label==='All'?'storefront-outline':label==='Pharmacy'?'medical-outline':label==='Groceries'?'basket-outline':label==='Beauty'?'sparkles-outline':label==='Nutrition'?'nutrition-outline':label==='Eye care'?'eye-outline':label==='Pets'?'paw-outline':'bag-handle-outline') as keyof typeof Ionicons.glyphMap;return <Pressable key={label} onPress={()=>setActiveCategory(label)} style={styles.v40ShopCategory}><View style={[styles.v40ShopCategoryCircle,selected&&styles.v40ShopCategoryCircleActive]}><BrandIcon icon={icon} size={38}/></View><Text style={[styles.v40ShopCategoryText,selected&&styles.v40ShopCategoryTextActive]}>{label}</Text></Pressable>})}</ScrollView>
+        <View style={{paddingHorizontal:14,paddingTop:2}}>
+          <MarketplacePromoBanner category={currentPromoCategory} onPress={()=>setActiveFilter('Offers')}/>
 
-        <V40ShopHeroBanner category={activeCategory} country={data.country}/>
-        <PromoDots count={4}/>
+          <MarketplaceRecommendedRail
+            title={activeCategory==='All'?'Recommended Shops':`Recommended ${activeCategory}`}
+            merchants={recommended}
+            onPress={(id)=>{actions.selectShop(id);actions.go('shop')}}
+          />
 
-        <View style={styles.v40SectionHeader}><Text style={styles.v40SectionTitle}>{activeCategory==='Pharmacy'?'Top pharmacy brands near you':activeCategory==='All'?'Top stores near you':`Top ${activeCategory.toLowerCase()} stores`}</Text><TextButton label="See all" onPress={()=>setActiveFilter('All stores')} color={COLORS.red}/></View>
-        {activeCategory==='Pharmacy' ? <View style={styles.v40PharmacyGrid}>{topStores.map((shop)=><Pressable key={shop.id} onPress={()=>{actions.selectShop(shop.id);actions.go('shop')}} style={styles.v40PharmacyBrandCard}><ShopPhoto store={shop} style={styles.v40PharmacyBrandPhoto}/><Text numberOfLines={1} style={styles.v40PharmacyBrandName}>{localisedStoreName(shop,data.country)}</Text><Text numberOfLines={1} style={styles.v40PharmacyBrandEta}>★ {shop.rating.toFixed(1)} · {shop.eta}</Text></Pressable>)}</View> : <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40TopShopRow}>{topStores.map((shop)=><Pressable key={shop.id} onPress={()=>{actions.selectShop(shop.id);actions.go('shop')}} style={styles.v40TopShopCard}><ShopPhoto store={shop} style={styles.v40TopShopPhoto}/><Text numberOfLines={2} style={styles.v40TopShopName}>{localisedStoreName(shop,data.country)}</Text><Text style={styles.v40TopShopEta}>★ {shop.rating.toFixed(1)} · {shop.eta}</Text></Pressable>)}</ScrollView>}
+          <MarketplaceCategoryGrid
+            tiles={tiles}
+            selectedId={activeCategory}
+            onPress={(id)=>{setActiveCategory(id);setActiveFilter('Offers')}}
+          />
 
-        <Text style={styles.v40BrowseTitle}>{activeCategory==='Pharmacy'?'Browse pharmacies':'Browse stores'}</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FilterRow}>{['Offers','Free delivery','Under 30 mins','Rating 4.7+'].map((filter)=><FilterChip key={filter} label={filter} active={activeFilter===filter} onPress={()=>setActiveFilter(activeFilter===filter?'All stores':filter)}/>)}</ScrollView>
+          <MarketplacePromoGrid category={currentPromoCategory} onPress={()=>setActiveFilter('Offers')}/>
 
-        <View style={styles.v40ShopList}>{filtered.map((shop)=>{const favorite=data.favoriteShopIds.includes(shop.id);return <Pressable key={shop.id} onPress={()=>{actions.selectShop(shop.id);actions.go('shop')}} style={({pressed})=>[styles.v40ShopRow,pressed&&styles.v26CardPressed]}><ShopPhoto store={shop} style={styles.v40ShopRowPhoto}/><View style={styles.flex}><View style={styles.v40ShopNameRow}><Text numberOfLines={1} style={styles.v40ShopName}>{localisedStoreName(shop,data.country)}</Text><Text style={styles.v40ShopRating}>{shop.rating.toFixed(1)} <Text style={styles.star}>★</Text></Text></View><Text numberOfLines={1} style={styles.v40ShopCategoryMeta}>{shop.category} · {shop.location ?? data.city} · {shop.reviews ?? 'New'} reviews</Text><Text style={styles.v40ShopMeta}>{shop.eta} · Minimum {formatMoney(data.country,shop.minOrder)} · {shop.deliveryFee===0?'Free delivery':`${formatMoney(data.country,demandAdjustedDeliveryFee(shop.deliveryFee,'store-delivery'))} delivery`}</Text><View style={styles.v40ShopBadges}><View style={styles.v40ShopDeal}><Ionicons name="pricetag-outline" size={12} color={COLORS.black}/><Text numberOfLines={1} style={styles.v40ShopDealText}>{shop.deal}</Text></View></View></View><Pressable onPress={()=>actions.toggleFavoriteShop(shop.id)} style={styles.v40ShopHeart}><Ionicons name={favorite?'heart':'heart-outline'} size={21} color={favorite?COLORS.red:COLORS.muted}/></Pressable></Pressable>})}</View>
-        {filtered.length===0?<RoundedCard style={styles.v30EmptyState}><Ionicons name="bag-handle-outline" size={32} color={COLORS.muted}/><Text style={styles.v30EmptyTitle}>No stores match</Text><Text style={styles.v30EmptyBody}>Try another category, filter or search.</Text></RoundedCard>:null}
+          <View style={styles.v40SectionHeader}>
+            <Text style={styles.v40SectionTitle}>{activeCategory==='All'?'Browse stores':`Browse ${activeCategory.toLowerCase()}`}</Text>
+            <TextButton label="See all" onPress={()=>setActiveFilter('All stores')} color={COLORS.red}/>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FilterRow}>
+            {['Offers','Free delivery','Under 30 mins','Rating 4.7+'].map((filter)=><FilterChip key={filter} label={filter} active={activeFilter===filter} onPress={()=>setActiveFilter(activeFilter===filter?'All stores':filter)}/>)}
+          </ScrollView>
+
+          <View style={styles.v40ShopList}>
+            {filtered.map((shop)=>{
+              const favorite=data.favoriteShopIds.includes(shop.id);
+              return <Pressable key={shop.id} onPress={()=>{actions.selectShop(shop.id);actions.go('shop')}} style={({pressed})=>[styles.v40ShopRow,pressed&&styles.v26CardPressed]}>
+                <View style={styles.v40ShopRowLogo}><PopularStoreLogo store={shop}/></View>
+                <View style={styles.flex}>
+                  <View style={styles.v40ShopNameRow}><Text numberOfLines={1} style={styles.v40ShopName}>{localisedStoreName(shop,data.country)}</Text><Text style={styles.v40ShopRating}>{shop.rating.toFixed(1)} <Text style={styles.star}>★</Text></Text></View>
+                  <Text style={styles.v40ShopMeta}>{shop.eta} · Minimum order {formatMoney(data.country,shop.minOrder)}</Text>
+                  <View style={styles.v40ShopBadges}><View style={styles.v40ShopDeal}><Ionicons name="pricetag-outline" size={12} color={COLORS.black}/><Text numberOfLines={1} style={styles.v40ShopDealText}>{shop.deal}</Text></View>{shop.deliveryFee===0?<View style={styles.v40ShopFree}><Ionicons name="bicycle-outline" size={12} color={COLORS.green}/><Text style={styles.v40ShopFreeText}>FREE DELIVERY</Text></View>:null}</View>
+                </View>
+                <Pressable onPress={()=>actions.toggleFavoriteShop(shop.id)} style={styles.v40ShopHeart}><Ionicons name={favorite?'heart':'heart-outline'} size={21} color={favorite?COLORS.red:COLORS.muted}/></Pressable>
+              </Pressable>
+            })}
+          </View>
+
+          {filtered.length===0?<RoundedCard style={styles.v30EmptyState}><Ionicons name="bag-handle-outline" size={32} color={COLORS.muted}/><Text style={styles.v30EmptyTitle}>No stores match</Text><Text style={styles.v30EmptyBody}>Try another category, filter or search.</Text></RoundedCard>:null}
+
+          <MarketplaceMembershipStrip onPress={()=>actions.go('plusManage')}/>
+        </View>
       </ScrollView>
-      <FoodBottomNav go={actions.go} active="shops" />
     </ScreenShell>
   );
 }
@@ -4087,7 +4319,12 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
     case 'foodCheckout': return <FoodCheckoutScreen data={data} actions={actions}/>;
     case 'foodOrderSuccess': return <FoodOrderSuccessScreen data={data} actions={actions}/>;
     case 'orderTracking': return <OrderTrackingScreen data={data} actions={actions}/>;
-    case 'shops': return <ShopsScreen data={data} actions={actions}/>;
+    case 'shops': return <KareebuDomainDiscoveryRoute domainId="shops" data={data} actions={actions} initialVerticalTitle={data.shopCategoryPreset === 'All' ? undefined : data.shopCategoryPreset}/>;
+    case 'groceries': return <KareebuDomainDiscoveryRoute domainId="groceries" data={data} actions={actions}/>;
+    case 'electronics': return <KareebuDomainDiscoveryRoute domainId="electronics" data={data} actions={actions}/>;
+    case 'dineOut': return <KareebuDomainDiscoveryRoute domainId="dineout" data={data} actions={actions}/>;
+    case 'homeCare': return <KareebuDomainDiscoveryRoute domainId="home-care" data={data} actions={actions}/>;
+    case 'fix': return <KareebuDomainDiscoveryRoute domainId="fix" data={data} actions={actions}/>;
     case 'shop': return <StorefrontScreen data={data} actions={actions}/>;
     case 'commerceProduct': return <CommerceProductScreen data={commerceData} actions={commerceActions}/>;
     case 'commerceCart': return <CommerceCartScreen data={commerceData} actions={commerceActions}/>;
@@ -5553,5 +5790,85 @@ const styles = StyleSheet.create({
   v614BasketTitle:{fontFamily:FONT.bold,fontSize:14,fontWeight:'900',color:COLORS.white},
   v614BasketMeta:{fontFamily:FONT.regular,fontSize:10.5,color:'#C8C8C8',marginTop:2},
   v614BasketTotal:{fontFamily:FONT.bold,fontSize:13,fontWeight:'900',color:COLORS.white},
+
+
+  // Kareebu+ V6.15 — approved merchant layout.
+  v615MerchantScreen:{flex:1,backgroundColor:COLORS.white},
+  v615Hero:{width:'100%',position:'relative',backgroundColor:'#E7E7E7',overflow:'hidden'},
+  v615HeroPhoto:{...StyleSheet.absoluteFill,width:'100%',height:'100%'},
+  v615HeroShade:{...StyleSheet.absoluteFill,backgroundColor:'rgba(0,0,0,.025)'},
+  v615TopBar:{position:'absolute',left:18,right:18,flexDirection:'row',alignItems:'center',justifyContent:'space-between',zIndex:30},
+  v615TopButtonGroup:{flexDirection:'row',gap:10},
+  v615TopButton:{width:56,height:56,borderRadius:13,backgroundColor:'rgba(255,255,255,.985)',borderWidth:1,borderColor:'rgba(0,0,0,.11)',alignItems:'center',justifyContent:'center',shadowColor:'#000',shadowOffset:{width:0,height:3},shadowOpacity:.16,shadowRadius:6,elevation:7},
+  v615TopButtonPressed:{opacity:.72,transform:[{scale:.97}]},
+  v615Sheet:{backgroundColor:COLORS.white,paddingHorizontal:18,paddingBottom:30},
+  v615LogoCard:{width:104,height:104,borderRadius:15,backgroundColor:COLORS.white,borderWidth:1,borderColor:'#E3E4E5',alignItems:'center',justifyContent:'center',padding:7,marginTop:-53,marginBottom:14,zIndex:20,shadowColor:'#000',shadowOffset:{width:0,height:4},shadowOpacity:.13,shadowRadius:6,elevation:6,overflow:'hidden'},
+  v615IdentityRow:{flexDirection:'row',alignItems:'flex-start',gap:13,minHeight:116,paddingBottom:8},
+  v615IdentityCopy:{flex:1,paddingRight:1},
+  v615NameLine:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8},
+  v615MerchantName:{fontFamily:FONT.bold,fontSize:29,lineHeight:34,fontWeight:'900',letterSpacing:-.85,color:'#282828',flexShrink:1},
+  v615PlusPill:{height:29,borderRadius:15,backgroundColor:COLORS.yellow,flexDirection:'row',alignItems:'center',gap:6,paddingLeft:8,paddingRight:10},
+  v615PlusPillMark:{fontFamily:FONT.bold,fontSize:11.5,fontWeight:'900',color:COLORS.black},
+  v615PlusPillText:{fontFamily:FONT.bold,fontSize:10.5,fontWeight:'900',color:COLORS.black},
+  v615CategoryLine:{flexDirection:'row',alignItems:'center',gap:8,marginTop:9},
+  v615PartnerBadge:{height:27,minWidth:38,borderRadius:6,backgroundColor:'#079B86',alignItems:'center',justifyContent:'center',paddingHorizontal:7},
+  v615PartnerBadgeText:{fontFamily:FONT.bold,fontSize:11.5,fontWeight:'900',color:COLORS.white},
+  v615CategoryText:{flex:1,fontFamily:FONT.medium,fontSize:14.2,lineHeight:19,fontWeight:'700',color:'#77797B'},
+  v615LocationText:{fontFamily:FONT.regular,fontSize:13.8,lineHeight:19,color:'#85878A',marginTop:8},
+  v615ActionRow:{flexDirection:'row',gap:9,marginTop:8,marginBottom:14},
+  v615OutlineAction:{height:48,borderRadius:10,borderWidth:1,borderColor:'#D5D7D9',backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,paddingHorizontal:13},
+  v615OutlineActionText:{fontFamily:FONT.bold,fontSize:13.5,fontWeight:'800',color:COLORS.black},
+  v615StatsPanel:{height:90,borderRadius:13,borderWidth:1,borderColor:'#E3E4E5',backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',marginBottom:14},
+  v615StatCell:{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:5},
+  v615StatDivider:{width:1,height:52,backgroundColor:'#E1E2E3'},
+  v615StatLabel:{fontFamily:FONT.regular,fontSize:12.5,lineHeight:16,color:'#77797B',textAlign:'center'},
+  v615StatValue:{fontFamily:FONT.bold,fontSize:13.5,lineHeight:18,fontWeight:'900',color:'#2B2B2B',marginTop:7,textAlign:'center'},
+  v615StatValueAccent:{fontFamily:FONT.bold,fontSize:13.5,lineHeight:18,fontWeight:'900',color:'#079B86',marginTop:7,textAlign:'center'},
+  v615OfferStrip:{minHeight:54,borderRadius:11,borderWidth:1,borderColor:'#F4D56A',backgroundColor:'#FFFDF5',flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:13,marginBottom:14},
+  v615OfferText:{flex:1,fontFamily:FONT.regular,fontSize:13.5,lineHeight:18,color:'#333'},
+  v615OfferStrong:{fontFamily:FONT.bold,fontWeight:'900',color:COLORS.black},
+  v615SearchBox:{height:52,borderRadius:12,borderWidth:1,borderColor:'#D7D9DB',backgroundColor:'#FAFAFA',flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:13},
+  v615SearchInput:{flex:1,fontFamily:FONT.regular,fontSize:14.5,color:COLORS.black,paddingVertical:0},
+  v615TabRail:{gap:8,paddingTop:14,paddingBottom:11,paddingRight:16},
+  v615Tab:{height:39,borderRadius:20,paddingHorizontal:15,backgroundColor:'#F3F3F3',alignItems:'center',justifyContent:'center'},
+  v615TabActive:{backgroundColor:'#1F1F1F'},
+  v615TabText:{fontFamily:FONT.medium,fontSize:12.5,fontWeight:'800',color:'#666'},
+  v615TabTextActive:{color:COLORS.white},
+  v615SectionHeader:{flexDirection:'row',alignItems:'baseline',justifyContent:'space-between',paddingTop:13,paddingBottom:3},
+  v615SectionTitle:{fontFamily:FONT.bold,fontSize:21,lineHeight:26,fontWeight:'900',letterSpacing:-.3,color:COLORS.black},
+  v615SectionCount:{fontFamily:FONT.regular,fontSize:12.5,color:COLORS.muted},
+  v615MenuList:{marginTop:2},
+  v615MenuRow:{minHeight:132,flexDirection:'row',gap:13,paddingVertical:16,borderBottomWidth:1,borderBottomColor:'#EDEDED'},
+  v615MenuCopy:{flex:1,paddingRight:2,justifyContent:'center'},
+  v615PopularLabel:{alignSelf:'flex-start',fontFamily:FONT.bold,fontSize:10.5,lineHeight:14,fontWeight:'900',color:'#D63830',marginBottom:5},
+  v615ItemBadge:{alignSelf:'flex-start',fontFamily:FONT.bold,fontSize:10.5,lineHeight:14,fontWeight:'900',color:'#B02620',marginBottom:5},
+  v615ItemNameRow:{flexDirection:'row',alignItems:'center',gap:7},
+  v615ItemName:{flexShrink:1,fontFamily:FONT.bold,fontSize:15.5,lineHeight:20,fontWeight:'900',color:COLORS.black},
+  v615PopularPill:{borderRadius:8,backgroundColor:COLORS.yellowSoft,paddingHorizontal:7,paddingVertical:4},
+  v615PopularPillText:{fontFamily:FONT.bold,fontSize:9.5,fontWeight:'900',color:COLORS.black},
+  v615ItemDescription:{fontFamily:FONT.regular,fontSize:12.5,lineHeight:17,color:'#7A7C7F',marginTop:5},
+  v615ItemPrice:{fontFamily:FONT.bold,fontSize:13.5,lineHeight:18,fontWeight:'900',color:COLORS.black,marginTop:8},
+  v615ItemRating:{fontFamily:FONT.medium,fontSize:11.5,lineHeight:15,fontWeight:'700',color:'#797B7E',marginTop:5},
+  v615MenuVisual:{width:124,height:106,borderRadius:12,overflow:'visible',alignSelf:'center',position:'relative'},
+  v615MenuPhoto:{width:'100%',height:'100%',borderRadius:12,backgroundColor:'#EEE'},
+  v615ProductList:{marginTop:2},
+  v615ProductRow:{minHeight:140,flexDirection:'row',gap:13,paddingVertical:16,borderBottomWidth:1,borderBottomColor:'#EDEDED'},
+  v615ProductCopy:{flex:1,paddingRight:2,justifyContent:'center'},
+  v615ProductVisual:{width:124,height:110,borderRadius:12,overflow:'visible',alignSelf:'center',position:'relative'},
+  v615ProductPhoto:{width:'100%',height:'100%',borderRadius:12,backgroundColor:'#EEE'},
+  v615AddButton:{position:'absolute',right:7,bottom:-10,minWidth:38,height:33,borderRadius:9,backgroundColor:COLORS.white,borderWidth:1,borderColor:'#D7D7D7',alignItems:'center',justifyContent:'center',paddingHorizontal:10,shadowColor:'#000',shadowOffset:{width:0,height:2},shadowOpacity:.11,shadowRadius:4,elevation:3},
+  v615AddButtonActive:{backgroundColor:COLORS.black,borderColor:COLORS.black},
+  v615AddButtonText:{fontFamily:FONT.bold,fontSize:19,lineHeight:21,fontWeight:'900',color:COLORS.black},
+  v615AddButtonTextActive:{fontSize:13,color:COLORS.white},
+  v615Pressed:{opacity:.72},
+  v615EmptyState:{minHeight:180,alignItems:'center',justifyContent:'center',paddingHorizontal:22},
+  v615EmptyTitle:{fontFamily:FONT.bold,fontSize:16,fontWeight:'900',color:COLORS.black,marginTop:9},
+  v615EmptyBody:{fontFamily:FONT.regular,fontSize:13,color:COLORS.muted,textAlign:'center',marginTop:5},
+  v615BasketBar:{position:'absolute',left:14,right:14,minHeight:62,borderRadius:16,backgroundColor:COLORS.black,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:13,shadowColor:'#000',shadowOffset:{width:0,height:4},shadowOpacity:.22,shadowRadius:9,elevation:8},
+  v615BasketCount:{width:32,height:32,borderRadius:9,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},
+  v615BasketCountText:{fontFamily:FONT.bold,fontSize:13,fontWeight:'900',color:COLORS.black},
+  v615BasketTitle:{fontFamily:FONT.bold,fontSize:14,fontWeight:'900',color:COLORS.white},
+  v615BasketMeta:{fontFamily:FONT.regular,fontSize:10.5,color:'#C8C8C8',marginTop:2},
+  v615BasketTotal:{fontFamily:FONT.bold,fontSize:13,fontWeight:'900',color:COLORS.white},
 
 });

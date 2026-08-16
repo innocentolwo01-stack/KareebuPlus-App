@@ -8,6 +8,8 @@ import type { RideId, Screen } from '../types';
 import type { VehicleMode } from './vehicle';
 import { captainOffers, RideFareBreakdown, RidePlan, RideProduct, RideReceipt, rideFareBreakdown, rideLabel } from './mobility';
 
+import { KareebuBodaHomeScreen } from './kareebuBodaHome';
+
 export type MobilityData = {
   country: string;
   city: string;
@@ -42,7 +44,16 @@ function MobilityShortcut({ icon, title, body, onPress }: { icon: keyof typeof I
   return <Pressable onPress={onPress} style={styles.shortcut}><View style={styles.shortcutIcon}><Ionicons name={icon} size={22} color={COLORS.black}/></View><View style={styles.flex}><Text style={styles.cardTitle}>{title}</Text><Text style={styles.meta}>{body}</Text></View><Feather name="chevron-right" size={21} color={COLORS.black}/></Pressable>;
 }
 
+// KAREEBU_BODA_RIDES_PARITY_V1
 export function MobilityHomeScreen({ data, actions }: { data: MobilityData; actions: MobilityActions }) {
+  if (data.selectedVehicleMode === 'BODA') {
+    return <KareebuBodaHomeScreen data={data} actions={actions} />;
+  }
+
+  return <LegacyMobilityHomeScreen data={data} actions={actions} />;
+}
+
+function LegacyMobilityHomeScreen({ data, actions }: { data: MobilityData; actions: MobilityActions }) {
   return <ScreenShell>
     <Header title="Rides" onBack={()=>actions.go('home')} right={<Pressable onPress={()=>actions.go('rideHistory')}><Ionicons name="time-outline" size={24} color={COLORS.black}/></Pressable>}/>
     <ScrollView style={styles.flex} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>

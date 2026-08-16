@@ -1,0 +1,27 @@
+{
+  "archivedAt": "2026-08-16T20:04:10.405Z",
+  "scripts": {
+    "validate": "node scripts/baseline/validate-contracts.mjs",
+    "validate:baseline": "node scripts/baseline/validate-contracts.mjs",
+    "validate:brand": "node scripts/baseline/validate-contracts.mjs brand",
+    "validate:uxui": "node scripts/baseline/validate-contracts.mjs ui",
+    "validate:navigation": "node scripts/baseline/validate-contracts.mjs navigation",
+    "validate:functionality": "node scripts/baseline/validate-contracts.mjs navigation",
+    "validate:food": "node scripts/baseline/validate-contracts.mjs food",
+    "validate:frontend": "node scripts/baseline/validate-contracts.mjs marketplace",
+    "validate:category-layout": "node scripts/baseline/validate-contracts.mjs marketplace",
+    "validate:marketplace": "node scripts/baseline/validate-contracts.mjs marketplace",
+    "validate:products": "node scripts/baseline/validate-contracts.mjs commerce",
+    "validate:demand": "node scripts/baseline/validate-contracts.mjs commerce",
+    "validate:mobility": "node scripts/baseline/validate-contracts.mjs mobility",
+    "validate:boda": "node scripts/baseline/validate-contracts.mjs mobility",
+    "validate:captain": "node scripts/baseline/validate-contracts.mjs mobility",
+    "validate:merchant": "node scripts/baseline/validate-contracts.mjs merchant",
+    "validate:merchant-media": "node scripts/baseline/validate-contracts.mjs merchant",
+    "validate:merchant-profile": "node scripts/baseline/validate-contracts.mjs merchant",
+    "validate:parity": "node scripts/baseline/validate-contracts.mjs routes",
+    "validate:routes": "node scripts/baseline/validate-contracts.mjs routes",
+    "validate:interactions": "node scripts/baseline/validate-contracts.mjs interactions",
+    "validate:legacy": "node scripts/baseline/run-legacy-validators.mjs"
+  }
+}

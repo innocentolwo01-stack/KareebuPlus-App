@@ -35,12 +35,12 @@ ok(screens.includes('function ResilientMerchantPhoto'), 'merchant photos have a 
 ok(!screens.includes('StyleSheet.absoluteFillObject'), 'merchant media uses SDK-compatible StyleSheet.absoluteFill');
 ok(screens.includes('function RestaurantPhoto'), 'restaurant screen photography uses a shared resilient renderer');
 ok(screens.includes('function ShopPhoto'), 'shop photography uses a shared resilient renderer');
-ok(screens.includes('<ShopPhoto store={store} style={styles.v614HeroPhoto} logo={false}/>'), 'storefront detail uses a real photographic hero');
+ok(screens.includes('<ShopPhoto store={store} style={styles.v615HeroPhoto} logo={false}/>') || screens.includes('<ShopPhoto store={store} style={styles.v614HeroPhoto} logo={false}/>'), 'storefront detail uses a real photographic hero');
 ok(screens.includes('<ShopPhoto store={shop} style={styles.v40ShopRowPhoto}/>'), 'main shop list uses photographic thumbnails');
 ok(screens.includes('<ShopPhoto store={store} style={styles.v40FindPhoto}/>'), 'New Finds uses real shop photography');
 ok(screens.includes('<ShopPhoto store={store} style={styles.v40PopularStorePhoto}/>'), 'Popular Stores uses real shop photography');
 ok(screens.includes('<ShopPhoto store={store} style={styles.v35StorePhotoArea}/>'), 'Home popular stores use real shop photography');
-ok(screens.includes('<RestaurantPhoto restaurant={restaurant} style={styles.v614HeroPhoto}/>'), 'restaurant detail uses a real photographic hero');
+ok(screens.includes('<RestaurantPhoto restaurant={restaurant} style={styles.v615HeroPhoto}/>') || screens.includes('<RestaurantPhoto restaurant={restaurant} style={styles.v614HeroPhoto}/>'), 'restaurant detail uses a real photographic hero');
 ok(screens.includes('image: restaurant.photoUrl ? { uri: restaurant.photoUrl }'), 'Food discovery receives real restaurant photo sources');
 
 ok(foodTypes.includes('reviews: string;'), 'Food discovery restaurant contract carries actual review counts');

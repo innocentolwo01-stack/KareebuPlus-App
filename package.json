@@ -8,18 +8,35 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "validate": "node scripts/validate.mjs",
-    "validate:food": "node scripts/validate-food-parity.mjs",
-    "validate:parity": "node scripts/validate-v41-parity.mjs",
-    "validate:frontend": "node scripts/validate-v41-frontend.mjs",
-    "validate:products": "node scripts/validate-product-fidelity.mjs",
-    "validate:mobility": "node scripts/validate-mobility-parity.mjs",
-    "validate:captain": "node scripts/validate-cabbook-driver-integration.mjs",
-    "validate:uxui": "node scripts/validate-uxui.mjs",
-    "validate:demand": "node scripts/validate-demand-pricing.mjs",
-    "validate:brand": "node scripts/validate-brand-system.mjs",
-    "validate:merchant-media": "node scripts/validate-real-merchant-media.mjs",
-    "validate:merchant-profile": "node scripts/validate-merchant-profile-v614.mjs"
+    "baseline:freeze": "node scripts/baseline/freeze-baseline.mjs",
+    "baseline:check": "node scripts/baseline/check-baseline.mjs",
+    "validate": "node scripts/baseline/validate-contracts.mjs",
+    "validate:baseline": "node scripts/baseline/validate-contracts.mjs",
+    "validate:brand": "node scripts/baseline/validate-contracts.mjs brand",
+    "validate:uxui": "node scripts/baseline/validate-contracts.mjs ui",
+    "validate:navigation": "node scripts/baseline/validate-contracts.mjs navigation",
+    "validate:functionality": "node scripts/baseline/validate-contracts.mjs navigation",
+    "validate:food": "node scripts/baseline/validate-contracts.mjs food",
+    "validate:frontend": "node scripts/baseline/validate-contracts.mjs marketplace",
+    "validate:category-layout": "node scripts/baseline/validate-contracts.mjs marketplace",
+    "validate:marketplace": "node scripts/baseline/validate-contracts.mjs marketplace",
+    "validate:products": "node scripts/baseline/validate-contracts.mjs commerce",
+    "validate:demand": "node scripts/baseline/validate-contracts.mjs commerce",
+    "validate:mobility": "node scripts/baseline/validate-contracts.mjs mobility",
+    "validate:boda": "node scripts/baseline/validate-contracts.mjs mobility",
+    "validate:captain": "node scripts/baseline/validate-contracts.mjs mobility",
+    "validate:merchant": "node scripts/baseline/validate-contracts.mjs merchant",
+    "validate:merchant-media": "node scripts/baseline/validate-contracts.mjs merchant",
+    "validate:merchant-profile": "node scripts/baseline/validate-contracts.mjs merchant",
+    "validate:parity": "node scripts/baseline/validate-contracts.mjs routes",
+    "validate:routes": "node scripts/baseline/validate-contracts.mjs routes",
+    "validate:interactions": "node scripts/baseline/validate-contracts.mjs interactions",
+    "validate:legacy": "node scripts/baseline/run-legacy-validators.mjs",
+    "validate:discovery": "node scripts/baseline/validate-careem-discovery-v73.mjs",
+    "validate:discovery-compat": "node scripts/baseline/validate-discovery-compat-v731.mjs",
+    "validate:catalog": "node scripts/baseline/validate-careem-taxonomy-v721.mjs",
+    "validate:visual-parity": "node scripts/baseline/validate-careem-visual-v74.mjs",
+    "validate:back-ownership": "node scripts/baseline/validate-single-back-ownership-v742.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -37,5 +54,10 @@
   "devDependencies": {
     "@types/react": "~19.2.2",
     "typescript": "~6.0.3"
+  },
+  "kareebuBaseline": {
+    "version": "7.4.3",
+    "contracts": 9,
+    "strategy": "contract-first"
   }
 }

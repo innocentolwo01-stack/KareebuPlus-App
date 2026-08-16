@@ -11,6 +11,8 @@ import {
 import { Feather } from '@expo/vector-icons';
 
 import { formatMoney } from '../../locale';
+import { useRegisterBackControl } from '../../navigation/AppNavigation';
+import { MarketplaceCategoryHeader, MarketplacePromoBanner, MarketplacePromoGrid, MarketplaceRecommendedRail } from '../../marketplace/MarketplaceCategoryChrome';
 import type {
   FoodDiscoveryAdvancedFilters,
   FoodDiscoverySort,
@@ -29,6 +31,7 @@ function SurfaceHeader({
   onFilter?: () => void;
   filtered?: boolean;
 }) {
+  useRegisterBackControl(true);
   return (
     <View style={styles.header}>
       <Pressable onPress={onBack} hitSlop={10} style={styles.headerButton}>
@@ -240,37 +243,48 @@ export function FoodListingSurface({
   controller: FoodHomeController;
 }) {
   const title = controller.surface.kind === 'listing' ? controller.surface.title : 'Restaurants';
+  const recommended=controller.listingRestaurants.slice(0,6).map((restaurant)=>({
+    id:restaurant.id,
+    name:restaurant.name,
+    meta:`${restaurant.rating.toFixed(1)} ★ · ${restaurant.eta}`,
+    semantic:'food' as const,
+  }));
 
   return (
     <View style={styles.root}>
-      <SurfaceHeader
-        title={title}
-        onBack={controller.back}
-        onFilter={controller.openFilters}
-        filtered={controller.hasAdvancedFilters}
-      />
+      <ScrollView style={styles.flex} contentContainerStyle={{paddingBottom:34}} showsVerticalScrollIndicator={false}>
+        <MarketplaceCategoryHeader
+          location={`${controller.document.market.city}, ${controller.document.market.country}`}
+          searchPlaceholder={`Search ${title.toLowerCase()}...`}
+          onSearchPress={controller.actions.openSearch}
+          onBack={controller.back}
+          onMenu={controller.openFilters}
+        />
 
-      <ScrollView style={styles.flex} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.listingSummary}>
-          <Text style={styles.listingCount}>
-            {controller.listingRestaurants.length} restaurant{controller.listingRestaurants.length === 1 ? '' : 's'}
-          </Text>
-          {controller.hasAdvancedFilters ? (
-            <Pressable onPress={controller.clearAdvancedFilters}>
-              <Text style={styles.clearLink}>Clear filters</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        <View style={{paddingHorizontal:14}}>
+          <MarketplacePromoBanner category="Food" onPress={()=>controller.openPromo()}/>
 
-        {controller.listingRestaurants.length ? (
-          <View style={styles.listCard}>
-            {controller.listingRestaurants.map((restaurant) => (
-              <RestaurantRow key={restaurant.id} restaurant={restaurant} controller={controller} />
-            ))}
+          <MarketplaceRecommendedRail
+            title={`Recommended ${title}`}
+            merchants={recommended}
+            onPress={(id)=>controller.actions.openRestaurant(id)}
+          />
+
+          <MarketplacePromoGrid category="Food" onPress={()=>controller.actions.openOffers()}/>
+
+          <View style={styles.listingSummary}>
+            <Text style={styles.listingCount}>{controller.listingRestaurants.length} restaurant{controller.listingRestaurants.length === 1 ? '' : 's'}</Text>
+            {controller.hasAdvancedFilters ? <Pressable onPress={controller.clearAdvancedFilters}><Text style={styles.clearLink}>Clear filters</Text></Pressable> : null}
           </View>
-        ) : (
-          <Empty title="No restaurants found" body="Try clearing a filter or choosing another Food category." />
-        )}
+
+          {controller.listingRestaurants.length ? (
+            <View style={styles.listCard}>
+              {controller.listingRestaurants.map((restaurant) => <RestaurantRow key={restaurant.id} restaurant={restaurant} controller={controller} />)}
+            </View>
+          ) : (
+            <Empty title="No restaurants found" body="Try clearing a filter or choosing another Food category." />
+          )}
+        </View>
       </ScrollView>
     </View>
   );

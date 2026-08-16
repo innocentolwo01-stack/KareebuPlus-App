@@ -27,7 +27,7 @@ const serviceColumns: ServiceColumn[] = [
     { label: 'Shops', screen: 'shops', image: require('../../assets/kareebu-plus/services-3d/shops.png') },
   ],
   [
-    { label: 'Groceries', screen: 'shops', image: require('../../assets/kareebu-plus/services-3d/groceries.png') },
+    { label: 'Groceries', screen: 'groceries', image: require('../../assets/kareebu-plus/services-3d/groceries.png') },
     { label: 'Send', screen: 'parcel', image: require('../../assets/kareebu-plus/services-3d/send.png') },
   ],
   [
@@ -43,12 +43,12 @@ const serviceColumns: ServiceColumn[] = [
     { label: 'Home & Care', screen: 'homeCare', image: require('../../assets/kareebu-plus/services-3d/home-care.png') },
   ],
   [
-    { label: 'For Good', screen: 'forGood', image: require('../../assets/kareebu-plus/services-3d/for-good.png') },
-    { label: 'Go Out', screen: 'goOut', image: require('../../assets/kareebu-plus/services-3d/go-out.png') },
+    { label: 'For Good', screen: 'donations', image: require('../../assets/kareebu-plus/services-3d/for-good.png') },
+    { label: 'Go Out', screen: 'dineOut', image: require('../../assets/kareebu-plus/services-3d/go-out.png') },
   ],
   [
-    { label: 'Electronics', screen: 'shops', image: require('../../assets/kareebu-plus/services-3d/electronics.png') },
-    { label: 'Healthcare', screen: 'healthcare', image: require('../../assets/kareebu-plus/services-3d/healthcare.png') },
+    { label: 'Electronics', screen: 'electronics', image: require('../../assets/kareebu-plus/services-3d/electronics.png') },
+    { label: 'Healthcare', screen: 'shops', image: require('../../assets/kareebu-plus/services-3d/healthcare.png') },
   ],
 ];
 

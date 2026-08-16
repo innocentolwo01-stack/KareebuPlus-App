@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, View } from 'react-native';
+import { BackHandler, Linking, View } from 'react-native';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { AppActions, AppData, renderScreen } from './src/screens';
-import { RideId, Screen, SupportTicket, WalletTransaction } from './src/types';
+import { BottomNav } from './src/components';
+import { BottomTab, RideId, Screen, SupportTicket, WalletTransaction } from './src/types';
 import { VehicleMode } from './src/ride/vehicle';
 import { createRidePlan, RidePlan, RideProduct, RideReceipt } from './src/ride/mobility';
 import type { CaptainRideStatus } from './src/ride/captainDriverParity';
@@ -13,10 +14,47 @@ import * as NativeSplashScreen from 'expo-splash-screen';
 import { resolveKareebuDeepLink } from './src/routing/kareebuDeepLinks';
 
 import { KareebuLaunchGate } from './src/onboarding/KareebuLaunchGate';
+import { AppNavigationProvider, UniversalBackButton } from './src/navigation/AppNavigation';
 // Keep the native launch layer in place until the first React Native splash
 // frame has actually been laid out. This prevents a white/blank flash between
 // Android's system splash and the exact branded in-app splash.
 NativeSplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+// KAREEBU_PERSISTENT_NAVIGATION_V618
+// One persistent customer navigation bar is owned by the app root. Individual
+// pages no longer decide whether Home / Explore / Activity / Wallet / Account
+// is visible.
+function persistentTabForScreen(screen: Screen): BottomTab {
+  const key = String(screen).toLowerCase();
+
+  if (key === 'home') return 'home';
+
+  if (
+    /wallet|payment|pay|qr|transaction|topup|top-up|recharge|remittance|giftcard|gift-card|bill/.test(key)
+  ) {
+    return 'wallet';
+  }
+
+  if (
+    /account|setting|profile|support|favourite|favorite|membership|subscription|address|language|legal|privacy|refund|review|notification|message|chat|interest|signin|signup|verification|password/.test(key)
+  ) {
+    return 'account';
+  }
+
+  if (
+    /activity|history|order|receipt|tracking|track|tripcomplete|trip-complete|ratetrip|rate-trip|booking|success/.test(key)
+  ) {
+    return 'activity';
+  }
+
+  if (
+    /explore|food|restaurant|shop|store|grocery|pharmacy|brand|categor|offer|ride|boda|mobility|whereto|where-to|choose|captain|school|work|rental|service|parcel|search|flash|campaign|reel|story|dine|electronics|groceries|homecare|fix/.test(key)
+  ) {
+    return 'explore';
+  }
+
+  return 'home';
+}
 
 export default function App() {
   // The native launch screen is intentionally minimal on Android. The exact
@@ -78,22 +116,83 @@ export default function App() {
   const currentScreenRef = useRef<Screen>('splash');
   const nativeSplashHiddenRef = useRef(false);
 
-  // One synchronous navigation path. Removing the app-wide Animated wrapper
-  // eliminates the blank/faded frame that was visible between onboarding
-  // steps on slower Android emulators and prevents stale transition callbacks.
-  const navigate = useCallback((next: Screen) => {
-    if (currentScreenRef.current === next) return;
-    // Keep the passenger app aligned with the driver-side lifecycle recovered
-    // from the CabBook donor. Production transitions will come from Kareebu
-    // Captain realtime events; these defaults keep local emulator QA coherent.
+  // KAREEBU_GLOBAL_FUNCTIONALITY_V617
+  // Every route uses one history model. Existing screen-specific back buttons
+  // still work, Android hardware Back uses the same stack, and any screen that
+  // forgot to render a back control receives the universal fallback.
+  const navigationHistoryRef = useRef<Screen[]>(['splash']);
+
+  const applyScreenLifecycle = useCallback((next: Screen) => {
     if (next === 'whereTo') setCaptainRideStatus('idle');
     if (next === 'ridePayment') setCaptainRideStatus('requested');
     if (next === 'driver') setCaptainRideStatus((current) => current === 'cancelled' || current === 'rejected' ? current : 'accepted');
     if (next === 'onTrip') setCaptainRideStatus('ongoing');
     if (next === 'tripComplete') setCaptainRideStatus('complete');
+  }, []);
+
+  const commitScreen = useCallback((next: Screen) => {
+    applyScreenLifecycle(next);
     currentScreenRef.current = next;
     setScreen(next);
-  }, []);
+  }, [applyScreenLifecycle]);
+
+  const navigate = useCallback((next: Screen) => {
+    const current = currentScreenRef.current;
+    if (current === next) return;
+
+    const history = [...navigationHistoryRef.current];
+
+    // Home is the customer-app root. Going home intentionally starts a fresh
+    // navigation chain instead of leaving the user inside an old flow.
+    if (next === 'home') {
+      navigationHistoryRef.current = ['home'];
+      commitScreen(next);
+      return;
+    }
+
+    // Existing screens already contain many explicit parent navigations
+    // (e.g. restaurant -> food). If that destination is the previous history
+    // item, treat the action as a real pop rather than pushing a loop.
+    if (history.length > 1 && history[history.length - 2] === next) {
+      history.pop();
+      navigationHistoryRef.current = history;
+      commitScreen(next);
+      return;
+    }
+
+    if (history[history.length - 1] !== current && current !== 'splash') {
+      history.push(current);
+    }
+    history.push(next);
+    navigationHistoryRef.current = history.slice(-60);
+    commitScreen(next);
+  }, [commitScreen]);
+
+  const goBack = useCallback(() => {
+    const current = currentScreenRef.current;
+    if (current === 'home' || current === 'splash') return;
+
+    const history = [...navigationHistoryRef.current];
+
+    while (history.length > 0 && history[history.length - 1] === current) {
+      history.pop();
+    }
+
+    const previous = history[history.length - 1] ?? 'home';
+    navigationHistoryRef.current = previous === 'home' ? ['home'] : history;
+    commitScreen(previous);
+  }, [commitScreen]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      const current = currentScreenRef.current;
+      if (current === 'home' || current === 'splash') return false;
+      goBack();
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [goBack]);
 
   const data: AppData = useMemo(() => ({
     guest,
@@ -272,9 +371,29 @@ export default function App() {
         style={{ flex: 1, backgroundColor: screen === 'splash' ? '#030303' : '#FFFFFF' }}
       >
         {/* KAREEBU_V6_LAUNCH_GATE */}
-        <KareebuLaunchGate screen={screen} data={data} actions={actions}>
-          {renderScreen(screen, data, actions)}
-        </KareebuLaunchGate>
+        <AppNavigationProvider
+          screen={screen}
+          canGoBack={screen !== 'home' && screen !== 'splash'}
+          goBack={goBack}
+          goHome={() => navigate('home')}
+        >
+          <View style={{ flex: 1 }}>
+            <View style={{ flex: 1 }}>
+              <KareebuLaunchGate screen={screen} data={data} actions={actions}>
+                {renderScreen(screen, data, actions)}
+              </KareebuLaunchGate>
+              <UniversalBackButton />
+            </View>
+
+            {screen !== 'splash' ? (
+              <BottomNav
+                active={persistentTabForScreen(screen)}
+                go={navigate}
+                persistent
+              />
+            ) : null}
+          </View>
+        </AppNavigationProvider>
       </View>
     </SafeAreaProvider>
   );

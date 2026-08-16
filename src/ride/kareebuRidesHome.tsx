@@ -16,6 +16,7 @@ import { COLORS, TYPE } from '../theme';
 
 import { ScreenShell } from '../components';
 import type { MobilityActions, MobilityData } from './mobilityScreens';
+import { useRegisterBackControl } from '../navigation/AppNavigation';
 
 type RideView =
   | 'home'
@@ -220,6 +221,7 @@ function BackMenuHeader({
   light?: boolean;
   onMenu?: () => void;
 }) {
+  useRegisterBackControl(true);
   return (
     <View style={styles.header}>
       <Pressable onPress={onBack} style={({ pressed }) => [styles.headerSquare, pressed && styles.pressed]}>
@@ -502,7 +504,7 @@ export function KareebuRidesHomeScreen({
 
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeading}>Offers</Text>
-          <Pressable style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}>
+          <Pressable onPress={() => actions.go('rideOffers')} style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}>
             <Text style={styles.linkText}>See all</Text>
             <Feather name="arrow-right" size={21} color={COLORS.black} />
           </Pressable>
@@ -1036,7 +1038,7 @@ export function KareebuRidesHomeScreen({
         <Text style={styles.confirmCtaText}>Select from device</Text>
       </Pressable>
 
-      <Pressable style={({ pressed }) => [styles.secondaryCta, pressed && styles.pressed]}>
+      <Pressable onPress={() => actions.go('whereTo')} style={({ pressed }) => [styles.secondaryCta, pressed && styles.pressed]}>
         <Text style={styles.secondaryCtaText}>Add by phone number</Text>
       </Pressable>
     </ScrollView>
@@ -1087,7 +1089,7 @@ export function KareebuRidesHomeScreen({
               <Text style={styles.confirmPickupText}>Confirm pick-up</Text>
             </Pressable>
 
-            <Pressable style={({ pressed }) => [styles.adjustButton, pressed && styles.pressed]}>
+            <Pressable onPress={() => actions.go('whereTo')} style={({ pressed }) => [styles.adjustButton, pressed && styles.pressed]}>
               <Feather name="sliders" size={22} color="#44484C" />
             </Pressable>
           </View>

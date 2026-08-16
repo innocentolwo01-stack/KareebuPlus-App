@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { useRegisterBackControl } from '../navigation/AppNavigation';
 
 const BRAND = {
   yellow: '#FFC400',
@@ -191,6 +192,7 @@ function AnimatedSplash({ onDone }: { onDone: () => void }) {
 }
 
 function OnboardingChrome({step,back}:{step:number;back?:()=>void}){
+  useRegisterBackControl(Boolean(back));
   return <View style={styles.chrome}>
     <View style={styles.chromeSide}>{back?<Pressable hitSlop={12} onPress={back} style={styles.backButton}><Ionicons name="arrow-back" size={21} color={BRAND.black}/></Pressable>:null}</View>
     <Image source={art.wordmark} resizeMode="contain" style={styles.chromeLogo}/>
