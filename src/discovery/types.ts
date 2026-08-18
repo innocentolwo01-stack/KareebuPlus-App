@@ -67,6 +67,7 @@ export type KareebuDiscoveryWidget =
   | { id:'subcategories'; type:'subcategory-grid'; title:string; items:CatalogSubcategory[]; activeId:string | null }
   | { id:'recommended'; type:'item-rail'; title:string; subtitle:string; items:KareebuDiscoveryItem[] }
   | { id:'all-items'; type:'item-list'; title:string; subtitle:string; items:KareebuDiscoveryItem[] }
+  | { id:string; type:'promo-rail'; title:string; items:KareebuDiscoveryPromo[] }
   | { id:'membership'; type:'membership-strip' };
 
 export type KareebuDiscoveryDocument = {

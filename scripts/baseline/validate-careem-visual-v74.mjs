@@ -6,6 +6,12 @@ const document=fs.readFileSync('src/discovery/document.ts','utf8');
 const config=fs.readFileSync('src/discovery/domainConfig.ts','utf8');
 const catalog=fs.readFileSync('src/catalog/master/kareebuUnifiedCatalog.ts','utf8');
 const app=fs.readFileSync('App.tsx','utf8');
+const types=fs.readFileSync('src/types.ts','utf8');
+const screens=fs.readFileSync('src/screens.tsx','utf8');
+const tabStart=app.indexOf('function persistentTabForScreen(screen: Screen): BottomTab {');
+const tabEnd=tabStart>=0?app.indexOf('export default function App',tabStart):-1;
+const tabBody=tabStart>=0?app.slice(tabStart,tabEnd>tabStart?tabEnd:undefined):'';
+const discoveryRoutes=['dineOut','groceries','electronics','homeCare','fix'];
 
 const checks=[
   ['internal Powered by discovery label removed',!screen.includes('Powered by Kareebu discovery')],
@@ -23,7 +29,7 @@ const checks=[
   ['Offers uses valid Feather tag icon',config.includes("id:'offers',label:'Offers',icon:'tag'")],
   ['old invalid pricetag icon removed',!config.includes("icon:'pricetag'")],
   ['DineOut provider pool is realistic',catalog.includes('The Pearl Table')&&catalog.includes('Kampala Social')&&catalog.includes('Saffron House')],
-  ['new discovery routes classify as Explore',app.includes('electronics|groceries|homecare|fix')],
+  ['new discovery routes remain rendered beneath Home in whole-app shell',discoveryRoutes.every((route)=>types.includes(`'${route}'`)&&screens.includes(`case '${route}'`))&&!tabBody.includes("return 'explore';")&&!tabBody.includes("return 'wallet';")&&tabBody.includes("return 'home';")],
 ];
 
 let pass=0;

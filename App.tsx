@@ -12,6 +12,8 @@ import { createFoodCheckoutDraft, FoodCartLine, FoodCheckoutDraft, FoodOrder } f
 import { createCommerceCheckoutDraft, createParcelDraft, createServiceRequest, CommerceCartLine, CommerceCheckoutDraft, CommerceOrder, ParcelDraft, ParcelOrder, RentalBooking, ServiceBooking, ServiceRequest } from './src/parity/types';
 import * as NativeSplashScreen from 'expo-splash-screen';
 import { resolveKareebuDeepLink } from './src/routing/kareebuDeepLinks';
+import { KareebuCareemHomePort } from './src/authorizedCareemPort/home/KareebuCareemHomePort';
+import { resolveAuthorizedCareemRoute } from './src/authorizedCareemPort/navigation/donorRoutes';
 
 import { KareebuLaunchGate } from './src/onboarding/KareebuLaunchGate';
 import { AppNavigationProvider, UniversalBackButton } from './src/navigation/AppNavigation';
@@ -24,38 +26,18 @@ NativeSplashScreen.preventAutoHideAsync().catch(() => undefined);
 // One persistent customer navigation bar is owned by the app root. Individual
 // pages no longer decide whether Home / Explore / Activity / Wallet / Account
 // is visible.
+// KAREEBU_CAREEM_2026_PARITY_V1
+// KAREEBU_CAREEM_APK_PARITY_V2_1
+// KAREEBU_CAREEM_WHOLE_APP_IMPLEMENTATION_V1_SHELL
 function persistentTabForScreen(screen: Screen): BottomTab {
   const key = String(screen).toLowerCase();
-
-  if (key === 'home') return 'home';
-
-  if (
-    /wallet|payment|pay|qr|transaction|topup|top-up|recharge|remittance|giftcard|gift-card|bill/.test(key)
-  ) {
-    return 'wallet';
-  }
-
-  if (
-    /account|setting|profile|support|favourite|favorite|membership|subscription|address|language|legal|privacy|refund|review|notification|message|chat|interest|signin|signup|verification|password/.test(key)
-  ) {
-    return 'account';
-  }
-
-  if (
-    /activity|history|order|receipt|tracking|track|tripcomplete|trip-complete|ratetrip|rate-trip|booking|success/.test(key)
-  ) {
-    return 'activity';
-  }
-
-  if (
-    /explore|food|restaurant|shop|store|grocery|pharmacy|brand|categor|offer|ride|boda|mobility|whereto|where-to|choose|captain|school|work|rental|service|parcel|search|flash|campaign|reel|story|dine|electronics|groceries|homecare|fix/.test(key)
-  ) {
-    return 'explore';
-  }
-
+  if (/activity|history|order|receipt|tracking|track|tripcomplete|trip-complete|ratetrip|rate-trip|success/.test(key)) return 'activity';
+  if (/account|setting|profile|support|favourite|favorite|membership|subscription|address|language|legal|privacy|refund|review|notification|message|chat|interest|signin|signup|verification|password|referral/.test(key)) return 'account';
   return 'home';
 }
 
+// KAREEBU_AUTHORIZED_CAREEM_HOME_NAV_REAL_PORT_V5_1
+// KAREEBU_CAREEM_HOME_VISUAL_PARITY_V5_2
 export default function App() {
   // The native launch screen is intentionally minimal on Android. The exact
   // branded splash lives in React Native so it is identical across devices.
@@ -350,7 +332,7 @@ export default function App() {
   useEffect(() => {
     const open = (url: string | null | undefined) => {
       if (!url) return;
-      const target = resolveKareebuDeepLink(url);
+      const target = resolveAuthorizedCareemRoute(url) ?? resolveKareebuDeepLink(url);
       if (target) navigate(target);
     };
     Linking.getInitialURL().then(open).catch(() => undefined);
@@ -380,12 +362,14 @@ export default function App() {
           <View style={{ flex: 1 }}>
             <View style={{ flex: 1 }}>
               <KareebuLaunchGate screen={screen} data={data} actions={actions}>
-                {renderScreen(screen, data, actions)}
+                {screen === 'home'
+                  ? <KareebuCareemHomePort data={data} actions={actions} />
+                  : renderScreen(screen, data, actions)}
               </KareebuLaunchGate>
               <UniversalBackButton />
             </View>
 
-            {screen !== 'splash' ? (
+            {screen !== 'splash' && screen !== 'home' ? (
               <BottomNav
                 active={persistentTabForScreen(screen)}
                 go={navigate}

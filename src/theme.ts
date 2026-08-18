@@ -7,24 +7,27 @@ import { Platform } from 'react-native';
 // Red is reserved for offers and attention.
 // Green is reserved for success, live, verified and ratings.
 // Merchant logos and photography retain their authentic brand colours.
+// KAREEBU_CAREEM_WHOLE_APP_IMPLEMENTATION_V1
+// Temporary whole-app donor-parity palette. Kareebu branding is applied only
+// after the structural/behavioural parity pass.
 export const COLORS = {
-  black: '#171717',
-  blackSoft: '#232323',
+  black: '#222829',
+  blackSoft: '#003D35',
   red: '#F23832',
   redDark: '#D92E29',
-  yellow: '#FFC400',
-  yellowDeep: '#E8AB00',
-  yellowSoft: '#FFF4BF',
-  yellowWash: '#FFFAE9',
-  green: '#19A85A',
-  greenSoft: '#EDF8F1',
+  yellow: '#008E79',
+  yellowDeep: '#007565',
+  yellowSoft: '#DDF8F1',
+  yellowWash: '#F3FBF8',
+  green: '#008E79',
+  greenSoft: '#DDF8F1',
   white: '#FFFFFF',
-  surface: '#FFFDF8',
-  surfaceStrong: '#F4F1EA',
-  line: '#ECE8DF',
-  lineDark: '#D6D1C7',
-  muted: '#73777F',
-  mutedLight: '#A7A5A1',
+  surface: '#F4F6F5',
+  surfaceStrong: '#E8EEEC',
+  line: '#E1E6E4',
+  lineDark: '#C7CFCC',
+  muted: '#687170',
+  mutedLight: '#98A09F',
 
   // Compatibility aliases deliberately map back to Kareebu brand roles.
   orange: '#F23832',

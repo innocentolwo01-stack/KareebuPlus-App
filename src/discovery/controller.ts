@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
 import {
   KAREEBU_CATALOG_VERTICALS,
   type KareebuDomainId,
   type UnifiedCatalogItem,
 } from '../catalog/master/kareebuUnifiedCatalog';
+import { loadKareebuAppEnginePage } from '../app-engine/client';
+import { mergeKareebuDiscoveryDocument } from '../app-engine/discoveryAdapter';
+import type { KareebuAppEngineResponse } from '../app-engine/types';
 import { buildKareebuDiscoveryDocument } from './document';
 import type {
   KareebuDiscoveryController,
@@ -33,6 +37,30 @@ export function useKareebuDiscoveryController(input:{
   const [activeFilters,setActiveFilters]=useState<KareebuDiscoveryFilterId[]>([]);
   const [sort,setSort]=useState<KareebuDiscoverySort>('recommended');
   const [filtersOpen,setFiltersOpen]=useState(false);
+  const [enginePage,setEnginePage]=useState<KareebuAppEngineResponse|null>(null);
+
+  useEffect(()=>{
+    let cancelled=false;
+    setEnginePage(null);
+
+    void loadKareebuAppEnginePage({
+      route:'discovery',
+      domainId:input.domainId,
+      city:input.city,
+      country:input.country,
+      platform:Platform.OS==='ios'?'ios':Platform.OS==='android'?'android':'web',
+      ...(activeVerticalId?{verticalId:activeVerticalId}:{}),
+      ...(activeCategoryId?{categoryId:activeCategoryId}:{}),
+      ...(activeSubcategoryId?{subcategoryId:activeSubcategoryId}:{}),
+    }).then((page)=>{
+      if(!cancelled) setEnginePage(page);
+    });
+
+    return ()=>{ cancelled=true; };
+  },[
+    input.domainId,input.city,input.country,
+    activeVerticalId,activeCategoryId,activeSubcategoryId,
+  ]);
 
   useEffect(()=>{
     setQuery('');
@@ -44,7 +72,7 @@ export function useKareebuDiscoveryController(input:{
     setFiltersOpen(false);
   },[input.domainId,initialVertical?.id]);
 
-  const document=useMemo(()=>buildKareebuDiscoveryDocument({
+  const localDocument=useMemo(()=>buildKareebuDiscoveryDocument({
     domainId:input.domainId,
     city:input.city,
     country:input.country,
@@ -58,6 +86,11 @@ export function useKareebuDiscoveryController(input:{
     input.domainId,input.city,input.country,query,activeVerticalId,
     activeCategoryId,activeSubcategoryId,activeFilters,sort,
   ]);
+
+  const document=useMemo(
+    ()=>mergeKareebuDiscoveryDocument(localDocument,enginePage),
+    [localDocument,enginePage],
+  );
 
   const toggleFilter=(id:KareebuDiscoveryFilterId)=>{
     setActiveFilters((current)=>current.includes(id)?current.filter((value)=>value!==id):[...current,id]);

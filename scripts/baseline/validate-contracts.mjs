@@ -58,6 +58,13 @@ const files = {
   boda: read('src/ride/kareebuBodaHome.tsx', false),
   rides: read('src/ride/kareebuRidesHome.tsx', false),
   mobilityScreens: read('src/ride/mobilityScreens.tsx', false),
+  careemHome: read('src/parity/careem2026/KareebuEverythingHome.tsx', false),
+  bookForFriend: read('src/parity/careem2026/BookForFriendScreen.tsx', false),
+  careemApkHome: read('src/parity/careemApk/KareebuCareemHome.tsx', false),
+  careemApkActivities: read('src/parity/careemApk/KareebuCareemActivities.tsx', false),
+  careemApkWallet: read('src/parity/careemApk/KareebuCareemWallet.tsx', false),
+  careemApkProfile: read('src/parity/careemApk/KareebuCareemProfile.tsx', false),
+  careemApkServices: read('src/parity/careemApk/KareebuCareemAllServices.tsx', false),
 };
 
 let passed = 0;
@@ -107,7 +114,14 @@ check('navigation','root navigation contains route history', files.app.includes(
 check('navigation','navigation module exports Back-control registration', hasAll(files.navigation,['export function useRegisterBackControl','export function UniversalBackButton']));
 check('navigation','shared Header can inherit global Back', files.components.includes('resolvedBack') && files.components.includes('useAppNavigation'));
 check('navigation','BottomNav has persistent-shell mode', files.components.includes('persistent?: boolean') && files.components.includes('if (!persistent) return null'));
-check('navigation','primary navigation keeps five customer tabs', hasAll(files.components,["label: 'Home'","label: 'Explore'","label: 'Activity'","label: 'Wallet'","label: 'Account'"]));
+check('navigation','primary navigation matches screenshot-confirmed three-tab shell', hasAll(files.components,["label: 'Home'","label: 'Activities'","label: 'Profile'"]) && !files.components.includes("label: 'Wallet'") && !files.components.includes("label: 'Carts'"));
+check('navigation','Global Basket remains a commerce flow rather than a persistent tab', files.types.includes("'globalCart'") && files.screens.includes("case 'globalCart'") && !files.components.includes("screen: 'globalCart'"));
+check('marketplace','supplied APK Home container architecture is present', hasAll(files.careemApkHome,['BannerContainer','TilesContainer','TileWidgetContainer','ActivityTrackerContainer']));
+check('marketplace','Home is AppEngine-backed with local fallback', files.careemApkHome.includes("route:'home'") && files.careemApkHome.includes("home.hero") && files.careemApkHome.includes('assets.homeOffers'));
+check('routes','Activities primary route is APK-derived', files.screens.includes("case 'activity': return <KareebuCareemActivities") && hasAll(files.careemApkActivities,['All your activities in one place','Rides','Food','Shops','Deliveries','Services','Pay']));
+check('routes','Wallet remains a full Home-owned Pay journey', files.screens.includes("case 'wallet': return <KareebuCareemWallet") && hasAll(files.careemApkWallet,['Send','Request','Top up','Bills','Airtime & data','Send abroad','Gift cards','Scan & pay']) && !files.components.includes("label: 'Wallet'"));
+check('routes','Profile primary route mirrors APK information architecture', files.screens.includes("case 'account': return <KareebuCareemProfile") && hasAll(files.careemApkProfile,['Personal details','Delivery addresses','Payment information','Favourites','Inbox','Help centre','General settings','Language']));
+check('routes','All Services uses grouped APK-style tile browsing', files.screens.includes("case 'services': return <KareebuCareemAllServices") && hasAll(files.careemApkServices,['Move','Eat','Get','Pay','Home & services','More from Kareebu']));
 
 // Marketplace/category
 for (const exportName of [
@@ -198,7 +212,7 @@ check('brand','Kareebu charcoal/black theme role exists', /black\s*:/.test(files
 check('brand','Kareebu red theme role exists', /red\s*:/.test(files.theme));
 check('brand','Kareebu green theme role exists', /green\s*:/.test(files.theme));
 check('brand','shared semantic BrandIcon renderer exists', files.components.includes('export function BrandIcon'));
-check('brand','bottom navigation uses BrandIcon', functionSlice(files.components,'BottomNav').includes('BrandIcon'));
+check('brand','bottom navigation uses screenshot-style navigation icons', functionSlice(files.components,'BottomNav').includes('Ionicons') && functionSlice(files.components,'BottomNav').includes("'#003D35'"));
 check('brand','shop/category system uses BrandIcon', files.marketplace.includes('BrandIcon'));
 
 check('ui','Android bottom system safe area remains reserved', /paddingBottom\s*:\s*24/.test(files.components));

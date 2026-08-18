@@ -10,6 +10,7 @@ import {
   DiscoveryItemList,
   DiscoveryItemRail,
   DiscoveryMembershipStrip,
+  DiscoveryPromoRail,
   DiscoverySubcategoryGrid,
   DiscoveryVerticalGrid,
 } from './widgets';
@@ -33,6 +34,8 @@ export function renderKareebuDiscoveryWidget(
       return <DiscoveryItemRail controller={controller} title={widget.title} subtitle={widget.subtitle} items={widget.items}/>;
     case 'item-list':
       return <DiscoveryItemList controller={controller} title={widget.title} subtitle={widget.subtitle} items={widget.items}/>;
+    case 'promo-rail':
+      return <DiscoveryPromoRail title={widget.title} items={widget.items} onOffer={()=>controller.toggleFilter('offers')}/>;
     case 'membership-strip':
       return <DiscoveryMembershipStrip controller={controller}/>;
     default:

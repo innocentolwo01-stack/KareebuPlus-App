@@ -242,29 +242,26 @@ export function ServiceTile({
   );
 }
 
-const tabConfig: Record<BottomTab, { label: string; icon: keyof typeof Ionicons.glyphMap; semantic: BrandIconSemantic; screen: Screen }> = {
-  home: { label: 'Home', icon: 'home-outline', semantic: 'all', screen: 'home' },
-  explore: { label: 'Explore', icon: 'compass-outline', semantic: 'goOut', screen: 'exploreHub' },
-  activity: { label: 'Activity', icon: 'time-outline', semantic: 'send', screen: 'activity' },
-  wallet: { label: 'Wallet', icon: 'wallet-outline', semantic: 'pay', screen: 'wallet' },
-  account: { label: 'Account', icon: 'person-outline', semantic: 'account', screen: 'account' },
+// KAREEBU_CAREEM_WHOLE_APP_IMPLEMENTATION_V1_SHELL
+type PrimaryBottomTab = 'home' | 'activity' | 'account';
+
+const tabConfig: Record<PrimaryBottomTab, { label: string; icon: keyof typeof Ionicons.glyphMap; activeIcon: keyof typeof Ionicons.glyphMap; screen: Screen }> = {
+  home: { label: 'Home', icon: 'home-outline', activeIcon: 'home', screen: 'home' },
+  activity: { label: 'Activities', icon: 'receipt-outline', activeIcon: 'receipt', screen: 'activity' },
+  account: { label: 'Profile', icon: 'person-outline', activeIcon: 'person', screen: 'account' },
 };
 
 export function BottomNav({ active, go, persistent = false }: { active: BottomTab; go: (screen: Screen) => void; persistent?: boolean }) {
-  // V6.18: screen-local BottomNav instances are suppressed because the
-  // app root now owns one navigation bar for every customer route.
   if (!persistent) return null;
   return (
-    <View style={styles.bottomNav}>
-      {(Object.keys(tabConfig) as BottomTab[]).map((key) => {
+    <View style={{minHeight:68,paddingTop:5,paddingBottom:5,backgroundColor:'#003D35',flexDirection:'row',alignItems:'center',justifyContent:'space-around',borderTopWidth:1,borderTopColor:'#0B5D52'}}>
+      {(Object.keys(tabConfig) as PrimaryBottomTab[]).map((key) => {
         const item = tabConfig[key];
         const selected = active === key;
         return (
-          <Pressable key={key} onPress={() => go(item.screen)} style={({ pressed }) => [styles.bottomNavItem, pressed && styles.bottomNavItemPressed]}>
-            <View style={[styles.bottomNavIconBubble, selected && styles.bottomNavIconBubbleActive]}>
-              <BrandIcon semantic={item.semantic} size={selected ? 28 : 25} active={selected} />
-            </View>
-            <Text style={[styles.bottomNavLabel, selected && styles.bottomNavLabelActive]}>{item.label}</Text>
+          <Pressable key={key} onPress={() => go(item.screen)} style={({pressed})=>({flex:1,minHeight:56,alignItems:'center',justifyContent:'center',gap:2,opacity:pressed?.65:1})}>
+            <Ionicons name={selected?item.activeIcon:item.icon} size={selected?28:26} color={selected?'#FFFFFF':'#9BC0B9'} />
+            <Text style={{fontFamily:FONT.medium,fontSize:11.5,lineHeight:15,fontWeight:selected?'900':'600',color:selected?'#FFFFFF':'#A9C9C3'}}>{item.label}</Text>
           </Pressable>
         );
       })}
@@ -318,7 +315,7 @@ const styles = StyleSheet.create({
   primaryButtonCompact: { height: 44, borderRadius: RADIUS.md },
   primaryButtonPressed: { backgroundColor: COLORS.yellowDeep, transform: [{ scale: 0.995 }] },
   primaryButtonDisabled: { opacity: 0.42 },
-  primaryButtonText: { ...TYPE.button, color: COLORS.black },
+  primaryButtonText: { ...TYPE.button, color: COLORS.white },
   primaryButtonTextCompact: { fontSize: TYPE.button.fontSize },
   textButton: { minHeight: 36, justifyContent: 'center', alignItems: 'center' },
   textButtonText: { ...TYPE.action },

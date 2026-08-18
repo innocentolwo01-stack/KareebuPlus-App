@@ -120,6 +120,7 @@ export type Screen =
   | 'ridePayment'
   | 'mobilityHome'
   | 'rideSchedule'
+  | 'bookForFriend'
   | 'workRide'
   | 'schoolRun'
   | 'rideFareDetails'
@@ -151,7 +152,7 @@ export type Screen =
   | 'accountPrivacy'
   | 'shopHelp';
 
-export type BottomTab = 'home' | 'explore' | 'activity' | 'wallet' | 'account';
+export type BottomTab = 'home' | 'explore' | 'activity' | 'wallet' | 'account' | 'carts';
 export type RideId = 'boda' | 'economy' | 'comfort' | 'xl' | 'delivery';
 
 

@@ -102,6 +102,45 @@ export function DiscoveryHeroCarousel({
   </View>;
 }
 
+export function DiscoveryPromoRail({
+  title,
+  items,
+  onOffer,
+}:{
+  title:string;
+  items:KareebuDiscoveryPromo[];
+  onOffer:()=>void;
+}){
+  const {width}=useWindowDimensions();
+  const cardWidth=Math.max(154,Math.min(190,(width-38)/2));
+  if(!items.length) return null;
+  return <View style={{marginTop:15}}>
+    <SectionHeading title={title}/>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{paddingHorizontal:14,gap:10}}>
+      {items.map((promo)=>(
+        <Pressable key={promo.id} onPress={onOffer} style={({pressed}:{pressed:boolean})=>[{width:cardWidth},pressed&&styles.pressed]}>
+          <ImageBackground
+            source={{uri:promo.photo}}
+            resizeMode="cover"
+            imageStyle={{borderRadius:16}}
+            style={{width:cardWidth,aspectRatio:1,borderRadius:16,overflow:'hidden',padding:11,justifyContent:'space-between',backgroundColor:'#ECEEEF'}}
+          >
+            <View style={{position:'absolute',top:0,right:0,bottom:0,left:0,backgroundColor:'rgba(0,0,0,.18)'}}/>
+            <View style={{alignSelf:'flex-start',minHeight:24,borderRadius:12,backgroundColor:COLORS.yellow,paddingHorizontal:8,alignItems:'center',justifyContent:'center'}}>
+              <Text numberOfLines={1} style={{fontFamily:FONT.bold,fontSize:10,fontWeight:'900',color:COLORS.black}}>{promo.chip||promo.eyebrow||'KAREEBU'}</Text>
+            </View>
+            <View>
+              {promo.eyebrow?<Text numberOfLines={1} style={{...TYPE.caption,color:'rgba(255,255,255,.88)',fontWeight:'900'}}>{promo.eyebrow}</Text>:null}
+              <Text numberOfLines={2} style={{fontFamily:FONT.bold,fontSize:17,lineHeight:20,fontWeight:'900',color:COLORS.white,marginTop:2}}>{promo.title}</Text>
+              {promo.cta?<Text numberOfLines={1} style={{...TYPE.label,color:COLORS.white,fontWeight:'900',marginTop:7}}>{promo.cta} →</Text>:null}
+            </View>
+          </ImageBackground>
+        </Pressable>
+      ))}
+    </ScrollView>
+  </View>;
+}
+
 export function DiscoveryFilterRail({controller}:{controller:KareebuDiscoveryController}){
   const widget=controller.document.widgets.find((entry)=>entry.type==='filter-rail');
   const filters=widget?.type==='filter-rail'?widget.items:[];

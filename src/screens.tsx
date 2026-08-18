@@ -152,6 +152,15 @@ import { KareebuTopOffers } from './home/KareebuTopOffers';
 import { KareebuRidesHomeScreen } from './ride/kareebuRidesHome';
 import { KareebuFoodDiscoveryHome } from './food/discovery/FoodDiscoveryHome';
 import { buildKareebuRestaurantCatalog } from './food/realisticCatalog';
+import { KareebuCareemGlobalSearch } from './parity/careemWholeApp/foundation/CareemFoundationSearch';
+import { CareemFoundationWelcome, CareemFoundationCountry, CareemFoundationCity, CareemFoundationPhone, CareemFoundationOtp, CareemFoundationProfileSetup, CareemFoundationPermissions } from './parity/careemWholeApp/foundation/CareemFoundationIdentity';
+import { KareebuCareemHome } from './parity/careemApk/KareebuCareemHome';
+import { KareebuCareemActivities } from './parity/careemApk/KareebuCareemActivities';
+import { KareebuCareemWallet } from './parity/careemApk/KareebuCareemWallet';
+import { KareebuCareemProfile } from './parity/careemApk/KareebuCareemProfile';
+import { KareebuCareemAllServices } from './parity/careemApk/KareebuCareemAllServices';
+import { BookForFriendScreen as KareebuCareemBookForFriendScreen } from './parity/careemApk/BookForFriendScreen';
+import { KareebuCartsScreen } from './parity/careem2026/KareebuCartsScreen';
 
 // KAREEBU_V6_REALISTIC_RESTAURANTS
 const DEMO_RESTAURANTS = buildKareebuRestaurantCatalog(BASE_DEMO_RESTAURANTS);
@@ -4277,20 +4286,21 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
   };
   switch (screen) {
     case 'splash': return <SplashScreen go={actions.go}/>;
-    case 'welcome': return <WelcomeScreen go={actions.go} setGuest={actions.setGuest}/>;
-    case 'country': return <CountryScreen data={data} actions={actions}/>;
-    case 'city': return <CityScreen data={data} actions={actions}/>;
+    case 'welcome': return <CareemFoundationWelcome actions={actions}/>;
+    case 'country': return <CareemFoundationCountry data={data} actions={actions}/>;
+    case 'city': return <CareemFoundationCity data={data} actions={actions}/>;
     case 'location': return <LocationScreen data={data} actions={actions}/>;
     case 'locationPicker': return <LocationPickerScreen data={data} actions={actions}/>;
-    case 'phone': return <PhoneScreen data={data} actions={actions}/>;
-    case 'otp': return <OtpScreen data={data} actions={actions}/>;
-    case 'profile': return <ProfileScreen data={data} actions={actions}/>;
-    case 'permissions': return <PermissionsScreen data={data} actions={actions}/>;
-    case 'home': return <HomeScreen data={data} actions={actions}/>;
-    case 'search': return <GlobalSearchScreen data={data} actions={actions}/>;
+    case 'phone': return <CareemFoundationPhone data={data} actions={actions}/>;
+    case 'otp': return <CareemFoundationOtp data={data} actions={actions}/>;
+    case 'profile': return <CareemFoundationProfileSetup data={data} actions={actions}/>;
+    case 'permissions': return <CareemFoundationPermissions data={data} actions={actions}/>;
+    case 'home': return <KareebuCareemHome data={data} actions={actions}/>;
+    case 'search': return <KareebuCareemGlobalSearch data={data} actions={actions}/>;
     case 'assistant': return <KareebuAssistantScreen data={data} actions={actions}/>;
-    case 'services': return <AllServicesScreen data={data} actions={actions}/>;
+    case 'services': return <KareebuCareemAllServices data={data} actions={actions}/>;
     case 'place': return <GlobalSearchScreen data={data} actions={actions}/>;
+    case 'bookForFriend': return <KareebuCareemBookForFriendScreen data={data} actions={actions}/>;
     case 'mobilityHome':
       return mobilityData.selectedVehicleMode === 'BODA'
         ? <MobilityHomeScreen data={mobilityData} actions={mobilityActions}/>
@@ -4360,9 +4370,9 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
     case 'editProfile': return <EditProfileScreen data={engagementData} actions={engagementActions}/>;
     case 'refunds': return <RefundsScreen data={engagementData} actions={engagementActions}/>;
     case 'reviews': return <ReviewsScreen data={engagementData} actions={engagementActions}/>;
-    case 'wallet': return <WalletScreen data={data} actions={actions}/>;
-    case 'account': return <AccountScreen data={data} actions={actions}/>;
-    case 'activity': return <ActivityScreen data={data} actions={actions}/>;
+    case 'wallet': return <KareebuCareemWallet data={data} actions={actions}/>;
+    case 'account': return <KareebuCareemProfile data={data} actions={actions}/>;
+    case 'activity': return <KareebuCareemActivities data={data} actions={actions}/>;
     case 'orders': return <OrdersScreen data={data} actions={actions}/>;
     case 'categories': return <CategoriesScreen data={frontendData} actions={frontendActions}/>;
     case 'categoryItems': return <CategoryItemsScreen data={frontendData} actions={frontendActions}/>;
@@ -4402,7 +4412,7 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
     case 'forgotPassword': return <ForgotPasswordScreen data={frontendData} actions={frontendActions}/>;
     case 'verification': return <VerificationScreen data={frontendData} actions={frontendActions}/>;
     case 'resetPassword': return <ResetPasswordScreen data={frontendData} actions={frontendActions}/>;
-    case 'globalCart': return <GlobalCartScreen data={frontendData} actions={frontendActions}/>;
+    case 'globalCart': return <KareebuCartsScreen data={data} actions={actions}/>;
     case 'offlinePayment': return <OfflinePaymentScreen data={frontendData} actions={frontendActions}/>;
     case 'paymentProcessing': return <PaymentProcessingScreen data={frontendData} actions={frontendActions}/>;
     case 'ridePayment': return <RidePaymentScreen data={frontendData} actions={frontendActions}/>;
