@@ -1,0 +1,22 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const root=process.cwd();
+const read=(file)=>fs.readFileSync(path.join(root,file),'utf8');
+const engine=read('src/commerce/merchantStorefront.ts');
+const screen=read('src/commerce/MerchantStorefrontScreen.tsx');
+const demo=read('src/demoData.ts');
+const merchantBanner=read('src/commerce/MerchantCampaignBanner.tsx');
+const promoCatalog=read('src/promotions/catalog.ts');
+const checks=[]; const check=(name,value)=>checks.push({name,value:Boolean(value)});
+check('supermarket assortment buckets include fresh dairy bakery pantry drinks snacks household personal care baby', ['Fresh Food','Milk & Yogurt','Bakery','Rice, Pasta & Pulses','Water & Beverages','Snacks & Sweets','Household','Personal Care','Baby'].every(value=>engine.includes(value)));
+check('supermarket plan includes featured assortment and multiple themed rails', engine.includes('featuredTitle')&&engine.includes('Fresh Finds')&&engine.includes('Coffee & Tea')&&engine.includes('More to explore')&&engine.includes('Household Essentials'));
+check('supermarket category grid comes from assortment',engine.includes("type:'category-grid'")&&engine.includes('deriveMerchantCategories'));
+check('supermarket promotion placements exist',promoCatalog.includes("placement:'SUPERMARKET_HERO'")&&promoCatalog.includes("placement:'SUPERMARKET_FRESH'")&&promoCatalog.includes("placement:'SUPERMARKET_HOUSEHOLD'"));
+check('reference merchant copy does not leak synthetic discount claims through deal field',demo.includes('deal: trust.liveAvailability ? shop.deal : inventoryHint'));
+check('merchant campaign hides unverified deal language',merchantBanner.includes('live && shop.deal')&&merchantBanner.includes('Availability and commercial details confirmed at checkout'));
+check('storefront explains reference/live state',screen.includes('Availability, fees and commercial offers are confirmed before checkout.'));
+check('product rails and final grid use SKU-level visual resolver',screen.includes('commerceProductVisual')&&screen.includes('imageKey: product.metadata.imageKey'));
+check('storefront category visuals are semantic',screen.includes('merchantCategoryVisualKey')&&screen.includes('CategoryArtwork'));
+check('cart remains seller scoped',screen.includes('cartLines')&&screen.includes('storeName'));
+let failed=0; for(const item of checks){if(item.value)console.log(`PASS — ${item.name}`);else{failed++;console.error(`FAIL — ${item.name}`);}}
+if(failed){console.error(`Kareebu supermarket contracts: ${checks.length-failed}/${checks.length} passed.`);process.exit(1);}console.log(`Kareebu supermarket contracts: ${checks.length}/${checks.length}.`);

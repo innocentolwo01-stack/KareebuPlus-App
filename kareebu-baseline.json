@@ -1,0 +1,49 @@
+{
+  "baseline": "Kareebu+ V7.4.3",
+  "version": "7.4.3",
+  "contractsVersion": 9,
+  "frozenAt": "2026-08-16T22:24:13.547Z",
+  "gitCommit": "8304488f99c32c4570f0871569bd2a349c0ef473",
+  "gitBranch": "snapshot/kareebu-plus-v6.14-2026-08-16",
+  "routeCount": 151,
+  "coreFiles": {
+    "App.tsx": "dd5dba87984d94df0a9b3e2f0e3a1809e899dbf2be36a3ef7c5c9d8dcbfcf40b",
+    "package.json": "6df77dcc5a026e2924efa88bb0a9b9f93be200bfb10dfd2e71dd71d2dfc9128f",
+    "src/types.ts": "e519bbd25ba0f6e73bd829af0d3115a36aae01b64c10bb19ca308b0fcdebc169",
+    "src/theme.ts": "dbb972f8f4c87b5f30795cc019945487f2a4782e67c52571ade0f65c7511d544",
+    "src/components.tsx": "db3031d4ae5a5d7e158a7bd6e99a0b73825a2a94338abac4f2345d2689cfa373",
+    "src/screens.tsx": "001dbf8d05f307d9ecc33e9d9ad99fb6d7b051576b1774919e55a215f9790a0b",
+    "src/navigation/AppNavigation.tsx": "41db27a2b8e895bb4a087546e79cc6bb71cae2281eaa6c66d0ba68008cd75853",
+    "src/marketplace/MarketplaceCategoryChrome.tsx": "05b519f65b133b434f77fded901face5d5d6f7754fdb5629e47ad52aa4185cf8",
+    "src/v41/frontend.tsx": "8002b1d80174217ca95b0103060e0c70112cd977c5e3ba83d6d8eda7f0976462",
+    "src/food/discovery/FoodDiscoveryHome.tsx": "fd9a8ea446d054172d94d324751df97ff44c2307aef9b2f8b38d42ed5ad4857c",
+    "src/food/discovery/controller.ts": "f7311375724df4f090c46ed2b372d1f95db7eefc13794b718df4b4733fc6b3a7",
+    "src/food/discovery/renderer.tsx": "0e0f50af678499a9cf8c0a529b47fdd8a60f09f6ab4cf7110b551e064c4e7225",
+    "src/food/discovery/surfaces.tsx": "5db518e94af0cd7d64c599e3e0d77f93f3b329217e4445f2ae7ea18e01810733",
+    "src/food/discovery/types.ts": "73c435169d5a485fdbf2597c939720da0c455a9bff69db80dfef1c05bebb5a86",
+    "src/ride/kareebuRidesHome.tsx": "fb6e18e7e1841be0bff7044b0c29043c189410032fce5b7a4fde0f5d9b6a3ad3",
+    "src/ride/kareebuBodaHome.tsx": "a7882de72ba3bbf52cdfe9da3d742c9c74023c965f6c79ff8e011d1c192a5b73",
+    "src/ride/mobilityScreens.tsx": "453e161619a52a03fe8d7b7a26fd6329f3aa68d28b385d537c8a82d3a29ced26",
+    "scripts/baseline/validate-contracts.mjs": "8d613c5cf42a7bee600a31f449c07b1a249045b94a4164aff7f25bbb6af1f04b"
+  },
+  "validation": {
+    "hardGates": [
+      "npm run typecheck",
+      "npm run validate",
+      "git diff --check",
+      "expo-doctor",
+      "android Metro export"
+    ],
+    "legacyPolicy": "diagnostic-only"
+  },
+  "visualParity": {
+    "screenshotDriven": true,
+    "internalLabelsRemoved": true,
+    "contextualRecommendations": true,
+    "contextualHeadings": true,
+    "uniqueDiscoveryArt": true,
+    "persistentExploreRoutes": true,
+    "singleBackOwnership": true,
+    "backOwnershipBeforePaint": true
+  }
+}

@@ -1,0 +1,23 @@
+import fs from 'node:fs';
+const read=(path)=>fs.readFileSync(path,'utf8');
+const files={types:read('src/types.ts'),screens:read('src/screens.tsx'),ui:read('src/dineout/DineOutDiscoveryScreens.tsx'),detail:read('src/dineout/screens.tsx'),reservation:read('src/dineout/DineOutReservationFlow.tsx'),content:read('src/dineout/content.ts'),engine:read('src/dineout/appEngine.ts'),model:read('src/dineout/types.ts'),visuals:read('src/visuals/categoryVisuals.ts')};
+let passed=0;let failed=0;
+function check(label,value){if(value){passed++;console.log(`PASS — ${label}`)}else{failed++;console.error(`FAIL — ${label}`)}}
+const routes=['dineOut','dineOutCollection','dineOutRestaurant','dineOutReservation'];
+check('dedicated DineOut routes exist and render',routes.every(route=>files.types.includes(`'${route}'`)&&files.screens.includes(`case '${route}'`)));
+check('DineOut home is a virtualized discovery feed',files.ui.includes('<FlatList')&&files.ui.includes('DINEOUT_CATEGORIES'));
+check('required filters exist',['Nearby','Offers','Rated 4+','Open Now'].every(value=>files.ui.includes(`'${value}'`)));
+check('DineOut uses contextual search',files.ui.includes('Search restaurants, cuisines and areas')&&files.ui.includes("searchContext('dineout'"));
+check('category cuisine guide brand highlight and area discovery exist',['CategoryGrid','CuisineRail','PhotoRail','BrandRail','AreaRail',"Highlights you shouldn't miss"].every(value=>files.ui.includes(value)));
+check('restaurant detail remains dine-in specific',files.detail.includes('Request a table')&&files.detail.includes('Opening hours')&&!files.detail.includes('Add to basket'));
+check('reservation remains an enquiry without fake availability',files.reservation.includes('Table availability is not live')&&files.reservation.includes('No table is confirmed yet'));
+check('reservation CTA respects the bottom inset',files.reservation.includes('Math.max(insets.bottom'));
+check('reservation has review and confirmation routes',files.reservation.includes('Review enquiry')&&files.types.includes("'dineOutConfirmation'")&&files.screens.includes("case 'dineOutConfirmation'"));
+check('market packs cover Uganda Kenya and Tanzania',['Uganda:','Kenya:','Tanzania:'].every(value=>files.content.includes(value)));
+check('market packs expose distinct areas',['Kololo','Westlands','Masaki'].every(value=>files.content.includes(value)));
+check('fixtures separate partnership and live availability',files.model.includes("partnerStatus:'unknown'")&&files.model.includes('liveAvailability:false')&&files.model.includes('ratingIsLive:false'));
+check('App Engine exposes the full DineOut module family',['DINEOUT_CATEGORIES','DINEOUT_FEATURED','DINEOUT_PROMO','DINEOUT_CUISINES','DINEOUT_GUIDES','DINEOUT_SAVINGS','DINEOUT_MORE_SAVINGS','DINEOUT_BRANDS','DINEOUT_HIGHLIGHTS','DINEOUT_AREA_GUIDE','DINEOUT_ALL_RESTAURANTS','DINEOUT_CATEGORY_HERO','DINEOUT_CATEGORY_FEATURED','DINEOUT_CATEGORY_PROMO','DINEOUT_CATEGORY_ALL','DINEOUT_AREA_HERO','DINEOUT_AREA_FEATURED','DINEOUT_AREA_CUISINES','DINEOUT_AREA_ALL'].every(value=>files.engine.includes(value)));
+check('category art uses dedicated realistic DineOut assets',['category-casual-v2.png','category-premium-v2.png','category-brunch-v2.png','category-business-lunch-v2.png'].every(value=>files.visuals.includes(value)));
+check('home rhythm includes savings brands highlights areas and all dining spots',['More ways to save on dining','Try out these popular brands',"Highlights you shouldn't miss",'DineOut Area Guide','Explore all dining spots'].every(value=>files.ui.includes(value)));
+check('category and area taps open real collection pages',files.ui.includes("collectionKind:'cuisine'")&&files.ui.includes("kind:'area'")&&files.ui.includes('DineOutCollectionScreen'));
+console.log(`Kareebu DineOut contracts: ${passed}/${passed+failed}.`);if(failed)process.exit(1);

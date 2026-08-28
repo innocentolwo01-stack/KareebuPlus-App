@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const root=process.cwd();
+const read=(file)=>fs.readFileSync(path.join(root,file),'utf8');
+const engine=read('src/commerce/merchantStorefront.ts');
+const rootScreen=read('src/screens.tsx');
+const context=read('src/commerce/context.ts');
+const checks=[];const check=(name,value)=>checks.push({name,value:Boolean(value)});
+check('merchant taxonomy uses merchant assortment classifier',engine.includes('deriveMerchantCategories'));
+check('merchant taxonomy has specialist bucket families',engine.includes('PHARMACY_BUCKETS')&&engine.includes('BEAUTY_BUCKETS')&&engine.includes('PET_BUCKETS')&&engine.includes('HOME_BUCKETS'));
+check('category routing writes seller category context',rootScreen.includes('categoryLabel:category.label')&&rootScreen.includes('sellerId:store.id'));
+check('merchant category route is navigable',rootScreen.includes("actions.go('shopCategory')"));
+check('merchant context supports seller and category fields',context.includes('categoryId?: string')&&context.includes('categoryLabel?: string')&&context.includes('sellerId?: string'));
+check('product opening keeps seller/product context',rootScreen.includes('sellerId:store.id, productId:product.id'));
+let failed=0;for(const item of checks){if(item.value)console.log(`PASS — ${item.name}`);else{failed++;console.error(`FAIL — ${item.name}`);}}if(failed){console.error(`Kareebu merchant taxonomy contracts: ${checks.length-failed}/${checks.length} passed.`);process.exit(1);}console.log(`Kareebu merchant taxonomy contracts: ${checks.length}/${checks.length}.`);

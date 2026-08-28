@@ -1,0 +1,3 @@
+export type ApprovalAction='large_refund'|'merchant_payout_override'|'tariff_override'|'account_unblock'|'treasury_transfer'|'risk_override';
+export type ApprovalRequest={id:string;action:ApprovalAction;entityId:string;requestedBy:string;requestedAt:string;status:'pending'|'approved'|'rejected'|'expired';approvedBy?:string;approvedAt?:string;reason:string};
+export function requiresDualApproval(action:ApprovalAction,amount=0){return action==='tariff_override'||action==='treasury_transfer'||action==='risk_override'||action==='merchant_payout_override'||(action==='large_refund'&&amount>=5_000_000);}

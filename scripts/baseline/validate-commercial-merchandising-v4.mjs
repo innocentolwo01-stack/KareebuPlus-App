@@ -1,0 +1,50 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const root=process.cwd();
+const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
+let passed=0,failed=0;
+const check=(name,ok)=>{console.log(`${ok?'PASS':'FAIL'} — ${name}`);ok?passed++:failed++;};
+const home=read('src/home/homeFeed.ts');
+const homeUi=read('src/home/HomeDiscoveryFeed.tsx');
+const visuals=read('src/visuals/categoryVisuals.ts');
+const marketplace=read('src/marketplace/MarketplaceCategoryChrome.tsx');
+const merchantEngine=read('src/commerce/merchantStorefront.ts');
+const merchantScreen=read('src/commerce/MerchantStorefrontScreen.tsx');
+const merchantBanner=read('src/commerce/MerchantCampaignBanner.tsx');
+const productVisuals=read('src/commerce/productVisuals.ts');
+const globalCatalog=read('src/global/catalog.ts');
+const globalScreen=read('src/global/screens.tsx');
+const taxonomy=read('src/taxonomy/registry.ts');
+
+const commerceKeys=['commerce.restaurants','commerce.pharmacy','commerce.fashion','commerce.home','commerce.groceries','commerce.electronics','commerce.beauty','commerce.pets'];
+check('home primary shop categories use one cohesive commerce-art family',commerceKeys.every(key=>home.includes(`'${key}'`)));
+check('commerce-art family resolves to owned packaged assets',commerceKeys.every(key=>visuals.includes(`'${key}': local(`))&&visuals.includes('commerce-categories/restaurants.png')&&visuals.includes('commerce-categories/pharmacy.png'));
+check('home category cards are enlarged for premium art',homeUi.includes("categoryPage:{flexDirection:'row',flexWrap:'wrap'")&&homeUi.includes('categoryArt:{width:100,height:100')&&homeUi.includes('size="large"'));
+check('home category browsing pages six items into a deliberate 3x2 layout',homeUi.includes('index+=6')&&homeUi.includes('const cardWidth=(pageWidth-24)/3')&&homeUi.includes('pagingEnabled'));
+check('marketplace resolver points the eight primary categories at cohesive art',['commerce.restaurants','commerce.pharmacy','commerce.fashion','commerce.home','commerce.groceries','commerce.electronics','commerce.beauty','commerce.pets'].every(key=>marketplace.includes(`return '${key}'`)));
+
+const vegFacets=['Leafy greens','Root vegetables','Tomatoes','Onions, garlic & ginger','Peppers & chillies','Salad vegetables','Fresh herbs','Mushrooms'];
+check('vegetables have real subcategory browse facets',vegFacets.every(label=>merchantEngine.includes(`label:'${label}'`)));
+check('vegetable assortment recognises leafy greens aromatics peppers herbs mushrooms and roots',merchantEngine.includes('spinach|lettuce|kale|cabbage|sukuma')&&merchantEngine.includes('onion|garlic|ginger')&&merchantEngine.includes('pepper|chilli|chili')&&merchantEngine.includes('mushroom|potato|yam|cassava|beet|root'));
+check('store department landing has visual type rail and sort controls',merchantScreen.includes('Shop by type')&&merchantScreen.includes('Choose a more specific aisle')&&merchantScreen.includes('Recommended')&&merchantScreen.includes('Lowest price'));
+check('store department facets use product-semantic media instead of a generic icon list',merchantScreen.includes('merchantFacetVisualKey')&&merchantScreen.includes('<CategoryArtwork visualKey={merchantFacetVisualKey(item)} size="large"/>'));
+check('retailer hero is commercial but trust-aware',merchantBanner.includes('Browse departments')&&merchantBanner.includes('Fresh food, pantry & household')&&merchantBanner.includes('live && shop.deal')&&merchantBanner.includes('availability and commercial details confirmed at checkout'));
+check('reference retailer does not claim best sellers',merchantEngine.includes("const featuredTitle = liveMerchandising ? 'Popular picks' : 'Featured picks'")&&!merchantEngine.includes("rail('best-sellers','Best Sellers'"));
+
+check('smartphone brand generator cannot assign JBL or Anker to phones',globalCatalog.includes("const SMARTPHONE_BRANDS=['Apple','Samsung','Google','Xiaomi','OnePlus','Motorola','Nokia','Tecno','Infinix','Oppo','Vivo','Huawei']")&&globalCatalog.includes("if(/smartphone/.test(value))return pick([...SMARTPHONE_BRANDS]"));
+check('smartphone titles use recognisable Apple Samsung and Google naming',globalCatalog.includes("return 'Apple iPhone'")&&globalCatalog.includes("return 'Samsung Galaxy Smartphone'")&&globalCatalog.includes("return 'Google Pixel Smartphone'"));
+check('smartphones use storage variants rather than generic colours',globalCatalog.includes("return ['128GB','256GB','512GB']"));
+const phoneBrands=['apple','samsung','google','xiaomi','oneplus','motorola','nokia','tecno','infinix','oppo','vivo','huawei'];
+check('smartphones have dedicated brand landings',phoneBrands.every(slug=>taxonomy.includes(`['${slug}'`))&&taxonomy.includes("'global','brand','global.electronics.phones.smartphones'"));
+check('brand landings filter on the brand rather than broad smartphone term',taxonomy.includes('productTerms:[...terms]')&&!taxonomy.includes("productTerms:[...terms,'smartphone']"));
+check('Global collection renders a dedicated Shop by brand layer',globalScreen.includes("childMode==='brand'?'Shop by brand'")&&globalScreen.includes('globalBrandChildArt'));
+check('Global collection supports brand marketplace price and delivery filters',globalScreen.includes('Brand</Text>')&&globalScreen.includes('Source marketplace')&&globalScreen.includes('Source price')&&globalScreen.includes('Estimated delivery'));
+check('Smartphone collection supports platform and storage filters',globalScreen.includes('Phone platform')&&globalScreen.includes('iPhone / iOS')&&globalScreen.includes('Android')&&globalScreen.includes('Storage')&&globalScreen.includes("'128GB','256GB','512GB'"));
+check('Global collection uses strict deep-category narrowing rather than unrelated fallback products',globalScreen.includes('return shouldNarrow?narrowed:base'));
+check('Global category hero combines merchandising copy with semantic hero art',globalScreen.includes('collectionHeroCopy')&&globalScreen.includes('collectionHeroArt')&&globalScreen.includes('CategoryArtwork visualKey={node.visualKey} size="hero"'));
+check('Global collection includes breadcrumbs for deep browse paths',globalScreen.includes('breadcrumbRail')&&globalScreen.includes('categoryPath.ancestors'));
+check('specific produce media exists for tomatoes bananas and cucumber',productVisuals.includes('top-picks/tomatoes.png')&&productVisuals.includes('top-picks/bananas.png')&&productVisuals.includes('top-picks/cucumber.png'));
+check('global static editorial panels do not present themselves as unbacked deals',!globalCatalog.includes("title: 'Shop deals ending soon'")&&!globalCatalog.includes("title: 'Discover Beauty deals'")&&globalCatalog.includes("title: 'Explore Home & Tech'"));
+
+console.log(`Kareebu commercial merchandising v4: ${passed}/${passed+failed}.`);
+if(failed)process.exit(1);

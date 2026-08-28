@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Kareebu+",
+    "slug": "kareebu-plus",
+    "version": "2.7.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/kareebu-plus/brand/app-icon-v6.png",
+    "scheme": "kareebuplus",
+    "android": {
+      "package": "global.kareebu.plus",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/kareebu-plus/brand/adaptive-foreground-v10.png",
+        "backgroundColor": "#FFC400"
+      },
+      "predictiveBackGestureEnabled": true
+    },
+    "ios": {
+      "bundleIdentifier": "global.kareebu.plus",
+      "supportsTablet": true
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFC400",
+          "image": "./assets/kareebu-plus/brand/adaptive-foreground-v10.png",
+          "imageWidth": 180,
+          "resizeMode": "contain"
+        }
+      ],
+      [
+        "expo-dev-client",
+        {
+          "launchMode": "most-recent"
+        }
+      ]
+    ],
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}
