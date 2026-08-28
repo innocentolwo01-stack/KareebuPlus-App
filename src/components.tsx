@@ -2,9 +2,7 @@ import React from 'react';
 import {
   Image,
   ImageSourcePropType,
-  Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleProp,
@@ -15,11 +13,16 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomTab, Screen } from './types';
 import { COLORS, CONTROL, FONT, LAYOUT, RADIUS, SHADOW, TYPE } from './theme';
 import { assets } from './assets';
-import { useAppNavigation, useRegisterBackControl } from './navigation/AppNavigation';
+import { KareebuPageHeader } from './components/KareebuPageHeader';
+import { useAppNavigation } from './navigation/AppNavigation';
+export { KareebuPageHeader } from './components/KareebuPageHeader';
+export { KareebuSearchField } from './components/KareebuSearchField';
+export { CategoryArtwork } from './components/CategoryArtwork';
 
 export function ScreenShell({
   children,
@@ -32,6 +35,7 @@ export function ScreenShell({
   scroll?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
 }) {
+  const insets = useSafeAreaInsets();
   const body = scroll ? (
     <ScrollView
       style={styles.flex}
@@ -45,25 +49,11 @@ export function ScreenShell({
     <View style={[styles.flex, contentStyle]}>{children}</View>
   );
 
-  // React Native 0.86/Android 15 can run edge-to-edge even when an app did
-  // not explicitly opt into it. Do not rely on the legacy SafeAreaView on
-  // Android: reserve the status/navigation zones ourselves so headers and
-  // bottom actions never sit underneath the system bars. iOS continues to use
-  // the platform SafeAreaView.
-  if (Platform.OS === 'android') {
-    return (
-      <View style={[styles.safe, styles.safeAndroid, dark && styles.safeDark]}>
-        <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} backgroundColor={dark ? COLORS.black : COLORS.white} />
-        {body}
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaView style={[styles.safe, dark && styles.safeDark]}>
-      <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
+    <View style={[styles.safe, { paddingTop: insets.top }, dark && styles.safeDark]}>
+      <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} backgroundColor={dark ? COLORS.black : COLORS.white} />
       {body}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -71,26 +61,23 @@ export function Header({
   title,
   onBack,
   right,
+  back = true,
 }: {
   title?: string;
   onBack?: () => void;
   right?: React.ReactNode;
+  back?: boolean;
 }) {
   const navigation = useAppNavigation();
-  const resolvedBack = onBack ?? (navigation?.canGoBack ? navigation.goBack : undefined);
-  useRegisterBackControl(Boolean(resolvedBack));
+  const resolvedBack = back ? onBack ?? navigation?.goBack : undefined;
   return (
-    <View style={styles.header}>
-      <View style={styles.headerSide}>
-        {resolvedBack ? (
-          <Pressable onPress={resolvedBack} hitSlop={12} style={styles.headerIconButton}>
-            <Feather name="arrow-left" size={24} color={COLORS.black} />
-          </Pressable>
-        ) : null}
-      </View>
-      {title ? <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.86} style={styles.headerTitle}>{title}</Text> : <View />}
-      <View style={[styles.headerSide, styles.headerSideRight]}>{right}</View>
-    </View>
+    <KareebuPageHeader
+      title={title ?? ''}
+      variant={back ? 'detail' : 'root'}
+      backEnabled={back}
+      onBack={resolvedBack}
+      rightContent={right}
+    />
   );
 }
 
@@ -158,10 +145,10 @@ export function AppField({
   );
 }
 
-export function SectionTitle({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
+export function SectionTitle({ title, subtitle, action, onAction }: { title: string; subtitle?: string; action?: string; onAction?: () => void }) {
   return (
     <View style={styles.sectionHeading}>
-      <Text numberOfLines={2} style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionTitleCopy}><Text numberOfLines={2} style={styles.sectionTitle}>{title}</Text>{subtitle?<Text style={styles.sectionSubtitle}>{subtitle}</Text>:null}</View>
       {action && onAction ? <TextButton label={action} onPress={onAction} color={COLORS.red} /> : null}
     </View>
   );
@@ -243,31 +230,37 @@ export function ServiceTile({
 }
 
 const tabConfig: Record<BottomTab, { label: string; icon: keyof typeof Ionicons.glyphMap; semantic: BrandIconSemantic; screen: Screen }> = {
+  // Baseline compatibility: the route key remains wallet (legacy label: 'Wallet'); customer label is Pay.
   home: { label: 'Home', icon: 'home-outline', semantic: 'all', screen: 'home' },
   explore: { label: 'Explore', icon: 'compass-outline', semantic: 'goOut', screen: 'exploreHub' },
   activity: { label: 'Activity', icon: 'time-outline', semantic: 'send', screen: 'activity' },
-  wallet: { label: 'Wallet', icon: 'wallet-outline', semantic: 'pay', screen: 'wallet' },
+  wallet: { label: 'Pay', icon: 'wallet-outline', semantic: 'pay', screen: 'wallet' },
   account: { label: 'Account', icon: 'person-outline', semantic: 'account', screen: 'account' },
 };
 
 export function BottomNav({ active, go, persistent = false }: { active: BottomTab; go: (screen: Screen) => void; persistent?: boolean }) {
+  const insets = useSafeAreaInsets();
+  // Baseline migration note: the former Android paddingBottom: 24 is replaced
+  // by the actual device inset below, with a compact minimum breathing space.
   // V6.18: screen-local BottomNav instances are suppressed because the
   // app root now owns one navigation bar for every customer route.
   if (!persistent) return null;
   return (
+    <View style={[styles.bottomNavSafeArea, { paddingBottom: Math.max(insets.bottom, 8) }]}>
     <View style={styles.bottomNav}>
-      {(Object.keys(tabConfig) as BottomTab[]).map((key) => {
+      {(['home','explore','wallet','activity','account'] as BottomTab[]).map((key) => {
         const item = tabConfig[key];
         const selected = active === key;
         return (
-          <Pressable key={key} onPress={() => go(item.screen)} style={({ pressed }) => [styles.bottomNavItem, pressed && styles.bottomNavItemPressed]}>
-            <View style={[styles.bottomNavIconBubble, selected && styles.bottomNavIconBubbleActive]}>
-              <BrandIcon semantic={item.semantic} size={selected ? 28 : 25} active={selected} />
+          <Pressable key={key} accessibilityRole="tab" accessibilityLabel={item.label} accessibilityState={{ selected }} onPress={() => go(item.screen)} style={({ pressed }) => [styles.bottomNavItem, pressed && styles.bottomNavItemPressed]}>
+            <View style={[styles.bottomNavIconBubble,key==='wallet'&&!selected&&styles.bottomNavPayBubbleInactive,selected&&styles.bottomNavIconBubbleActive,key==='wallet'&&selected&&styles.bottomNavPayBubbleActive]}>
+              <Ionicons name={item.icon} size={key === 'wallet' ? 24 : 23} color={selected?COLORS.black:COLORS.muted} />
             </View>
             <Text style={[styles.bottomNavLabel, selected && styles.bottomNavLabelActive]}>{item.label}</Text>
           </Pressable>
         );
       })}
+    </View>
     </View>
   );
 }
@@ -305,7 +298,6 @@ export function TrustNote({ icon, title, body }: { icon: keyof typeof MaterialCo
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.white },
-  safeAndroid: { paddingTop: Math.max(StatusBar.currentHeight ?? 24, 24) + 4, paddingBottom: 24 },
   safeDark: { backgroundColor: COLORS.black },
   flex: { flex: 1 },
   scrollContent: { flexGrow: 1 },
@@ -330,7 +322,9 @@ const styles = StyleSheet.create({
   fieldLeft: { marginLeft: 14 },
   fieldRight: { marginRight: 14 },
   sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 28, marginBottom: 7 },
+  sectionTitleCopy: { flex: 1 },
   sectionTitle: { ...TYPE.sectionTitle, color: COLORS.black },
+  sectionSubtitle: { ...TYPE.small, color: COLORS.muted, marginTop: 3 },
   card: { borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.white, overflow: 'hidden', ...SHADOW },
   serviceTile: { width: '23.2%', minHeight: 78, borderWidth: 1, borderColor: COLORS.line, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 5, paddingVertical: 8, ...SHADOW },
   serviceIcon: { width: 46, height: 46 },
@@ -338,12 +332,15 @@ const styles = StyleSheet.create({
   brandIconTile: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   brandIconTileActive: { borderColor: COLORS.yellow, backgroundColor: COLORS.yellowSoft },
   pressed: { opacity: 0.62 },
-  bottomNav: { minHeight: Platform.OS === 'android' ? 64 : 62, paddingTop: 4, paddingBottom: 4, borderTopWidth: 1, borderTopColor: COLORS.line, backgroundColor: COLORS.white, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
-  bottomNavItem: { flex: 1, minHeight: Platform.OS === 'android' ? 52 : 50, alignItems: 'center', justifyContent: 'center', gap: 3 },
-  bottomNavItemPressed: { opacity: 0.62 },
-  bottomNavIconBubble: { width: 40, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  bottomNavIconBubbleActive: { backgroundColor: COLORS.yellowSoft },
-  bottomNavLabel: { ...TYPE.label, fontSize: 10.5, lineHeight: 13, fontFamily: FONT.regular, fontWeight: '500', color: COLORS.muted },
+  bottomNavSafeArea: { backgroundColor: COLORS.white, paddingTop: 4 },
+  bottomNav: { height: 64, marginHorizontal: 12, borderWidth: 1, borderColor: COLORS.line, borderRadius: 24, backgroundColor: COLORS.white, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 5 },
+  bottomNavItem: { flex: 1, minHeight: 52, alignItems: 'center', justifyContent: 'center', gap: 1, borderRadius: 16 },
+  bottomNavItemPressed: { opacity: 0.72, transform:[{scale:.97}] },
+  bottomNavIconBubble: { width: 38, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', borderWidth:1, borderColor:'transparent' },
+  bottomNavIconBubbleActive: { backgroundColor: COLORS.yellow, borderColor:COLORS.yellowDeep },
+  bottomNavPayBubbleInactive:{backgroundColor:COLORS.yellowWash,borderColor:'#E9D889'},
+  bottomNavPayBubbleActive:{shadowColor:'#8A6A00',shadowOpacity:.12,shadowRadius:5,shadowOffset:{width:0,height:2},elevation:2},
+  bottomNavLabel: { ...TYPE.label, fontSize: 11, lineHeight: 13, fontFamily: FONT.regular, fontWeight: '500', color: COLORS.muted },
   bottomNavLabelActive: { color: COLORS.black, fontFamily: FONT.bold, fontWeight: '900' },
   locationDotOuter: { width: 17, height: 17, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   locationDotInner: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.white },

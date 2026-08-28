@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { AppField, Header, PaymentLogo, PrimaryButton, RoundedCard, ScreenShell, TextButton } from '../components';
@@ -7,7 +7,7 @@ import type { DemoMenuItem, DemoRestaurant } from '../demoData';
 import { formatMoney } from '../locale';
 import { COLORS, FONT, SHADOW, TYPE } from '../theme';
 import { defaultSelectionsFor, foodConfigurationFor } from './catalog';
-import { configuredUnitPrice, foodCartLineId, foodCheckoutTotals, foodItemCount, foodSubtotal } from './pricing';
+import { bestFoodCoupon, configuredUnitPrice, FOOD_COUPON_CODES, foodCartLineId, foodCheckoutTotals, foodItemCount, foodSubtotal } from './pricing';
 import type { FoodCartLine, FoodCheckoutDraft, FoodOrder, FoodPaymentMethod } from './types';
 import { ProductMetadataSections } from '../catalog/ProductMetadataSections';
 import { foodProductMetadataFor } from './productMetadata';
@@ -187,12 +187,18 @@ export function FoodCheckoutView({
   const instructions = ['Hand it to me', 'Leave at door', 'Meet outside', 'Call on arrival'];
   const tipOptions = [0, 1000, 2000, 5000];
 
+  useEffect(() => {
+    if (draft.couponCode) return;
+    const best = bestFoodCoupon(restaurant, lines, draft);
+    if (best) { setCouponInput(best); onUpdateDraft({ couponCode: best }); }
+  }, [draft, lines, onUpdateDraft, restaurant]);
+
   const applyCoupon = () => {
     const code = couponInput.trim().toUpperCase();
-    if (['SAVE10', 'PLUSFREE', 'WELCOME15'].includes(code)) onUpdateDraft({ couponCode: code });
+    if ((FOOD_COUPON_CODES as readonly string[]).includes(code)) onUpdateDraft({ couponCode: code });
     else {
       onUpdateDraft({ couponCode: null });
-      Alert.alert('Coupon not recognised', 'Try SAVE10, PLUSFREE or WELCOME15 in this local build.');
+      Alert.alert('No configured coupon', 'Food coupon benefits appear only when supplied by configured campaign data.');
     }
   };
 

@@ -28,17 +28,18 @@ const document=fs.readFileSync('src/discovery/document.ts','utf8');
 const config=fs.readFileSync('src/discovery/domainConfig.ts','utf8');
 const widgets=fs.readFileSync('src/discovery/widgets.tsx','utf8');
 const carousel=fs.readFileSync('src/home/KareebuServiceCarousel.tsx','utf8');
+const serviceRegistry=fs.readFileSync('src/services/serviceRegistry.ts','utf8');
 
 const checks=[
   ['five new Screen routes exist',['dineOut','groceries','electronics','homeCare','fix'].every((route)=>types.includes(`'${route}'`))],
   ['five new renderScreen cases exist',['dineOut','groceries','electronics','homeCare','fix'].every((route)=>screens.includes(`case '${route}'`))],
-  ['Shops route uses shared discovery renderer',screens.includes(`case 'shops': return <KareebuDomainDiscoveryRoute`)],
+  ['Shops route uses the dedicated parity landing renderer',screens.includes(`case 'shops': return <ShopsLandingScreen`)],
   ['Careem-style yellow discovery header',screen.includes('backgroundColor:COLORS.yellow')],
   ['Deliver/near location hierarchy',screen.includes('locationEyebrow')],
-  ['full-width discovery search',screen.includes('searchPlaceholder')],
+  ['contextual discovery search',screen.includes('KareebuPageHeader')&&screen.includes('searchContext(')],
   ['filter bottom sheet',screen.includes('Filters & sorting')&&screen.includes('Show results')],
-  ['sort controls',screen.includes('Recommended')&&screen.includes('Top rated')&&screen.includes('Fastest')],
-  ['hero promotions',document.includes(`type:'hero-carousel'`)],
+  ['sort controls avoid invented live rankings',screen.includes('Default order')&&!screen.includes('Top rated')&&!screen.includes('Fastest')],
+  ['hero promotion comes from central campaign system',screen.includes('promotionsFor(')&&screen.includes('<PromotionHero campaign={heroPromotion}')&&!document.includes(`type:'hero-carousel'`)],
   ['quick filters',document.includes(`type:'filter-rail'`)],
   ['vertical hierarchy',document.includes(`type:'vertical-grid'`)],
   ['category hierarchy',document.includes(`type:'category-rail'`)],
@@ -46,11 +47,11 @@ const checks=[
   ['recommended items',document.includes(`type:'item-rail'`)],
   ['all items',document.includes(`type:'item-list'`)],
   ['Kareebu+ strip',document.includes(`type:'membership-strip'`)],
-  ['3D semantic discovery art',widgets.includes('BrandIcon')],
-  ['domain-specific filters',config.includes('Available today')&&config.includes('Free delivery')&&config.includes('Available now')],
-  ['Home routes are real',carousel.includes(`screen: 'homeCare'`)&&carousel.includes(`screen: 'fix'`)&&carousel.includes(`screen: 'dineOut'`)],
-  ['Electronics has dedicated route',carousel.includes(`screen: 'electronics'`)],
-  ['Groceries has dedicated route',carousel.includes(`screen: 'groceries'`)],
+  ['semantic discovery art resolver remains centralized',widgets.includes('BrandIcon')],
+  ['domain filters avoid invented live claims',config.includes("id:'delivery-details',label:'Delivery details'")&&config.includes("id:'delivery-details',label:'Availability details'")&&!config.includes("label:'Free delivery'")&&!config.includes("label:'Available today'")&&!config.includes("label:'Available now'")],
+  ['secondary service routes are real',['dineOut','homeCare','fix'].every((route)=>screens.includes(`case '${route}'`))],
+  ['Electronics has dedicated vertical route',screens.includes(`case 'electronicsHome': return <KareebuVerticalLandingRoute verticalId="electronics"`)],
+  ['Groceries has dedicated route',serviceRegistry.includes(`id:'groceries'`)&&serviceRegistry.includes(`route:'groceries'`)&&screens.includes(`case 'groceries': return <KareebuVerticalLandingRoute verticalId="groceries"`)],
 ];
 
 let pass=0;

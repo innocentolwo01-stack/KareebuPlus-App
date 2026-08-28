@@ -77,7 +77,22 @@ function priceFor(domainId: string, subcategoryId: string, index: number) {
   return Math.round(value/step)*step;
 }
 
+const GROCERY_MERCHANDISING_NAMES: Record<string,string[]> = {
+  'Fruit':['Bananas','Sweet oranges','Seasonal fruit selection'],
+  'Vegetables':['Fresh tomatoes','Red onions','Carrots'],
+  'Herbs & Aromatics':['Fresh coriander','Ginger root','Garlic bulbs'],
+  'Salads & Leafy Greens':['Sukuma wiki greens','Fresh spinach','Lettuce'],
+  'Chicken':['Whole fresh chicken','Chicken breast fillets','Chicken thighs'],
+  'Beef':['Beef stewing cuts','Beef mince','Beef steak cuts'],
+  'Goat & Lamb':['Fresh goat cuts','Lamb chops','Goat stewing cuts'],
+  'Fresh Fish':['Whole tilapia','Nile perch fillet','Fresh fish portions'],
+  'Bread':['Fresh white loaf','Wholemeal loaf','Soft bread rolls'],
+  'Milk':['Fresh whole milk','Long-life milk','Low-fat milk'],
+  'Eggs':['Tray of fresh eggs','Free-range eggs','Half-dozen eggs'],
+};
+
 function namesFor(domainId: string, title: string) {
+  if(domainId==='groceries'&&GROCERY_MERCHANDISING_NAMES[title]) return GROCERY_MERCHANDISING_NAMES[title]!;
   if(domainId==='food') return [`Classic ${title}`,`Signature ${title}`,`${title} Combo`];
   if(domainId==='dineout') return [`${title} Experience`,`${title} for Two`,`Premium ${title}`];
   if(domainId==='home-care'||domainId==='fix') return [`${title} - Standard`,`${title} - Plus`,`${title} - Premium`];
@@ -164,7 +179,7 @@ export function cataloguePageDocument(input: {
   const verticals=catalogVerticals(input.domainId);
   const activeVertical=input.verticalId??verticals[0]?.id;
   const categories=activeVertical?catalogCategories(activeVertical):[];
-  const activeCategory=input.categoryId??categories[0]?.id;
+  const activeCategory=input.categoryId;
   const subcategories=activeCategory?catalogSubcategories(activeCategory):[];
   const activeSubcategory=input.subcategoryId;
   const items=activeSubcategory

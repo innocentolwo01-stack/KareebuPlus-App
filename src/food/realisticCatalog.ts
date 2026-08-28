@@ -75,6 +75,9 @@ function enrichRestaurant(restaurant: DemoRestaurant): DemoRestaurant {
         price: Math.max(3500, seed.price + template.priceDelta),
       };
 
+      delete item.isBestSeller;
+      delete item.imageSource;
+
       if (index === 0 || seed.popular === true) {
         item.popular = true;
       }
@@ -123,8 +126,13 @@ function branchFrom(
     distance,
     deliveryFee,
     offer,
+    isPopularRestaurant: false,
     ...(branchNeighborhood ? { neighborhood: branchNeighborhood } : {}),
-    menu: parent.menu.map((item) => ({ ...item, id: `${id}-${item.id}` })),
+    menu: parent.menu.map((item) => ({
+      ...item,
+      id: `${id}-${item.id}`,
+      isBestSeller: false,
+    })),
   };
 }
 
@@ -135,12 +143,12 @@ export function buildKareebuRestaurantCatalog(base: DemoRestaurant[]): DemoResta
   if (!fallback) return enriched;
 
   const branchSpecs: Array<[DemoRestaurant | undefined, string, string, string, string, number, string]> = [
-    [byId('cafe-javas', fallback), 'cafe-javas-acacia', 'Cafe Javas · Acacia', '20–30 min', '2.4 km', 4500, 'Free delivery over UGX 45,000'],
-    [byId('cafe-javas', fallback), 'cafe-javas-village', 'Cafe Javas · Village Mall', '25–35 min', '4.1 km', 5500, '15% off selected meals'],
-    [byId('pizza-inn', fallback), 'pizza-inn-acacia', 'Pizza Inn · Acacia', '20–30 min', '2.7 km', 4000, 'Buy 1, get selected pizza offers'],
-    [byId('chicken-tonight', fallback), 'chicken-tonight-ntinda', 'Chicken Tonight · Ntinda', '25–35 min', '4.8 km', 5000, 'Popular combo deals'],
-    [byId('java-house', byId('cafe-javas', fallback)), 'java-house-village', 'Java House · Village Mall', '25–35 min', '4.0 km', 5000, 'Coffee & breakfast picks'],
-    [byId('roast-rhyme', fallback), 'roast-rhyme-kololo', 'Roast & Rhyme · Kololo', '30–40 min', '5.2 km', 6000, 'Top-rated grills'],
+    [byId('cafe-javas', fallback), 'cafe-javas-acacia', 'Cafe Javas · Acacia', '20–30 min', '2.4 km', 4500, ''],
+    [byId('cafe-javas', fallback), 'cafe-javas-village', 'Cafe Javas · Village Mall', '25–35 min', '4.1 km', 5500, ''],
+    [byId('pizza-inn', fallback), 'pizza-inn-acacia', 'Pizza Inn · Acacia', '20–30 min', '2.7 km', 4000, ''],
+    [byId('chicken-tonight', fallback), 'chicken-tonight-ntinda', 'Chicken Tonight · Ntinda', '25–35 min', '4.8 km', 5000, ''],
+    [byId('java-house', byId('cafe-javas', fallback)), 'java-house-village', 'Java House · Village Mall', '25–35 min', '4.0 km', 5000, ''],
+    [byId('roast-rhyme', fallback), 'roast-rhyme-kololo', 'Roast & Rhyme · Kololo', '30–40 min', '5.2 km', 6000, ''],
   ];
 
   const existing = new Set(enriched.map((item) => item.id));

@@ -6,28 +6,19 @@ export function buildFoodHomeDocument(
 ): FoodHomeDocument {
   return {
     page: 'food-discovery-home',
-    version: 1,
+    version: 2,
     market: { city, country },
+    slots: ['FOOD_HERO','FOOD_FILTERS','FOOD_CATEGORIES','FOOD_PROMO_02','FOOD_FEATURED','FOOD_PROMO_03','FOOD_BRANDS','FOOD_NEARBY','FOOD_PROMO_04','FOOD_ALL_RESTAURANTS'],
     widgets: [
+      { id: 'hero', type: 'campaign', slot: 'FOOD_HERO' },
       { id: 'filters', type: 'filter-rail' },
       { id: 'categories', type: 'category-carousel' },
-      { id: 'iconic-banner', type: 'image-banner', asset: 'iconic-spots' },
-      { id: 'iconic-restaurants', type: 'restaurant-carousel', source: 'featured' },
-      { id: 'promos', type: 'promo-carousel' },
-      { id: 'best-sellers', type: 'best-sellers' },
-      { id: 'most-ordered', type: 'most-ordered' },
-      { id: 'popular-brands', type: 'popular-brands' },
+      { id: 'food-promo-02', type: 'campaign', slot: 'FOOD_PROMO_02' },
+      { id: 'featured', type: 'restaurant-carousel', source: 'featured' },
+      { id: 'food-promo-03', type: 'campaign', slot: 'FOOD_PROMO_03' },
+      { id: 'popular-restaurants', type: 'popular-restaurants' },
       { id: 'nearby', type: 'nearby' },
-      { id: 'bank-savings', type: 'bank-savings' },
-
-      // Reference modules supplied on 15 Aug 2026.
-      { id: 'top-rated-restaurants', type: 'stacked-restaurant-rail', variant: 'top-rated' },
-      { id: 'inspired-by-orders', type: 'stacked-restaurant-rail', variant: 'inspired' },
-      { id: 'popular-today', type: 'stacked-restaurant-rail', variant: 'popular' },
-      { id: 'trending-near-you', type: 'stacked-restaurant-rail', variant: 'trending' },
-      { id: 'just-landed', type: 'stacked-restaurant-rail', variant: 'just-landed' },
-
-      // Keep the full restaurant catalogue at the end of discovery.
+      { id: 'food-promo-04', type: 'campaign', slot: 'FOOD_PROMO_04' },
       { id: 'all-restaurants', type: 'all-restaurants-enhanced' },
     ],
   };

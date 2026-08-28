@@ -104,11 +104,17 @@ function check(label,condition){
 const nav=read('src/navigation/AppNavigation.tsx');
 const screens=read('src/screens.tsx');
 const components=read('src/components.tsx');
+const pageHeader=read('src/components/KareebuPageHeader.tsx');
 const food=read('src/food/discovery/surfaces.tsx',false);
 const onboarding=read('src/onboarding/KareebuLaunchGate.tsx',false);
 const rides=read('src/ride/kareebuRidesHome.tsx',false);
 const boda=read('src/ride/kareebuBodaHome.tsx',false);
 const discovery=read('src/discovery/KareebuCareemDiscoveryScreen.tsx',false);
+const merchantStorefront=read('src/commerce/MerchantStorefrontScreen.tsx',false);
+const categoryLanding=read('src/categoryLanding/components.tsx',false);
+const foodCategory=read('src/food/category/FoodCategoryLandingScreen.tsx',false);
+const focusedRide=read('src/ride/FocusedRideBookingScreen.tsx',false);
+const dineout=read('src/dineout/screens.tsx',false);
 
 check('screens.tsx is syntactically valid before ownership assertions',syntaxClean('src/screens.tsx'));
 if(food) check('Food discovery surfaces are syntactically valid',syntaxClean('src/food/discovery/surfaces.tsx'));
@@ -124,8 +130,10 @@ check('registered custom Back suppresses fallback',
   nav.includes('navigation.registeredBackControls > 0'));
 check('Back ownership registers before paint',
   nav.includes('useLayoutEffect(() =>') && nav.includes('Register before paint'));
-check('shared Header registers Back ownership',
-  components.includes('useRegisterBackControl(Boolean(resolvedBack))'));
+check('canonical KareebuPageHeader registers resolved Back ownership',
+  pageHeader.includes('useRegisterBackControl(Boolean(resolvedBack))'));
+check('shared Header delegates Back rendering to KareebuPageHeader',
+  components.includes('<KareebuPageHeader') && components.includes('onBack={resolvedBack}'));
 
 const owners=[
   ['CountryScreen',"useRegisterBackControl(data.locationReturn !== 'home');"],
@@ -157,18 +165,43 @@ if(onboarding){
 }
 
 if(rides){
-  check('Rides Back owner remains registered',
-    rides.includes('useRegisterBackControl(true)'));
+  check('Rides Back is owned through canonical KareebuPageHeader',
+    rides.includes('<KareebuPageHeader') && rides.includes('onBack={onBack}'));
 }
 
 if(boda){
-  check('Boda Back owner remains registered',
-    boda.includes('useRegisterBackControl(true)'));
+  check('Boda Back is owned through canonical KareebuPageHeader',
+    boda.includes('<KareebuPageHeader') && boda.includes('onBack={onBack}'));
 }
 
 if(discovery){
-  check('Careem-style discovery Back owner remains registered',
-    discovery.includes('useRegisterBackControl(true)'));
+  check('Careem-style discovery Back is owned through canonical KareebuPageHeader',
+    discovery.includes('<KareebuPageHeader') && discovery.includes('onBack={()=>navigation?.goBack()}'));
+}
+
+if(merchantStorefront){
+  check('merchant storefront custom hero Back registers ownership',
+    hookInsideBody(merchantStorefront,'MerchantStorefrontScreen','useRegisterBackControl(true);'));
+}
+
+if(categoryLanding){
+  check('category landing custom hero Back registers ownership',
+    categoryLanding.includes('useRegisterBackControl(true);'));
+}
+
+if(foodCategory){
+  check('food category custom hero Back registers ownership',
+    hookInsideBody(foodCategory,'FoodCategoryLandingScreen','useRegisterBackControl(true);'));
+}
+
+if(focusedRide){
+  check('focused ride custom map Back registers ownership',
+    hookInsideBody(focusedRide,'FocusedRideBookingScreen','useRegisterBackControl(true);'));
+}
+
+if(dineout){
+  check('DineOut restaurant custom hero Back registers ownership',
+    hookInsideBody(dineout,'DineOutRestaurantScreen','useRegisterBackControl(true);'));
 }
 
 const functionMatches=[...screens.matchAll(

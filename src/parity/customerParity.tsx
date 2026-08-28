@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useDeferredValue, useMemo, useState } from 'react';
 import {
   Alert,
+  FlatList,
   Image,
   Pressable,
   ScrollView,
@@ -10,14 +11,26 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Header, MenuRow, PrimaryButton, RoundedCard, ScreenShell, SectionTitle, TextButton } from '../components';
+import { KareebuPageHeader } from '../components/KareebuPageHeader';
 import { COLORS, FONT, SHADOW, TYPE } from '../theme';
 import type { Screen, SupportTicket, WalletTransaction } from '../types';
-import { formatMoney } from '../locale';
+import { formatMoney, localeProfile, primaryMobileMoneyFor, secondaryMobileMoneyFor } from '../locale';
 import { assets } from '../assets';
+import { categoryForQuery, EXPLORE_CATEGORIES, exploreContent, searchExplore, type ExploreCategory, type ExploreEntity } from '../explore/content';
+import { exploreSession } from '../explore/session';
+import { dineOutSession } from '../dineout/session';
+import { UniversalTaxonomyLandingScreen } from '../taxonomy/UniversalTaxonomyLandingScreen';
+import { taxonomyAncestors, taxonomyChildren, taxonomyNode } from '../taxonomy/registry';
+import { goOutAssets } from '../explore/gooutAssets';
+
+// GOOUT_HERO remains the canonical campaign placement; this recreation uses
+// the supplied approved artwork directly so its baked-in composition is kept intact.
 
 type Go = (screen: Screen) => void;
 
@@ -36,6 +49,8 @@ export type CustomerParityData = {
 
 export type CustomerParityActions = {
   go: Go;
+  back: () => void;
+  changeLocation: () => void;
   setWalletBalance: (value: number) => void;
   setFullName: (value: string) => void;
   setEmail: (value: string) => void;
@@ -105,7 +120,7 @@ export function PayTopUpScreen({ data, actions }: { data: CustomerParityData; ac
   const [done,setDone]=useState(false);
   if(done) return <ScreenShell><CompactHeader title="Add money" back={()=>actions.go('wallet')}/><SuccessState icon="wallet" title="Wallet topped up" body={`${formatMoney(data.country,amount)} was added to your Kareebu Pay balance.`} button="Back to wallet" onPress={()=>actions.go('wallet')}/></ScreenShell>;
   return <ScreenShell><CompactHeader title="Add money" back={()=>actions.go('wallet')}/><Page><PayHero data={data} actions={actions}/><Text style={styles.sectionTitle}>Choose amount</Text><View style={styles.chipWrap}>{quickAmounts.map(v=><MoneyChip key={v} amount={v} selected={amount===v} onPress={()=>setAmount(v)}/>)}</View><Text style={styles.sectionTitle}>Pay with</Text><RoundedCard>{[
-    ['mtn','MTN Mobile Money','phone-portrait-outline'],['airtel','Airtel Money','phone-portrait-outline'],['card','Debit or credit card','card-outline']
+    ['mtn',primaryMobileMoneyFor(data.country),'phone-portrait-outline'],['airtel',secondaryMobileMoneyFor(data.country),'phone-portrait-outline'],['card','Debit or credit card','card-outline']
   ].map(([id,label,icon])=><Pressable key={id} onPress={()=>setSource(id as any)} style={styles.radioRow}><View style={styles.rowIcon}><Ionicons name={icon as any} size={20} color={COLORS.black}/></View><Text style={styles.radioLabel}>{label}</Text><View style={[styles.radio,source===id&&styles.radioActive]}>{source===id?<View style={styles.radioDot}/>:null}</View></Pressable>)}</RoundedCard><PrimaryButton label={`Add ${formatMoney(data.country,amount)}`} onPress={()=>{actions.setWalletBalance(data.walletBalance+amount);recordPayment(actions, 'Wallet top up', source==='card'?'Card':source==='airtel'?'Airtel Money':'MTN Mobile Money', amount, 'topup');setDone(true)}}/></Page></ScreenShell>;
 }
 
@@ -152,19 +167,15 @@ export function PayGiftCardsScreen({ data, actions }: { data: CustomerParityData
   return <ScreenShell><CompactHeader title="Gift cards" back={()=>actions.go('wallet')}/><Page><View style={styles.tileGrid}>{GIFT_CARDS.map(item=><Pressable key={item.id} onPress={()=>setSelected(item)} style={[styles.tile,selected.id===item.id&&styles.tileSelected]}><View style={styles.tileIcon}><Ionicons name={item.icon} size={23}/></View><Text style={styles.tileTitle}>{item.title}</Text><Text style={styles.tileBody}>{item.sub}</Text></Pressable>)}</View><Field value={recipient} onChangeText={setRecipient} placeholder="Recipient phone or email"/><View style={styles.chipWrap}>{[10000,20000,50000,100000].map(v=><MoneyChip key={v} amount={v} selected={amount===v} onPress={()=>setAmount(v)}/>)}</View><PrimaryButton disabled={!recipient.trim()||amount>data.walletBalance} label="Buy & send" onPress={()=>{actions.setWalletBalance(data.walletBalance-amount);recordPayment(actions, selected.title, `Gift card · ${recipient}`, -amount, 'shop');Alert.alert('Gift sent',`${selected.title} credit has been sent.`);actions.go('wallet')}}/></Page></ScreenShell>;
 }
 
-const CORRIDORS = [
-  {id:'UG-KE',to:'Kenya',currency:'KES',rate:0.034},
-  {id:'UG-TZ',to:'Tanzania',currency:'TZS',rate:0.70},
-  {id:'UG-RW',to:'Rwanda',currency:'RWF',rate:0.37},
-];
+const TRANSFER_DESTINATIONS = ['Uganda', 'Kenya', 'Tanzania'] as const;
 
 export function PayRemittanceScreen({ data, actions }: { data: CustomerParityData; actions: CustomerParityActions }) {
-  const [corridor,setCorridor]=useState(CORRIDORS[0]);
+  const [destination,setDestination]=useState<(typeof TRANSFER_DESTINATIONS)[number]>(() => data.country === 'Uganda' ? 'Kenya' : 'Uganda');
   const [amount,setAmount]=useState('100000');
   const [recipient,setRecipient]=useState('');
   const value=Number(amount.replace(/[^0-9]/g,''))||0;
-  const receive=Math.round(value*corridor.rate);
-  return <ScreenShell><CompactHeader title="International transfer" back={()=>actions.go('wallet')}/><Page><View style={styles.remitHero}><Text style={styles.remitEyebrow}>SEND FROM UGANDA</Text><Text style={styles.remitTitle}>Send money across East Africa</Text><Text style={styles.remitBody}>Corridors, compliance and live rates should come from Kareebu's regulated payments provider.</Text></View><Text style={styles.sectionTitle}>Destination</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>{CORRIDORS.map(item=><Pressable key={item.id} onPress={()=>setCorridor(item)} style={[styles.choiceChip,corridor.id===item.id&&styles.choiceChipActive]}><Text style={[styles.choiceChipText,corridor.id===item.id&&styles.choiceChipTextActive]}>{item.to}</Text></Pressable>)}</ScrollView><Field value={recipient} onChangeText={setRecipient} placeholder="Recipient mobile or account"/><Field value={amount} onChangeText={setAmount} placeholder="You send (UGX)" keyboardType="numeric"/><RoundedCard style={styles.rateCard}><View><Text style={styles.rateLabel}>Recipient gets</Text><Text style={styles.rateValue}>{corridor.currency} {receive.toLocaleString()}</Text></View><View><Text style={styles.rateLabel}>Indicative rate</Text><Text style={styles.rateMeta}>1 UGX = {corridor.rate} {corridor.currency}</Text></View></RoundedCard><PrimaryButton disabled={!recipient.trim()||value<=0||value>data.walletBalance} label="Continue transfer" onPress={()=>actions.go('payKyc')}/></Page></ScreenShell>;
+  const profile=localeProfile(data.country);
+  return <ScreenShell><CompactHeader title="International transfer" back={()=>actions.go('wallet')}/><Page><View style={styles.remitHero}><Text style={styles.remitEyebrow}>SEND FROM {data.country.toUpperCase()}</Text><Text style={styles.remitTitle}>Send money across East Africa</Text><Text style={styles.remitBody}>Live FX, fees, limits and compliance checks are supplied by a regulated transfer provider before you confirm.</Text></View><Text style={styles.sectionTitle}>Destination</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>{TRANSFER_DESTINATIONS.filter(item=>item!==data.country).map(item=><Pressable key={item} onPress={()=>setDestination(item)} style={[styles.choiceChip,destination===item&&styles.choiceChipActive]}><Text style={[styles.choiceChipText,destination===item&&styles.choiceChipTextActive]}>{item}</Text></Pressable>)}</ScrollView><Field value={recipient} onChangeText={setRecipient} placeholder="Recipient mobile or account"/><Field value={amount} onChangeText={setAmount} placeholder={`You send (${profile.currency})`} keyboardType="numeric"/><RoundedCard style={styles.rateCard}><View><Text style={styles.rateLabel}>Transfer quote</Text><Text style={styles.rateMeta}>The recipient amount, exchange rate and fees will appear after the regulated provider returns a live quote.</Text></View></RoundedCard><PrimaryButton disabled={!recipient.trim()||value<=0||value>data.walletBalance} label="Get live transfer quote" onPress={()=>Alert.alert('Live quote required',`Connect the regulated transfer provider to quote ${data.country} to ${destination}. No transfer has been made.`)}/></Page></ScreenShell>;
 }
 
 export function PayTransactionsScreen({ data, actions }: { data: CustomerParityData; actions: CustomerParityActions }) {
@@ -220,22 +231,107 @@ export function PlusManageScreen({ data, actions }: { data: CustomerParityData; 
   return <ScreenShell><CompactHeader title="Manage Kareebu+" back={()=>actions.go('membership')}/><Page><View style={styles.blackCard}><Text style={styles.blackCardBrand}>Kareebu+</Text><Text style={styles.blackCardTitle}>Monthly membership</Text><Text style={styles.blackCardMeta}>Renews 15 September · UGX 12,000</Text></View><RoundedCard><View style={styles.switchRow}><View style={styles.flex}><Text style={styles.rowTitle}>Auto-renew</Text><Text style={styles.rowMeta}>Keep benefits active without interruption</Text></View><Switch value={renew} onValueChange={setRenew} trackColor={{true:COLORS.black,false:COLORS.lineDark}} thumbColor={COLORS.white}/></View><MenuRow icon="card-outline" label="Payment method" detail="MTN Mobile Money"/><MenuRow icon="bar-chart-outline" label="Your savings" onPress={()=>actions.go('plusSavings')}/></RoundedCard>{cancelOpen?<RoundedCard style={styles.cancelCard}><Text style={styles.cardTitle}>Why are you cancelling?</Text><View style={styles.chipWrap}>{['Too expensive','Not using enough','Benefits not relevant','Other'].map(item=><Pressable key={item} onPress={()=>setReason(item)} style={[styles.choiceChip,reason===item&&styles.choiceChipActive]}><Text style={[styles.choiceChipText,reason===item&&styles.choiceChipTextActive]}>{item}</Text></Pressable>)}</View><PrimaryButton label="Confirm cancellation" onPress={()=>{Alert.alert('Membership cancelled','Your benefits remain active until the end of the current period.');actions.go('account')}}/></RoundedCard>:<Pressable onPress={()=>setCancelOpen(true)} style={styles.dangerButton}><Text style={styles.dangerText}>Cancel membership</Text></Pressable>}</Page></ScreenShell>;
 }
 
-const EXPLORE_LOCATIONS=[
-  {id:'serena',name:'Kampala Serena Hotel',category:'Hotels & dining',area:'Nakasero',rating:4.8,icon:'bed-outline' as const},
-  {id:'acacia',name:'Acacia Mall',category:'Shopping & entertainment',area:'Kisementi',rating:4.7,icon:'storefront-outline' as const},
-  {id:'ndere',name:'Ndere Cultural Centre',category:'Culture & events',area:'Ntinda',rating:4.8,icon:'musical-notes-outline' as const},
-  {id:'gardens',name:'Uganda Museum',category:'Things to do',area:'Kitante',rating:4.6,icon:'images-outline' as const},
-];
+const exploreHeroImage=(country:string)=>country==='Kenya'?assets.countrySelection.kenya:country==='Tanzania'?assets.countrySelection.tanzania:assets.countrySelection.uganda;
+
+const GO_OUT_CATEGORY_ART:Partial<Record<ExploreCategory['id'],typeof goOutAssets.category[keyof typeof goOutAssets.category]>>={attractions:goOutAssets.category.attractions,wellness:goOutAssets.category.wellness,fun:goOutAssets.category.themeParks,kids:goOutAssets.category.kids,dining:goOutAssets.category.dining,nightlife:goOutAssets.category.nightlife};
+const GO_OUT_CATEGORY_ORDER:ExploreCategory['id'][]=['attractions','wellness','fun','kids','dining','nightlife','events','cinema','outdoors','culture','sports','experiences','shopping','day-trips','things'];
+function ExploreCategoryRail({ selected, onSelect }: { selected?: string; onSelect: (category: ExploreCategory) => void }) {
+  const categories=GO_OUT_CATEGORY_ORDER.map(id=>EXPLORE_CATEGORIES.find(item=>item.id===id)).filter((item):item is ExploreCategory=>Boolean(item));
+  return <FlatList horizontal data={categories} keyExtractor={(item)=>item.id} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exploreCategoryRail} renderItem={({item})=><Pressable accessibilityRole="button" accessibilityLabel={`Explore ${item.title}`} accessibilityState={{selected:selected===item.id}} onPress={()=>onSelect(item)} style={({pressed})=>[styles.exploreCategoryItem,selected===item.id&&styles.exploreCategoryItemSelected,pressed&&styles.explorePressed]}><Image source={GO_OUT_CATEGORY_ART[item.id]??item.image} resizeMode="cover" style={styles.exploreCategoryCircle}/><Text numberOfLines={2} style={styles.exploreCategoryLabel}>{item.title}</Text></Pressable>}/>;
+}
+
+const FEATURED_GO_OUT=[
+  {id:'relax-recharge',title:'Relax & recharge',image:goOutAssets.featured.wellness,query:'Spa & Wellness'},
+  {id:'family-fun',title:'Family fun',image:goOutAssets.featured.family,query:'Kids Activities'},
+] as const;
+function FeaturedGoOutRail({ onPress }: { onPress: (query: string) => void }) {
+  const {width}=useWindowDimensions();
+  const cardWidth=Math.round(Math.min(360,Math.max(280,width*.84)));
+  return <FlatList horizontal data={FEATURED_GO_OUT} keyExtractor={(item)=>item.id} showsHorizontalScrollIndicator={false} snapToAlignment="start" decelerationRate="fast" snapToInterval={cardWidth+12} contentContainerStyle={styles.exploreFeaturedRail} renderItem={({item})=><Pressable accessibilityRole="button" accessibilityLabel={item.title} onPress={()=>onPress(item.query)} style={({pressed})=>[styles.exploreFeaturedCard,{width:cardWidth},pressed&&styles.explorePressed]}><Image source={item.image} resizeMode="cover" style={styles.exploreFeaturedImage}/></Pressable>}/>;
+}
+
+const GO_OUT_CHIPS:ExploreCategory['id'][]=['things','attractions','wellness','fun','kids','cinema','events','nightlife','sports','outdoors','culture','experiences'];
+function GoOutFilterRail({selected,onSelect}:{selected?:ExploreCategory['id'];onSelect:(category:ExploreCategory)=>void}){
+  return <FlatList horizontal data={GO_OUT_CHIPS.map(id=>EXPLORE_CATEGORIES.find(item=>item.id===id)!).filter(Boolean)} keyExtractor={item=>item.id} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exploreFilterRail} renderItem={({item,index})=><Pressable accessibilityRole="button" accessibilityState={{selected:selected===item.id}} accessibilityLabel={index===0?'Explore Go Out':`Filter by ${item.title}`} onPress={()=>onSelect(item)} style={({pressed})=>[styles.exploreFilterChip,selected===item.id&&styles.exploreFilterChipActive,pressed&&styles.explorePressed]}><Text style={[styles.goOutFilterText,selected===item.id&&styles.goOutFilterTextActive]}>{index===0?'Go Out':item.title.replace(' & ',' / ')}</Text></Pressable>}/>;
+}
+
+function ExplorePlaceCard({ entity, onPress, wide=false }: { entity: ExploreEntity; onPress: () => void; wide?: boolean }) {
+  const photographic=Boolean(entity.image);
+  const initials=entity.name.split(/\s+/).map(word=>word[0]).join('').slice(0,2).toUpperCase();
+  return <Pressable accessibilityRole="button" accessibilityLabel={`${entity.name}, ${entity.categoryLabel}, ${entity.area}. ${entity.sourceState==='configured-reference'?'Reference listing; confirm current details.':'Provider supplied listing.'}`} onPress={onPress} style={({pressed})=>[wide?styles.exploreWideCard:styles.explorePlaceCard,pressed&&styles.explorePressed]}><View style={[styles.explorePlaceMedia,!photographic&&styles.explorePlaceMediaFallback]}>{photographic?<Image source={entity.image} resizeMode="cover" style={styles.explorePlacePhoto}/>:entity.restaurantId?<View style={styles.exploreIdentity}><View style={styles.exploreIdentityMark}><Text style={styles.exploreIdentityText}>{initials}</Text></View><Text numberOfLines={1} style={styles.exploreIdentityName}>{entity.name.toUpperCase()}</Text></View>:<Image source={entity.fallbackImage} resizeMode="contain" style={styles.explorePlaceCutout}/>}</View><View style={styles.explorePlaceCopy}><Text numberOfLines={1} style={styles.explorePlaceTitle}>{entity.name}</Text><Text numberOfLines={1} style={styles.explorePlaceMeta}>{entity.categoryLabel} · {entity.area}</Text><Text numberOfLines={1} style={styles.explorePlaceState}>{entity.sourceState==='configured-reference'?'Reference listing · confirm details':'Provider-supplied details'}</Text></View></Pressable>;
+}
+
+function ExploreSectionHeader({ title, onSeeAll }: { title: string; onSeeAll?: () => void }) {
+  return <View style={styles.exploreSectionHeader}><Text style={styles.exploreSectionTitle}>{title}</Text>{onSeeAll?<Pressable accessibilityRole="button" onPress={onSeeAll}><Text style={styles.exploreSeeAll}>See all</Text></Pressable>:null}</View>;
+}
 
 export function ExploreHubScreen({ data, actions }: { data: CustomerParityData; actions: CustomerParityActions }) {
+  const insets=useSafeAreaInsets();
   const [query,setQuery]=useState('');
-  const visible=EXPLORE_LOCATIONS.filter(item=>!query.trim()||`${item.name} ${item.category} ${item.area}`.toLowerCase().includes(query.toLowerCase()));
-  return <ScreenShell><CompactHeader title="Explore" back={()=>actions.go('home')} right={<Pressable onPress={()=>actions.go('favourites')} style={styles.headerRound}><Feather name="heart" size={19}/></Pressable>}/><Page><View style={styles.searchBar}><Feather name="search" size={18} color={COLORS.muted}/><TextInput value={query} onChangeText={setQuery} placeholder={`Search places in ${data.city}`} placeholderTextColor={COLORS.mutedLight} style={styles.searchInput}/></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>{['Things to do','Dining','Shopping','Events','Wellness'].map(item=><Pressable key={item} onPress={()=>setQuery(item)} style={styles.choiceChip}><Text style={styles.choiceChipText}>{item}</Text></Pressable>)}</ScrollView><View style={styles.exploreHero}><Text style={styles.exploreHeroEyebrow}>DISCOVER {data.city.toUpperCase()}</Text><Text style={styles.exploreHeroTitle}>Make more of where you are</Text><Text style={styles.exploreHeroBody}>Places, activities, food and useful local experiences in one feed.</Text></View><SectionTitle title="Popular nearby"/><View style={styles.list}>{visible.map(item=><Pressable key={item.id} onPress={()=>actions.go('exploreLocation')} style={styles.exploreRow}><View style={styles.exploreIcon}><Ionicons name={item.icon} size={22}/></View><View style={styles.flex}><Text style={styles.rowTitle}>{item.name}</Text><Text style={styles.rowMeta}>{item.category} · {item.area}</Text><Text style={styles.ratingText}>★ {item.rating.toFixed(1)}</Text></View><Feather name="chevron-right" size={20} color={COLORS.muted}/></Pressable>)}</View></Page></ScreenShell>;
+  const [taxonomyId,setTaxonomyId]=useState<string|null>(null);
+  const deferredQuery=useDeferredValue(query);
+  const entities=useMemo(()=>exploreContent(data.country,data.city),[data.country,data.city]);
+  const category=categoryForQuery(query);
+  const searchResults=useMemo(()=>{
+    return searchExplore(entities,deferredQuery);
+  },[deferredQuery,entities]);
+  const openEntity=(entity:ExploreEntity)=>{if(entity.restaurantId){dineOutSession.openRestaurant(entity.restaurantId,'exploreHub');actions.go('dineOutRestaurant');return;}exploreSession.select(entity);actions.go('exploreLocation')};
+  const selectCategory=(item:ExploreCategory)=>{
+    const mapped:Partial<Record<ExploreCategory['id'],string>>={dining:'goout.restaurants-dining',attractions:'goout.attractions-leisure',things:'goout',wellness:'goout.spa-wellness',fun:'goout.theme-parks',kids:'goout.kids-activities',cinema:'goout.cinema',events:'goout.events',nightlife:'goout.nightlife',sports:'goout.sports',outdoors:'goout.outdoor',culture:'goout.museums-culture',experiences:'goout.experiences',shopping:'goout.shopping-malls','day-trips':'goout.day-trips'};
+    const target=mapped[item.id];
+    if(target){setQuery('');setTaxonomyId(target);return;}
+    setQuery(item.title);
+  };
+  const dining=entities.filter((item)=>item.categories.includes('dining')).slice(0,6);
+  const things=entities.filter((item)=>item.categories.includes('things')).slice(0,6);
+  const shopping=entities.filter((item)=>item.categories.includes('shopping')).slice(0,6);
+  const discovery=entities.slice(0,6);
+  const sections=[
+    {id:'discovery',title:'Plan your perfect day out',query:'',items:discovery,wide:false},
+    {id:'dining',title:'Restaurants & dining',query:'Dining',items:dining,wide:false},
+    {id:'things',title:`Things to do in ${data.city}`,query:'Things to do',items:things,wide:true},
+    {id:'shopping',title:'Shopping & markets',query:'Shopping',items:shopping,wide:false},
+  ].filter((section)=>section.items.length>0);
+  if(taxonomyId){
+    const node=taxonomyNode(taxonomyId);
+    if(node){
+      const children=taxonomyChildren(node.id);
+      const terms=[node.title,...(node.productTerms??[])].map(value=>value.toLowerCase());
+      const relevant=entities.filter(entity=>{
+        if(node.id==='goout.restaurants-dining'&&entity.entityType!=='restaurant') return false;
+        if(node.domain==='goout'&&node.id!=='goout.restaurants-dining'&&entity.entityType==='restaurant') return false;
+        if(node.id==='goout') return entity.categories.some(category=>category==='things'||category==='events'||category==='wellness');
+        const haystack=`${entity.name} ${entity.categoryLabel} ${entity.area} ${entity.searchTerms.join(' ')}`.toLowerCase();
+        return terms.some(term=>haystack.includes(term)||term.includes(entity.categoryLabel.toLowerCase()));
+      });
+      return <UniversalTaxonomyLandingScreen
+        node={node}
+        ancestors={taxonomyAncestors(node.id)}
+        children={children}
+        sellers={[]}
+        products={[]}
+        experiences={relevant.map(entity=>({id:entity.id,name:entity.name,subtitle:`${entity.categoryLabel} · ${entity.area}`,image:entity.image,fallbackImage:entity.fallbackImage}))}
+        country={data.country}
+        city={data.city}
+        onBack={()=>{if(node.parentId)setTaxonomyId(node.parentId);else setTaxonomyId(null)}}
+        onOpenChild={child=>setTaxonomyId(child.id)}
+        onOpenSeller={()=>{}}
+        onOpenProduct={()=>{}}
+        onOpenExperience={id=>{const entity=entities.find(item=>item.id===id);if(entity)openEntity(entity)}}
+        onOpenPromotion={campaign=>actions.go(campaign.ctaScreen)}
+      />;
+    }
+  }
+  const searchMode=Boolean(query.trim());
+  return <ScreenShell><KareebuPageHeader title="Go Out" country={data.country} city={data.city} variant="service" backEnabled onBack={actions.back} onLocationPress={actions.changeLocation} searchEnabled searchValue={query} onSearchChange={setQuery} searchPlaceholder="Search places, food and things to do" rightIcon="heart-outline" rightLabel="Saved places" onRightAction={()=>actions.go('favourites')}/>{searchMode?<FlatList data={searchResults} keyExtractor={(item)=>item.id} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.exploreSearchContent,{paddingBottom:112+insets.bottom}]} ListHeaderComponent={<View style={styles.exploreSearchHeadingRow}><View style={styles.flex}><Text style={styles.exploreSearchTitle}>{category?`${category.title} in ${data.city}`:`Results in ${data.city}`}</Text><Text style={styles.exploreResultCount}>{searchResults.length} {searchResults.length===1?'place':'places'} for “{query.trim()}”</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={()=>setQuery('')} style={styles.exploreClear}><Feather name="x" size={18}/></Pressable></View>} renderItem={({item})=><ExplorePlaceCard entity={item} wide onPress={()=>openEntity(item)}/>} ItemSeparatorComponent={()=><View style={styles.exploreResultGap}/>} ListEmptyComponent={<View style={styles.exploreEmpty}><View style={styles.exploreEmptyIcon}><Feather name="search" size={27}/></View><Text style={styles.exploreEmptyTitle}>No places found for “{query.trim()}”</Text><Text style={styles.exploreEmptyBody}>Try another search or explore a configured category.</Text><ExploreCategoryRail onSelect={selectCategory}/></View>}/>:<FlatList data={sections} keyExtractor={(item)=>item.id} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.exploreHomeContent,{paddingBottom:112+insets.bottom}]} ListHeaderComponent={<><GoOutFilterRail selected={category?.id??'things'} onSelect={selectCategory}/><Pressable accessibilityRole="button" accessibilityLabel="Explore Kampala" onPress={()=>setQuery('Things to do')} style={styles.exploreApprovedHero}><Image source={goOutAssets.hero} resizeMode="cover" style={styles.exploreApprovedHeroImage}/></Pressable><Text style={styles.exploreIntro}>Explore Go Out</Text><ExploreCategoryRail onSelect={selectCategory}/><ExploreSectionHeader title="Featured experiences" onSeeAll={()=>setQuery('Experiences')}/><FeaturedGoOutRail onPress={setQuery}/><Pressable accessibilityRole="button" accessibilityLabel="Kareebu Plus benefits" onPress={()=>actions.go('membership')} style={styles.exploreBenefits}><Image source={goOutAssets.benefits} resizeMode="cover" style={styles.exploreBenefitsImage}/></Pressable></>} renderItem={({item})=><View style={styles.exploreSection}><ExploreSectionHeader title={item.title} onSeeAll={item.query?()=>setQuery(item.query):undefined}/><FlatList horizontal data={item.items} keyExtractor={(entity)=>entity.id} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exploreCardsRail} renderItem={({item:entity})=><ExplorePlaceCard entity={entity} wide={item.wide} onPress={()=>openEntity(entity)}/>}/></View>}/>}</ScreenShell>;
 }
 
 export function ExploreLocationScreen({ data, actions }: { data: CustomerParityData; actions: CustomerParityActions }) {
-  const [saved,setSaved]=useState(false);
-  return <ScreenShell><CompactHeader title="Place" back={()=>actions.go('exploreHub')} right={<Pressable onPress={()=>setSaved(!saved)} style={styles.headerRound}><Feather name="heart" size={19} color={saved?COLORS.red:COLORS.black}/></Pressable>}/><Page><View style={styles.placeHero}><Ionicons name="location-outline" size={54} color={COLORS.black}/></View><Text style={styles.placeTitle}>Kampala Serena Hotel</Text><Text style={styles.placeMeta}>Hotels & dining · Nakasero · ★ 4.8</Text><View style={styles.compactActions}><Pressable onPress={()=>actions.go('whereTo')} style={styles.compactAction}><Ionicons name="car-outline" size={19}/><Text style={styles.compactActionText}>Ride there</Text></Pressable><Pressable onPress={()=>Share.share({message:'Kampala Serena Hotel on Kareebu+'}).catch(()=>undefined)} style={styles.compactAction}><Ionicons name="share-outline" size={19}/><Text style={styles.compactActionText}>Share</Text></Pressable><Pressable onPress={()=>actions.go('food')} style={styles.compactAction}><Ionicons name="restaurant-outline" size={19}/><Text style={styles.compactActionText}>Food nearby</Text></Pressable></View><SectionTitle title="Useful bits"/><RoundedCard><MenuRow icon="time-outline" label="Open today" detail="24 hours"/><MenuRow icon="location-outline" label="Address" detail="Kintu Road, Kampala"/><MenuRow icon="call-outline" label="Call venue"/><MenuRow icon="globe-outline" label="Website"/></RoundedCard><SectionTitle title="More around here"/><PrimaryButton label="Explore nearby" onPress={()=>actions.go('exploreHub')}/></Page></ScreenShell>;
+  const entity=exploreSession.selected()??exploreContent(data.country,data.city).find((item)=>!item.restaurantId);
+  const [saved,setSaved]=useState(()=>entity?exploreSession.isSaved(entity.id):false);
+  if(!entity)return <ScreenShell><CompactHeader title="Place" back={actions.back}/><View style={styles.exploreEmpty}><Text style={styles.exploreEmptyTitle}>This place is unavailable</Text><Text style={styles.exploreEmptyBody}>Return to Explore to find somewhere else nearby.</Text><PrimaryButton label="Back to Explore" onPress={()=>actions.go('exploreHub')}/></View></ScreenShell>;
+  const photographic=Boolean(entity.image);
+  return <ScreenShell><CompactHeader title="Place" back={actions.back} right={<Pressable accessibilityRole="button" accessibilityLabel={saved?'Remove from saved places':'Save place'} accessibilityState={{selected:saved}} onPress={()=>setSaved(exploreSession.toggleSaved(entity.id))} style={styles.headerRound}><Feather name="heart" size={19} color={saved?COLORS.red:COLORS.black}/></Pressable>}/><Page><View style={[styles.placeHero,!photographic&&styles.explorePlaceMediaFallback]}><Image source={entity.image??entity.fallbackImage} resizeMode={photographic?'cover':'contain'} style={photographic?styles.placeHeroPhoto:styles.placeHeroCutout}/></View><Text style={styles.placeTitle}>{entity.name}</Text><Text style={styles.placeMeta}>{entity.categoryLabel} · {entity.area}{entity.rating!==undefined?` · ★ ${entity.rating.toFixed(1)}`:''}</Text><View style={styles.compactActions}><Pressable onPress={()=>actions.go('whereTo')} style={styles.compactAction}><Ionicons name="car-outline" size={19}/><Text style={styles.compactActionText}>Ride there</Text></Pressable><Pressable onPress={()=>Share.share({message:`${entity.name} on Kareebu+`}).catch(()=>undefined)} style={styles.compactAction}><Ionicons name="share-outline" size={19}/><Text style={styles.compactActionText}>Share</Text></Pressable>{entity.categories.includes('dining')?<Pressable onPress={()=>actions.go('dineOut')} style={styles.compactAction}><Ionicons name="restaurant-outline" size={19}/><Text style={styles.compactActionText}>Dining</Text></Pressable>:null}</View><SectionTitle title="Location"/><RoundedCard><MenuRow icon="location-outline" label={entity.area} detail={`${entity.city}, ${data.country}`}/></RoundedCard><SectionTitle title="Discover more nearby"/><PrimaryButton label="Back to Explore" onPress={()=>actions.go('exploreHub')}/></Page></ScreenShell>;
 }
 
 export function StoriesScreen({ data, actions }: { data: CustomerParityData; actions: CustomerParityActions }) {
@@ -319,6 +415,14 @@ const styles=StyleSheet.create({
   headerRound:{width:34,height:34,borderRadius:17,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center'},ticketRow:{minHeight:68,borderBottomWidth:1,borderBottomColor:COLORS.line,flexDirection:'row',alignItems:'center',gap:10},ticketIcon:{width:40,height:40,borderRadius:13,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center'},statusPill:{borderRadius:10,backgroundColor:COLORS.surface,paddingHorizontal:8,paddingVertical:5},statusPillText:{...TYPE.caption,color:COLORS.black,fontWeight:'700'},
   issueGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},issueTile:{width:'31.5%',minHeight:86,borderRadius:14,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center',gap:7,padding:7},issueText:{...TYPE.caption,color:COLORS.black,textAlign:'center',fontWeight:'700'},
   savingsHero:{borderRadius:18,backgroundColor:COLORS.black,padding:18},savingsEyebrow:{...TYPE.label,color:COLORS.yellow,letterSpacing:.9},savingsAmount:{fontFamily:FONT.bold,fontSize:30,lineHeight:34,fontWeight:'900',color:COLORS.white,marginTop:4},savingsBody:{...TYPE.small,color:'rgba(255,255,255,.67)',marginTop:4},savingRow:{minHeight:58,flexDirection:'row',alignItems:'center',gap:10,borderBottomWidth:1,borderBottomColor:COLORS.line},savingAmount:{...TYPE.cardTitle,color:COLORS.green},blackCard:{borderRadius:18,backgroundColor:COLORS.black,padding:17},blackCardBrand:{...TYPE.label,color:COLORS.yellow},blackCardTitle:{...TYPE.screenTitle,color:COLORS.white,marginTop:4},blackCardMeta:{...TYPE.small,color:'rgba(255,255,255,.65)',marginTop:4},cancelCard:{padding:14,gap:12,shadowOpacity:0},dangerButton:{height:48,borderRadius:14,borderWidth:1,borderColor:'#F1B8B4',alignItems:'center',justifyContent:'center'},dangerText:{...TYPE.action,color:COLORS.red},
-  searchBar:{height:46,borderRadius:14,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:9,paddingHorizontal:12},searchInput:{flex:1,...TYPE.body,color:COLORS.black},exploreHero:{borderRadius:18,backgroundColor:'#FFF1DA',padding:17},exploreHeroEyebrow:{...TYPE.label,color:COLORS.red,letterSpacing:.8},exploreHeroTitle:{...TYPE.screenTitle,color:COLORS.black,marginTop:5},exploreHeroBody:{...TYPE.small,color:COLORS.muted,marginTop:5},exploreRow:{minHeight:72,borderBottomWidth:1,borderBottomColor:COLORS.line,flexDirection:'row',alignItems:'center',gap:10},exploreIcon:{width:46,height:46,borderRadius:15,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center'},ratingText:{...TYPE.caption,color:COLORS.green,marginTop:3,fontWeight:'800'},placeHero:{height:150,borderRadius:18,backgroundColor:COLORS.surfaceStrong,alignItems:'center',justifyContent:'center'},placeTitle:{...TYPE.screenTitle,color:COLORS.black},placeMeta:{...TYPE.small,color:COLORS.muted},compactActions:{flexDirection:'row',gap:8},compactAction:{flex:1,minHeight:58,borderRadius:14,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center',gap:4},compactActionText:{...TYPE.caption,color:COLORS.black,fontWeight:'700'},
+  searchBar:{height:46,borderRadius:14,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:9,paddingHorizontal:12},searchInput:{flex:1,...TYPE.body,color:COLORS.black},
+  exploreHomeContent:{paddingBottom:32},explorePromoWrap:{paddingHorizontal:14,marginBottom:18},exploreSearchContent:{paddingHorizontal:14,paddingTop:14,paddingBottom:32},exploreIntro:{...TYPE.sectionTitle,color:COLORS.black,paddingHorizontal:14,paddingTop:12,marginBottom:10},
+  exploreFilterRail:{paddingHorizontal:14,paddingVertical:10,gap:8},exploreFilterChip:{height:36,borderRadius:18,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,paddingHorizontal:14,alignItems:'center',justifyContent:'center'},exploreFilterChipActive:{backgroundColor:COLORS.yellow,borderColor:COLORS.yellowDeep},goOutFilterText:{...TYPE.small,color:COLORS.muted,fontWeight:'800'},goOutFilterTextActive:{color:COLORS.black},exploreCategoryRail:{paddingHorizontal:14,paddingBottom:16,gap:18},exploreCategoryItem:{width:78,alignItems:'center',gap:7},exploreCategoryItemSelected:{},exploreCategoryCircle:{width:72,height:72,borderRadius:36},exploreCategoryLabel:{...TYPE.small,color:COLORS.black,fontWeight:'700',textAlign:'center',lineHeight:16},explorePressed:{opacity:.78,transform:[{scale:.985}]},
+  exploreApprovedHero:{marginHorizontal:14,aspectRatio:1808/870,borderRadius:18,overflow:'hidden',backgroundColor:COLORS.surface,marginBottom:18},exploreApprovedHeroImage:{width:'100%',height:'100%'},exploreFeaturedRail:{paddingHorizontal:14,gap:12,paddingBottom:16},exploreFeaturedCard:{width:318,aspectRatio:1808/870,borderRadius:18,overflow:'hidden',backgroundColor:COLORS.surface},exploreFeaturedImage:{width:'100%',height:'100%'},exploreBenefits:{marginHorizontal:14,aspectRatio:2172/724,borderRadius:16,overflow:'hidden',marginBottom:22},exploreBenefitsImage:{width:'100%',height:'100%'},exploreEditorialHero:{height:238,marginHorizontal:14,borderRadius:22,overflow:'hidden',backgroundColor:COLORS.black,marginBottom:24},exploreEditorialImage:{width:'100%',height:'100%'},exploreHeroShade:{position:'absolute',left:0,right:0,top:0,bottom:0,backgroundColor:'rgba(0,0,0,.36)'},exploreHeroCopy:{position:'absolute',left:18,right:18,bottom:17},exploreHeroEyebrow:{...TYPE.label,color:COLORS.yellow,letterSpacing:1},exploreHeroTitle:{fontFamily:FONT.bold,fontSize:24,lineHeight:28,fontWeight:'900',color:COLORS.white,marginTop:5},exploreHeroBody:{...TYPE.small,color:'rgba(255,255,255,.84)',marginTop:4},exploreHeroCta:{alignSelf:'flex-start',height:36,borderRadius:12,backgroundColor:COLORS.yellow,paddingHorizontal:11,flexDirection:'row',alignItems:'center',gap:7,marginTop:12},exploreHeroCtaText:{...TYPE.label,color:COLORS.black},
+  exploreSection:{marginBottom:25},exploreSectionHeader:{paddingHorizontal:14,marginBottom:10,flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12},exploreSectionTitle:{...TYPE.sectionTitle,color:COLORS.black,flex:1},exploreSeeAll:{...TYPE.action,color:COLORS.black},exploreCardsRail:{paddingHorizontal:14,gap:11},
+  explorePlaceCard:{width:224,borderRadius:18,backgroundColor:COLORS.white,borderWidth:1,borderColor:COLORS.line,overflow:'hidden'},exploreWideCard:{width:278,borderRadius:18,backgroundColor:COLORS.white,borderWidth:1,borderColor:COLORS.line,overflow:'hidden'},explorePlaceMedia:{height:132,backgroundColor:'#F2F2EE'},explorePlaceMediaFallback:{backgroundColor:'#F5F1E8'},explorePlacePhoto:{width:'100%',height:'100%'},explorePlaceCutout:{width:'100%',height:'100%',transform:[{scale:.82}]},explorePlaceCopy:{padding:11,minHeight:94},explorePlaceTitle:{...TYPE.cardTitle,color:COLORS.black},explorePlaceMeta:{...TYPE.caption,color:COLORS.muted,marginTop:3},explorePlaceState:{...TYPE.caption,color:COLORS.muted,marginTop:6,fontWeight:'700'},explorePlaceRating:{...TYPE.caption,color:COLORS.black,fontWeight:'800',marginTop:5},
+  exploreIdentity:{flex:1,alignItems:'center',justifyContent:'center',gap:8},exploreIdentityMark:{width:62,height:62,borderRadius:20,backgroundColor:'#173F38',alignItems:'center',justifyContent:'center'},exploreIdentityText:{fontSize:24,fontWeight:'900',color:COLORS.white},exploreIdentityName:{...TYPE.caption,color:'#173F38',fontWeight:'900',maxWidth:'82%'},
+  exploreSearchHeadingRow:{flexDirection:'row',alignItems:'flex-start',gap:10,marginBottom:11},exploreSearchTitle:{...TYPE.screenTitle,color:COLORS.black},exploreResultCount:{...TYPE.small,color:COLORS.muted,marginTop:3},exploreClear:{width:36,height:36,borderRadius:18,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center'},exploreFilters:{flexDirection:'row',gap:8,marginBottom:16},exploreFilter:{height:36,borderRadius:18,borderWidth:1,borderColor:COLORS.line,paddingHorizontal:13,alignItems:'center',justifyContent:'center'},exploreFilterSelected:{backgroundColor:COLORS.yellow,borderColor:COLORS.yellow},exploreFilterText:{...TYPE.small,color:COLORS.black,fontWeight:'700'},exploreFilterTextSelected:{fontWeight:'900'},exploreResultGap:{height:12},exploreEmpty:{paddingVertical:38,alignItems:'center',gap:9},exploreEmptyIcon:{width:58,height:58,borderRadius:20,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},exploreEmptyTitle:{...TYPE.sectionTitle,color:COLORS.black,textAlign:'center'},exploreEmptyBody:{...TYPE.small,color:COLORS.muted,textAlign:'center',marginBottom:10},
+  placeHero:{height:210,borderRadius:18,backgroundColor:COLORS.surfaceStrong,alignItems:'center',justifyContent:'center',overflow:'hidden'},placeHeroPhoto:{width:'100%',height:'100%'},placeHeroCutout:{width:'88%',height:'88%'},placeTitle:{...TYPE.screenTitle,color:COLORS.black},placeMeta:{...TYPE.small,color:COLORS.muted},compactActions:{flexDirection:'row',gap:8},compactAction:{flex:1,minHeight:58,borderRadius:14,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center',gap:4},compactActionText:{...TYPE.caption,color:COLORS.black,fontWeight:'700'},
   storyCard:{minHeight:160,borderRadius:20,backgroundColor:'#FFF3D8',padding:17,overflow:'hidden'},storyCardDark:{backgroundColor:COLORS.black},storyIcon:{width:48,height:48,borderRadius:16,backgroundColor:'rgba(255,255,255,.18)',alignItems:'center',justifyContent:'center'},storyTitle:{...TYPE.screenTitle,color:COLORS.black,marginTop:16},storyTextLight:{color:COLORS.white},storyBody:{...TYPE.small,color:COLORS.muted,marginTop:5,maxWidth:280},storyBodyLight:{color:'rgba(255,255,255,.67)'},storyArrow:{position:'absolute',right:17,bottom:17},businessHero:{borderRadius:18,backgroundColor:COLORS.yellow,padding:18,gap:8},businessHeroTitle:{...TYPE.screenTitle,color:COLORS.black},businessHeroBody:{...TYPE.small,color:'#4D4632'},donationHero:{alignItems:'center',gap:7,paddingVertical:12},donationTitle:{...TYPE.screenTitle,color:COLORS.black},donationBody:{...TYPE.small,color:COLORS.muted,textAlign:'center'},
 });

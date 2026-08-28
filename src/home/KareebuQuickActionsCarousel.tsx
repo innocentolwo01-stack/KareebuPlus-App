@@ -16,57 +16,62 @@ type QuickActionItem = {
   screen: string;
 };
 
-const quickActions: QuickActionItem[] = [
+const quickActions = (balance: string): QuickActionItem[] => [
   {
-    eyebrow: 'Balance',
-    title: 'UGX 0',
+    eyebrow: 'Kareebu Pay',
+    title: balance,
     image: require('../../assets/kareebu-plus/quick-actions/balance.png'),
     screen: 'wallet',
   },
   {
-    eyebrow: 'Kareebu+ Weekend',
-    title: 'Exclusive grocery prices',
+    eyebrow: 'Activity',
+    title: 'Track orders & trips',
     image: require('../../assets/kareebu-plus/quick-actions/plus-weekend.png'),
-    screen: 'shops',
+    screen: 'activity',
   },
   {
-    eyebrow: 'Add card',
-    title: 'Set up payment',
-    image: require('../../assets/kareebu-plus/quick-actions/add-card.png'),
-    screen: 'wallet',
-  },
-  {
-    eyebrow: 'Wallet',
-    title: 'Add money',
+    eyebrow: 'Add money',
+    title: 'Add wallet money',
     image: require('../../assets/kareebu-plus/quick-actions/wallet.png'),
-    screen: 'wallet',
+    screen: 'payTopUp',
   },
   {
-    eyebrow: 'Time to',
-    title: 'Order a snack',
+    eyebrow: 'Kareebu+',
+    title: 'Benefits & savings',
+    image: require('../../assets/kareebu-plus/quick-actions/add-card.png'),
+    screen: 'plusManage',
+  },
+  {
+    eyebrow: 'Rewards',
+    title: 'See points & value',
     image: require('../../assets/kareebu-plus/quick-actions/snack.png'),
-    screen: 'food',
+    screen: 'rewards',
   },
 ];
 
 export function KareebuQuickActionsCarousel({
   onOpen,
+  balance,
 }: {
   onOpen: (label: string, screen: any) => void;
+  balance: string;
 }) {
   return (
     <ScrollView
       horizontal
+      scrollEnabled
+      nestedScrollEnabled
+      directionalLockEnabled
       showsHorizontalScrollIndicator={false}
       decelerationRate="fast"
-      snapToInterval={194}
+      snapToInterval={174}
       snapToAlignment="start"
       disableIntervalMomentum
       style={styles.bleed}
       contentContainerStyle={styles.rail}
       keyboardShouldPersistTaps="handled"
     >
-      {quickActions.map((item) => (
+      {quickActions(balance).map((item) => (
         <Pressable
           key={`${item.eyebrow}-${item.title}`}
           onPress={() => onOpen(item.title, item.screen)}
@@ -101,8 +106,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   card: {
-    width: 162,
-    height: 66,
+    width: 166,
+    minHeight: 74,
     borderRadius: 13,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#E3E5E6',
@@ -140,8 +145,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   image: {
-    width: 42,
-    height: 42,
+    width: 46,
+    height: 46,
     flexShrink: 0,
   },
 });

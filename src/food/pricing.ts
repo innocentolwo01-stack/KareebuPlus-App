@@ -29,8 +29,8 @@ export function foodItemCount(lines: FoodCartLine[]) {
 
 export function foodCheckoutTotals(restaurant: DemoRestaurant, lines: FoodCartLine[], draft: FoodCheckoutDraft) {
   const subtotal = foodSubtotal(lines);
-  const discount = draft.couponCode === 'SAVE10' ? Math.round(subtotal * 0.1) : draft.couponCode === 'WELCOME15' ? Math.round(subtotal * 0.15) : 0;
-  const baseDeliveryFee = draft.orderType === 'takeaway' || draft.couponCode === 'PLUSFREE' ? 0 : restaurant.deliveryFee;
+  const discount = 0;
+  const baseDeliveryFee = draft.orderType === 'takeaway' ? 0 : restaurant.deliveryFee;
   const demand = demandQuote('food-delivery', { scheduled: draft.schedule !== 'Now' });
   const demandFee = applyDemand(baseDeliveryFee, demand);
   const deliveryFee = demandFee.totalFee;
@@ -39,4 +39,14 @@ export function foodCheckoutTotals(restaurant: DemoRestaurant, lines: FoodCartLi
   const tip = draft.orderType === 'takeaway' ? 0 : draft.tip;
   const total = Math.max(0, subtotal - discount + deliveryFee + serviceFee + tip);
   return { subtotal, discount, baseDeliveryFee, deliveryFee, deliveryDemandAdjustment, demand, serviceFee, tip, total };
+}
+
+export const FOOD_COUPON_CODES: readonly string[] = [];
+export type FoodCouponCode = string;
+
+export function bestFoodCoupon(restaurant: DemoRestaurant, lines: FoodCartLine[], draft: FoodCheckoutDraft): FoodCouponCode | null {
+  if (foodSubtotal(lines) <= 0) return null;
+  const baseline = foodCheckoutTotals(restaurant, lines, { ...draft, couponCode: null }).total;
+  return FOOD_COUPON_CODES.map((code) => ({ code, saving: baseline - foodCheckoutTotals(restaurant, lines, { ...draft, couponCode: code }).total }))
+    .filter(({ saving }) => saving > 0).sort((a, b) => b.saving - a.saving)[0]?.code ?? null;
 }

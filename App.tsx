@@ -12,6 +12,12 @@ import { createFoodCheckoutDraft, FoodCartLine, FoodCheckoutDraft, FoodOrder } f
 import { createCommerceCheckoutDraft, createParcelDraft, createServiceRequest, CommerceCartLine, CommerceCheckoutDraft, CommerceOrder, ParcelDraft, ParcelOrder, RentalBooking, ServiceBooking, ServiceRequest } from './src/parity/types';
 import * as NativeSplashScreen from 'expo-splash-screen';
 import { resolveKareebuDeepLink } from './src/routing/kareebuDeepLinks';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { parseServicePreferences, SERVICE_PREFERENCES_STORAGE_KEY, type ServicePreference } from './src/preferences';
+import { trackEvent } from './src/analytics';
+import { ActiveTransactionBar } from './src/activity/ActiveTransactionBar';
+import type { GlobalCartLine, GlobalOrder } from './src/global/types';
+import { initialCommerceContext, mergeCommerceContext, type CommerceRouteContext } from './src/commerce/context';
 
 import { KareebuLaunchGate } from './src/onboarding/KareebuLaunchGate';
 import { AppNavigationProvider, UniversalBackButton } from './src/navigation/AppNavigation';
@@ -83,6 +89,7 @@ export default function App() {
   const [tip, setTip] = useState(1000);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState('cafe-javas');
   const [selectedFoodItemId, setSelectedFoodItemId] = useState<string | null>(null);
+  const [selectedFoodCategory, setSelectedFoodCategory] = useState('Pizza');
   const [foodCartLines, setFoodCartLines] = useState<FoodCartLine[]>([]);
   const [foodCheckout, setFoodCheckout] = useState<FoodCheckoutDraft>(() => createFoodCheckoutDraft());
   const [lastFoodOrder, setLastFoodOrder] = useState<FoodOrder | null>(null);
@@ -113,6 +120,15 @@ export default function App() {
   const [rewardPoints, setRewardPoints] = useState(1280);
   const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>([]);
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+  const [servicePreferences, setServicePreferences] = useState<ServicePreference[]>([]);
+  const [selectedVerticalCategory,setSelectedVerticalCategory]=useState('Popular');
+  const [globalSearchQuery,setGlobalSearchQuery]=useState('');
+  const [selectedGlobalMarketplace,setSelectedGlobalMarketplace]=useState<string|null>(null);
+  const [selectedGlobalCategory,setSelectedGlobalCategory]=useState<string|null>(null);
+  const [selectedGlobalProductId,setSelectedGlobalProductId]=useState<string|null>(null);
+  const [globalCartLines,setGlobalCartLines]=useState<GlobalCartLine[]>([]);
+  const [lastGlobalOrder,setLastGlobalOrder]=useState<GlobalOrder|null>(null);
+  const [commerceContext,setCommerceContext]=useState<CommerceRouteContext>(initialCommerceContext);
   const currentScreenRef = useRef<Screen>('splash');
   const nativeSplashHiddenRef = useRef(false);
 
@@ -125,7 +141,7 @@ export default function App() {
   const applyScreenLifecycle = useCallback((next: Screen) => {
     if (next === 'whereTo') setCaptainRideStatus('idle');
     if (next === 'ridePayment') setCaptainRideStatus('requested');
-    if (next === 'driver') setCaptainRideStatus((current) => current === 'cancelled' || current === 'rejected' ? current : 'accepted');
+    if (next === 'driver') setCaptainRideStatus((current) => current === 'cancelled' || current === 'rejected' ? current : current === 'requested' ? 'requested' : 'accepted');
     if (next === 'onTrip') setCaptainRideStatus('ongoing');
     if (next === 'tripComplete') setCaptainRideStatus('complete');
   }, []);
@@ -138,6 +154,7 @@ export default function App() {
 
   const navigate = useCallback((next: Screen) => {
     const current = currentScreenRef.current;
+    trackEvent('navigation', { from: current, to: next });
     if (current === next) return;
 
     const history = [...navigationHistoryRef.current];
@@ -167,6 +184,16 @@ export default function App() {
     navigationHistoryRef.current = history.slice(-60);
     commitScreen(next);
   }, [commitScreen]);
+
+  useEffect(() => {
+    let active = true;
+    const loadPreferences = () => AsyncStorage.getItem(SERVICE_PREFERENCES_STORAGE_KEY)
+      .then((value) => { if (active) setServicePreferences(parseServicePreferences(value)); })
+      .catch(() => undefined);
+    void loadPreferences();
+    const interval = setInterval(loadPreferences, 1500);
+    return () => { active = false; clearInterval(interval); };
+  }, []);
 
   const goBack = useCallback(() => {
     const current = currentScreenRef.current;
@@ -218,6 +245,7 @@ export default function App() {
     tip,
     selectedRestaurantId,
     selectedFoodItemId,
+    selectedFoodCategory,
     foodCartLines,
     foodCheckout,
     lastFoodOrder,
@@ -248,10 +276,14 @@ export default function App() {
     rewardPoints,
     walletTransactions,
     supportTickets,
-  }), [guest, authReturn, locationReturn, country, city, phone, otp, fullName, email, locationAllowed, notificationsAllowed, destinationPlace, deliveryPlace, focusedPlace, selectedVehicleMode, selectedRide, selectedPayment, walletBalance, scheduledTrip, rating, tip, selectedRestaurantId, selectedFoodItemId, foodCartLines, foodCheckout, lastFoodOrder, selectedShopId, shopCategoryPreset, cartQuantities, favoriteRestaurantIds, favoriteShopIds, selectedCommerceProductId, commerceCartLines, commerceCheckout, lastCommerceOrder, parcelDraft, lastParcelOrder, selectedRideBidId, rideProduct, ridePriority, ridePromoCode, ridePlan, lastRideReceipt, captainRideStatus, selectedRentalVehicleId, lastRentalBooking, selectedServiceId, selectedProviderId, serviceRequest, lastServiceBooking, rewardPoints, walletTransactions, supportTickets]);
+    servicePreferences,
+    selectedVerticalCategory,
+    globalSearchQuery,selectedGlobalMarketplace,selectedGlobalCategory,selectedGlobalProductId,globalCartLines,lastGlobalOrder,commerceContext,
+  }), [guest, authReturn, locationReturn, country, city, phone, otp, fullName, email, locationAllowed, notificationsAllowed, destinationPlace, deliveryPlace, focusedPlace, selectedVehicleMode, selectedRide, selectedPayment, walletBalance, scheduledTrip, rating, tip, selectedRestaurantId, selectedFoodItemId, selectedFoodCategory, foodCartLines, foodCheckout, lastFoodOrder, selectedShopId, shopCategoryPreset, cartQuantities, favoriteRestaurantIds, favoriteShopIds, selectedCommerceProductId, commerceCartLines, commerceCheckout, lastCommerceOrder, parcelDraft, lastParcelOrder, selectedRideBidId, rideProduct, ridePriority, ridePromoCode, ridePlan, lastRideReceipt, captainRideStatus, selectedRentalVehicleId, lastRentalBooking, selectedServiceId, selectedProviderId, serviceRequest, lastServiceBooking, rewardPoints, walletTransactions, supportTickets, servicePreferences, selectedVerticalCategory,globalSearchQuery,selectedGlobalMarketplace,selectedGlobalCategory,selectedGlobalProductId,globalCartLines,lastGlobalOrder,commerceContext]);
 
   const actions: AppActions = useMemo(() => ({
     go: navigate,
+    back: goBack,
     setGuest,
     setAuthReturn,
     setLocationReturn,
@@ -267,6 +299,7 @@ export default function App() {
     setEmail,
     setLocationAllowed,
     setNotificationsAllowed,
+    setSelectedVerticalCategory,
     setDestinationPlace,
     setDeliveryPlace,
     setFocusedPlace,
@@ -287,6 +320,7 @@ export default function App() {
       return restaurantId;
     }),
     selectFoodItem: setSelectedFoodItemId,
+    setSelectedFoodCategory,
     addFoodCartLine: (line: FoodCartLine) => setFoodCartLines((current) => {
       const existing = current.find((item) => item.id === line.id);
       if (!existing) return [...current, line];
@@ -345,7 +379,18 @@ export default function App() {
     }),
     toggleFavoriteRestaurant: (restaurantId: string) => setFavoriteRestaurantIds((current) => current.includes(restaurantId) ? current.filter((id) => id !== restaurantId) : [...current, restaurantId]),
     toggleFavoriteShop: (shopId: string) => setFavoriteShopIds((current) => current.includes(shopId) ? current.filter((id) => id !== shopId) : [...current, shopId]),
-  }), [navigate, city]);
+    setGlobalSearchQuery,
+    setSelectedGlobalMarketplace,
+    setSelectedGlobalCategory,
+    selectGlobalProduct: setSelectedGlobalProductId,
+    addGlobalCartLine: (line: GlobalCartLine) => setGlobalCartLines((current) => {
+      const existing=current.find(item=>item.productId===line.productId&&item.variant===line.variant);
+      return existing?current.map(item=>item.id===existing.id?{...item,quantity:item.quantity+line.quantity}:item):[...current,line];
+    }),
+    setGlobalCartLineQuantity: (lineId:string,quantity:number) => setGlobalCartLines((current)=>quantity<=0?current.filter(line=>line.id!==lineId):current.map(line=>line.id===lineId?{...line,quantity}:line)),
+    placeGlobalOrder: (order:GlobalOrder) => { setLastGlobalOrder(order); setGlobalCartLines([]); },
+    updateCommerceContext: (patch:Partial<CommerceRouteContext>) => setCommerceContext(current=>mergeCommerceContext(current,patch)),
+  }), [navigate, goBack, city]);
 
   useEffect(() => {
     const open = (url: string | null | undefined) => {
@@ -385,12 +430,12 @@ export default function App() {
               <UniversalBackButton />
             </View>
 
-            {screen !== 'splash' ? (
-              <BottomNav
+            {screen !== 'splash' && !['whereTo','chooseRide','confirmBooking','driver','onTrip','globalCheckout','globalTracking'].includes(screen) ? (
+              <><ActiveTransactionBar data={data} go={navigate}/><BottomNav
                 active={persistentTabForScreen(screen)}
                 go={navigate}
                 persistent
-              />
+              /></>
             ) : null}
           </View>
         </AppNavigationProvider>

@@ -1,4 +1,7 @@
 import React from 'react';
+import { View } from 'react-native';
+import { PromotionHero } from '../../promotions/PromotionCards';
+import type { PromotionCampaign } from '../../promotions/types';
 
 import type {
   FoodHomeController,
@@ -7,13 +10,10 @@ import type {
 import {
   AllRestaurantsEnhanced,
   BankSavings,
-  BestSellers,
   CategoryCarousel,
   FilterRail,
-  IconicBanner,
-  MostOrdered,
   Nearby,
-  PopularBrands,
+  PopularRestaurants,
   PromoCarousel,
   RestaurantCarousel,
   StackedRestaurantRail,
@@ -22,16 +22,19 @@ import {
 export function renderKareebuFoodWidget(
   widget: FoodHomeWidget,
   controller: FoodHomeController,
+  campaigns: PromotionCampaign[] = [],
+  onOpenPromotion?: (campaign: PromotionCampaign) => void,
 ): React.ReactNode {
   switch (widget.type) {
+    case 'campaign': {
+      const campaign = campaigns.find((item) => item.cmsSlot === widget.slot);
+      return campaign && onOpenPromotion ? <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}><PromotionHero campaign={campaign} onPress={onOpenPromotion}/></View> : null;
+    }
     case 'filter-rail':
       return <FilterRail controller={controller} />;
 
     case 'category-carousel':
       return <CategoryCarousel controller={controller} />;
-
-    case 'image-banner':
-      return <IconicBanner />;
 
     case 'restaurant-carousel':
       return <RestaurantCarousel controller={controller} />;
@@ -39,14 +42,8 @@ export function renderKareebuFoodWidget(
     case 'promo-carousel':
       return <PromoCarousel controller={controller} />;
 
-    case 'best-sellers':
-      return <BestSellers controller={controller} />;
-
-    case 'most-ordered':
-      return <MostOrdered controller={controller} />;
-
-    case 'popular-brands':
-      return <PopularBrands controller={controller} />;
+    case 'popular-restaurants':
+      return <PopularRestaurants controller={controller} />;
 
     case 'nearby':
       return <Nearby controller={controller} />;

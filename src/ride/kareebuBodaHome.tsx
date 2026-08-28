@@ -13,9 +13,15 @@ import MapView, { Marker } from 'react-native-maps';
 
 import { assets } from '../assets';
 import { ScreenShell } from '../components';
+import { KareebuPageHeader } from '../components/KareebuPageHeader';
 import { COLORS } from '../theme';
 import type { MobilityActions, MobilityData } from './mobilityScreens';
-import { useRegisterBackControl } from '../navigation/AppNavigation';
+import { promotionsFor } from '../promotions/catalog';
+import { PromoCarousel } from '../promotions/PromoCarousel';
+import { PromotionalImageBanner } from '../promotions/PromotionalImageBanner';
+import { promotionalBannerAssets } from '../promotions/promotionalBannerAssets';
+import { marketConfig, mobilityPlaces } from '../markets/config';
+import { KareebuDestinationCard, MobilityPlaceRail } from './KareebuDestinationCard';
 
 type BodaMarker = {
   id: string;
@@ -32,25 +38,6 @@ type BodaShortcutProps = {
   width: number;
   onPress: () => void;
 };
-
-function regionForCity(city: string) {
-  const key = city.trim().toLowerCase();
-
-  if (key.includes('nairobi')) {
-    return { latitude: -1.2864, longitude: 36.8172, latitudeDelta: 0.08, longitudeDelta: 0.08 };
-  }
-  if (key.includes('dar es salaam')) {
-    return { latitude: -6.7924, longitude: 39.2083, latitudeDelta: 0.08, longitudeDelta: 0.08 };
-  }
-  if (key.includes('entebbe')) {
-    return { latitude: 0.0512, longitude: 32.4637, latitudeDelta: 0.07, longitudeDelta: 0.07 };
-  }
-  if (key.includes('jinja')) {
-    return { latitude: 0.4478, longitude: 33.2026, latitudeDelta: 0.07, longitudeDelta: 0.07 };
-  }
-
-  return { latitude: 0.3476, longitude: 32.5825, latitudeDelta: 0.085, longitudeDelta: 0.085 };
-}
 
 function nearbyBodas(region: { latitude: number; longitude: number }): BodaMarker[] {
   const offsets = [
@@ -83,20 +70,15 @@ function BackMenuHeader({
   onBack: () => void;
   onMenu: () => void;
 }) {
-  useRegisterBackControl(true);
   return (
-    <View style={styles.header}>
-      <Pressable onPress={onBack} style={({ pressed }) => [styles.headerSquare, pressed && styles.pressed]}>
-        <Feather name="arrow-left" size={24} color="#37393C" />
-      </Pressable>
-      <View style={styles.bodaBrandPill}>
-        <Image source={assets.service.boda} resizeMode="contain" style={styles.bodaBrandIcon} />
-        <Text style={styles.bodaBrandText}>Boda</Text>
-      </View>
-      <Pressable onPress={onMenu} style={({ pressed }) => [styles.menuSquare, pressed && styles.pressed]}>
-        <Feather name="menu" size={23} color={COLORS.yellow} />
-      </Pressable>
-    </View>
+    <KareebuPageHeader
+      title="Boda"
+      variant="transaction"
+      backEnabled
+      onBack={onBack}
+      rightIcon="menu"
+      onRightAction={onMenu}
+    />
   );
 }
 
@@ -192,7 +174,7 @@ export function KareebuBodaHomeScreen({
   actions: MobilityActions;
 }) {
   const { width } = useWindowDimensions();
-  const region = useMemo(() => regionForCity(data.city || 'Kampala'), [data.city]);
+  const region = useMemo(() => marketConfig(data.country).map.primaryCityRegion, [data.country]);
   const bodas = useMemo(() => nearbyBodas(region), [region]);
   const pickupName = data.pickup?.trim() ? data.pickup : 'Kareebu Boda pickup';
   const pickupSubtitle = `${data.city || 'Kampala'}, ${data.country || 'Uganda'}`;
@@ -200,6 +182,8 @@ export function KareebuBodaHomeScreen({
     const available = width - 28 - 18;
     return Math.max(82, Math.min(108, Math.floor(available / 4)));
   }, [width]);
+  const bodaContextPromotions=promotionsFor({service:'boda',country:data.country,city:data.city},'contextual').slice(0,3);
+  const places=useMemo(()=>mobilityPlaces(data.country),[data.country]);
 
   const beginBodaTrip = () => {
     actions.selectMode('BODA');
@@ -220,7 +204,7 @@ export function KareebuBodaHomeScreen({
     onPress: () => void;
   }> = [
     { label: 'Schedule', body: 'Ride later', icon: 'calendar-outline', onPress: scheduleBoda },
-    { label: 'For a Friend', body: 'Book for them', icon: 'people-outline', onPress: beginBodaTrip },
+    { label: 'Send', body: 'Small delivery', icon: 'cube-outline', onPress: () => actions.go('parcel') },
     { label: 'Safety', body: 'Ride protected', icon: 'shield-checkmark-outline', onPress: () => actions.go('rideSafety') },
     { label: 'Your trips', body: 'Past bodas', icon: 'time-outline', onPress: () => actions.go('rideHistory') },
   ];
@@ -249,35 +233,7 @@ export function KareebuBodaHomeScreen({
 
           <BackMenuHeader onBack={() => actions.go('home')} onMenu={() => actions.go('rideSettings')} />
 
-          <View style={styles.searchPanel}>
-            <View style={styles.searchPanelTop}>
-              <Pressable onPress={beginBodaTrip} style={({ pressed }) => [styles.searchBigButton, pressed && styles.pressed]}>
-                <View style={styles.searchIconBox}>
-                  <Feather name="search" size={27} color="#FFFFFF" />
-                </View>
-                <View style={styles.searchCopy}>
-                  <Text style={styles.searchBigText}>Where to?</Text>
-                  <Text style={styles.searchSubText}>Boda pickup in 2–5 min</Text>
-                </View>
-              </Pressable>
-
-              <Pressable onPress={scheduleBoda} style={({ pressed }) => [styles.laterButton, pressed && styles.pressed]}>
-                <Ionicons name="calendar-outline" size={19} color="#44484C" />
-                <Text style={styles.laterButtonText}>{data.scheduledTrip ? 'Scheduled' : 'Later'}</Text>
-              </Pressable>
-            </View>
-
-            <Pressable onPress={beginBodaTrip} style={({ pressed }) => [styles.pickupPanel, pressed && styles.pressed]}>
-              <View style={styles.pickupBikeIcon}>
-                <MaterialCommunityIcons name="motorbike" size={20} color={COLORS.black} />
-              </View>
-              <View style={styles.pickupPanelCopy}>
-                <Text numberOfLines={1} style={styles.pickupPanelTitle}>{pickupName}</Text>
-                <Text numberOfLines={1} style={styles.pickupPanelSubtitle}>{pickupSubtitle}</Text>
-              </View>
-              <Feather name="chevron-right" size={20} color="#777C80" />
-            </Pressable>
-          </View>
+          <KareebuDestinationCard mode="BODA" pickup={pickupName} city={pickupSubtitle} onDestination={beginBodaTrip} onPickup={beginBodaTrip} onLater={scheduleBoda}/>
 
           <View style={styles.mapAvailability}>
             <View style={styles.liveDot} />
@@ -286,8 +242,13 @@ export function KareebuBodaHomeScreen({
         </View>
 
         <View style={styles.contentSection}>
+          <Text style={styles.pageHeading}>Saved & recent places</Text>
+          <Text style={styles.pageSubheading}>Choose a familiar place or search somewhere new.</Text>
+          <MobilityPlaceRail places={places} onPress={(place)=>actions.prefillDestination(place)}/>
+
+          <PromotionalImageBanner image={promotionalBannerAssets.boda.primary} accessibilityLabel="Explore Kareebu Boda" accessibilityHint="Opens Boda booking" onPress={beginBodaTrip}/>
+
           <Text style={styles.pageHeading}>Boda for every move</Text>
-          <Text style={styles.pageSubheading}>Fast city trips, designed around motorcycle travel.</Text>
 
           <View style={styles.tileRow}>
             {shortcuts.map((shortcut) => (
@@ -302,13 +263,15 @@ export function KareebuBodaHomeScreen({
             ))}
           </View>
 
+          {bodaContextPromotions.length?<View style={{marginHorizontal:-16,marginTop:8}}><PromoCarousel campaigns={bodaContextPromotions} onPress={(campaign)=>actions.go(campaign.ctaScreen)} autoAdvanceMs={0}/></View>:null}
+
           <Pressable onPress={() => actions.go('plusManage')} style={({ pressed }) => [styles.plusBanner, pressed && styles.pressed]}>
             <View style={styles.plusPatternOne} />
             <View style={styles.plusPatternTwo} />
             <View style={styles.plusCopy}>
               <Text style={styles.plusEyebrow}>Kareebu+ Boda</Text>
-              <Text style={styles.plusTitle}>Faster pickup. Member fares.</Text>
-              <Text style={styles.plusBody}>Unlock Boda savings and priority matching across the city.</Text>
+              <Text style={styles.plusTitle}>See configured member benefits</Text>
+              <Text style={styles.plusBody}>Eligible Boda savings appear here only when enabled for your market.</Text>
             </View>
             <View style={styles.plusBodaBubble}>
               <Image source={assets.service.boda} resizeMode="contain" style={styles.plusBodaImage} />
@@ -339,10 +302,10 @@ export function KareebuBodaHomeScreen({
           </View>
 
           <View style={styles.safetyGrid}>
-            <SafetyFact icon="shield-checkmark-outline" title="Helmet included" body="Safety helmet for every passenger." />
+            <SafetyFact icon="shield-checkmark-outline" title="Helmet status" body="Confirm helmet availability before starting your trip." />
             <SafetyFact icon="person-outline" title="1 passenger" body="One rider per Boda booking." />
             <SafetyFact icon="bag-handle-outline" title="Light luggage" body="Small bags and backpacks only." />
-            <SafetyFact icon="checkmark-circle-outline" title="Verified Captain" body="Identity and motorcycle checked." />
+            <SafetyFact icon="checkmark-circle-outline" title="Rider identity" body="Live identity and bike checks appear when the safety service is connected." />
           </View>
 
           <View style={styles.sectionHeaderRow}>
@@ -350,10 +313,7 @@ export function KareebuBodaHomeScreen({
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.routeRail}>
-            <PopularRoute title="Acacia Mall" subtitle="Kololo · quick Boda trip" onPress={beginBodaTrip}/>
-            <PopularRoute title="Ntinda" subtitle="Fast through city traffic" onPress={beginBodaTrip}/>
-            <PopularRoute title="Lugogo" subtitle="Shops & business district" onPress={beginBodaTrip}/>
-            <PopularRoute title="Nakasero" subtitle="Central Kampala" onPress={beginBodaTrip}/>
+            {places.filter(place=>place.kind==='recent'||place.kind==='popular').map(place=><PopularRoute key={place.id} title={place.label} subtitle={`${place.address} · Boda route`} onPress={()=>actions.prefillDestination(place)}/>)}
           </ScrollView>
 
           <View style={styles.sectionHeaderRow}>

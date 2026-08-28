@@ -18,6 +18,7 @@ export function useKareebuDiscoveryController(input:{
   initialVerticalTitle?:string;
   onOpenItem:(item:UnifiedCatalogItem)=>void;
   onOpenMembership:()=>void;
+  onOpenVertical?:(id:string,title:string)=>void;
 }):KareebuDiscoveryController{
   const initialVertical=useMemo(()=>{
     const candidates=KAREEBU_CATALOG_VERTICALS.filter((node)=>node.domainId===input.domainId);
@@ -80,6 +81,7 @@ export function useKareebuDiscoveryController(input:{
       setActiveCategoryId(null);
       setActiveSubcategoryId(null);
     },
+    openVertical:(id,title)=>input.onOpenVertical?.(id,title),
     selectCategory:(id)=>{
       setActiveCategoryId(id);
       setActiveSubcategoryId(null);

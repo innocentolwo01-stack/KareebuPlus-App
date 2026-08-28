@@ -1,6 +1,7 @@
 import type { RideId } from '../types';
 import type { VehicleMode } from './vehicle';
 import { applyDemand, demandQuote, type DemandLevel } from '../pricing/demand';
+import { mobilityPricing } from '../markets/config';
 
 export type RideProduct = 'instant' | 'scheduled' | 'work' | 'school';
 
@@ -46,6 +47,9 @@ export type RideFareBreakdown = {
   membershipSaving: number;
   promoDiscount: number;
   total: number;
+  estimated: boolean;
+  isLive: boolean;
+  source: 'market-fixture';
 };
 
 export type RideReceipt = {
@@ -150,6 +154,7 @@ export function rideFareBreakdown(params: {
   promoCode?: string;
   activeRequests?: number;
   availableCaptains?: number;
+  country?: string;
 }): RideFareBreakdown {
   const baseFare = Math.round(params.offeredFare ?? params.baseFare);
   const quote = demandQuote(params.vehicleMode === 'BODA' ? 'boda' : 'ride', {
@@ -159,12 +164,13 @@ export function rideFareBreakdown(params: {
   });
   const demand = applyDemand(baseFare, quote);
   const demandAdjustment = demand.demandAdjustment;
-  const bookingFee = 500;
-  const priorityFee = params.priority ? 1000 : 0;
+  const pricing = mobilityPricing(params.country ?? 'Uganda', params.vehicleMode);
+  const bookingFee = pricing.bookingFeeUgx;
+  const priorityFee = params.priority ? Math.round(pricing.minimumFareUgx * 0.2) : 0;
   const membershipSaving = params.member ? Math.min(1200, Math.round(baseFare * 0.06)) : 0;
   const promoDiscount = (params.promoCode ?? '').trim().toUpperCase() === 'RIDE10' ? Math.min(2500, Math.round(baseFare * 0.1)) : 0;
-  const total = Math.max(1000, baseFare + demandAdjustment + bookingFee + priorityFee - membershipSaving - promoDiscount);
-  return { baseFare, demandAdjustment, demandMultiplier: quote.multiplier, demandLevel: quote.level, demandLabel: quote.label, demandReason: quote.reason, bookingFee, priorityFee, membershipSaving, promoDiscount, total };
+  const total = Math.max(pricing.minimumFareUgx, baseFare + demandAdjustment + bookingFee + priorityFee - membershipSaving - promoDiscount);
+  return { baseFare, demandAdjustment, demandMultiplier: quote.multiplier, demandLevel: quote.level, demandLabel: quote.label, demandReason: quote.reason, bookingFee, priorityFee, membershipSaving, promoDiscount, total, estimated: true, isLive: false, source: 'market-fixture' };
 }
 
 export function rideLabel(id: RideId): string {

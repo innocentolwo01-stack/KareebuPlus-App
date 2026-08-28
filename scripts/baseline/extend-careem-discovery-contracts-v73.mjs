@@ -24,8 +24,8 @@ check('marketplace','discovery uses vertical → category → subcategory hierar
   discoveryDocument.includes("type:'vertical-grid'") &&
   discoveryDocument.includes("type:'category-rail'") &&
   discoveryDocument.includes("type:'subcategory-grid'"));
-check('marketplace','discovery includes hero promotion carousel',
-  discoveryDocument.includes("type:'hero-carousel'"));
+check('marketplace','discovery uses campaign-backed promotion hero',
+  discoveryScreen.includes('promotionsFor(') && discoveryScreen.includes('<PromotionHero campaign={heroPromotion}') && !discoveryDocument.includes("type:'hero-carousel'"));
 check('marketplace','discovery includes recommended and all-item sections',
   discoveryDocument.includes("type:'item-rail'") && discoveryDocument.includes("type:'item-list'"));
 check('marketplace','all five new customer discovery routes render',

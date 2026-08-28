@@ -1,4 +1,18 @@
-export type FoodImageKey = 'cafeJavas' | 'chickenTonight' | 'tamaraThai';
+import type { ContentTrustMetadata, ReferencePrice } from './content/contentTrust';
+import { REFERENCE_VERIFIED_AT } from './content/contentTrust';
+
+export type FoodImageKey =
+  | 'cafeJavas'
+  | 'chickenTonight'
+  | 'tamaraThai'
+  | 'cafeJavasLoadedChapati'
+  | 'chickenTonight12PcCombo'
+  | 'javaHouseChickenMushroomCurry';
+export type RestaurantLogoKey =
+  | 'cafeJavas'
+  | 'chickenTonight'
+  | 'javaHouse'
+  | 'pizzaInn';
 export type RestaurantCategory = 'Burgers' | 'Chicken' | 'Pizza' | 'Local dishes' | 'Grills' | 'Healthy' | 'Desserts' | 'Coffee';
 
 export type DemoMenuItem = {
@@ -9,7 +23,11 @@ export type DemoMenuItem = {
   category: string;
   image: FoodImageKey;
   popular?: boolean;
+  isBestSeller?: boolean;
+  imageSource?: 'restaurant-catalogue';
   badge?: string;
+  contentTrust?: ContentTrustMetadata;
+  referencePrice?: ReferencePrice;
 };
 
 export type DemoRestaurant = {
@@ -17,6 +35,9 @@ export type DemoRestaurant = {
   name: string;
   cuisine: string;
   image: FoodImageKey;
+  logo?: RestaurantLogoKey;
+  logoBackgroundColor?: string;
+  isPopularRestaurant?: boolean;
   photoUrl?: string;
   neighborhood?: string;
   priceLevel?: '$' | '$$' | '$$$';
@@ -30,14 +51,16 @@ export type DemoRestaurant = {
   plus?: boolean;
   categories: RestaurantCategory[];
   menu: DemoMenuItem[];
+  contentTrust?: ContentTrustMetadata;
 };
 
 const javasMenu: DemoMenuItem[] = [
-  { id:'javas-breakfast', name:'Javas Big Breakfast', description:'Eggs, beef sausage, baked beans, potatoes, toast and fresh fruit.', price:18000, category:'Breakfast', image:'cafeJavas', popular:true, badge:'Popular' },
-  { id:'javas-rolex', name:'Breakfast Rolex', description:'Two eggs, vegetables and avocado rolled in a warm chapati.', price:12000, category:'Breakfast', image:'cafeJavas' },
-  { id:'javas-pancakes', name:'Banana Pancakes', description:'Fluffy pancakes with banana, honey and seasonal fruit.', price:14000, category:'Breakfast', image:'tamaraThai' },
+  { id:'javas-loaded-chapati-combo', name:'Loaded Chapati Combo', description:'Chapati, fried spinach, two sausages and two eggs, served with home fries and baked beans.', price:34000, category:'Breakfast', image:'cafeJavasLoadedChapati', popular:true, isBestSeller:true, imageSource:'restaurant-catalogue', badge:'Best seller', referencePrice:{amount:34000,currency:'UGX',lastVerifiedAt:REFERENCE_VERIFIED_AT,priceIsLive:false} },
+  { id:'javas-breakfast', name:"CJ's Fit Breakfast", description:'A published Café Javas breakfast reference; composition and availability must be confirmed at checkout.', price:34000, category:'Breakfast', image:'cafeJavas', popular:true, referencePrice:{amount:34000,currency:'UGX',lastVerifiedAt:REFERENCE_VERIFIED_AT,priceIsLive:false} },
+  { id:'javas-wings', name:'Chicken Wings', description:'Published Café Javas menu reference. Live availability is not connected.', price:36500, category:'Mains', image:'chickenTonight', referencePrice:{amount:36500,currency:'UGX',lastVerifiedAt:REFERENCE_VERIFIED_AT,priceIsLive:false} },
+  { id:'javas-mango', name:'Mango Juice', description:'Published Café Javas drinks reference. Live availability is not connected.', price:14500, category:'Drinks', image:'tamaraThai', referencePrice:{amount:14500,currency:'UGX',lastVerifiedAt:REFERENCE_VERIFIED_AT,priceIsLive:false} },
   { id:'javas-chicken-sandwich', name:'Grilled Chicken Sandwich', description:'Grilled chicken breast, lettuce, tomato, cheese and house sauce.', price:18500, category:'Burgers & sandwiches', image:'chickenTonight', popular:true },
-  { id:'javas-beef-burger', name:'Classic Beef Burger', description:'Beef patty, cheddar, caramelised onions, lettuce and fries.', price:22000, category:'Burgers & sandwiches', image:'cafeJavas', badge:'20% off' },
+  { id:'javas-beef-burger', name:'Classic Beef Burger', description:'Beef patty, cheddar, caramelised onions, lettuce and fries.', price:22000, category:'Burgers & sandwiches', image:'cafeJavas' },
   { id:'javas-club', name:'Javas Club Sandwich', description:'Chicken, egg, beef bacon, tomato and lettuce with fries.', price:21500, category:'Burgers & sandwiches', image:'cafeJavas' },
   { id:'javas-chicken-curry', name:'Creamy Chicken Curry', description:'Chicken curry served with steamed rice and kachumbari.', price:24000, category:'Mains', image:'tamaraThai' },
   { id:'javas-tilapia', name:'Grilled Tilapia Fillet', description:'Tilapia fillet, lemon herb sauce, vegetables and chips.', price:28500, category:'Mains', image:'chickenTonight' },
@@ -49,9 +72,10 @@ const javasMenu: DemoMenuItem[] = [
 ];
 
 const chickenMenu: DemoMenuItem[] = [
+  { id:'ct-12pc-combo', name:'12pc Chicken Combo', description:'Twelve pieces of crispy chicken with two jumbo chips, coleslaw and Pepsi.', price:115000, category:'Chicken combos', image:'chickenTonight12PcCombo', popular:true, isBestSeller:true, imageSource:'restaurant-catalogue', badge:'Best seller', referencePrice:{amount:115000,currency:'UGX',lastVerifiedAt:REFERENCE_VERIFIED_AT,priceIsLive:false} },
   { id:'ct-quarter', name:'Quarter Chicken Meal', description:'Flame-grilled chicken, chips, coleslaw and chilli sauce.', price:16500, category:'Chicken', image:'chickenTonight', popular:true, badge:'Best seller' },
   { id:'ct-half', name:'Half Chicken Meal', description:'Half flame-grilled chicken with your choice of two sides.', price:26000, category:'Chicken', image:'chickenTonight' },
-  { id:'ct-family', name:'Family Chicken Feast', description:'Whole chicken, large chips, salad, four rolls and sauces.', price:52000, category:'Sharing', image:'chickenTonight', badge:'Save UGX 8,000' },
+  { id:'ct-family', name:'Family Chicken Feast', description:'Whole chicken, large chips, salad, four rolls and sauces.', price:52000, category:'Sharing', image:'chickenTonight' },
   { id:'ct-wings6', name:'6 Spicy Wings', description:'Crispy wings tossed in house chilli glaze.', price:14500, category:'Chicken', image:'chickenTonight' },
   { id:'ct-wings12', name:'12 Spicy Wings', description:'Twelve crispy wings with two dipping sauces.', price:26000, category:'Chicken', image:'chickenTonight' },
   { id:'ct-wrap', name:'Grilled Chicken Wrap', description:'Chicken strips, lettuce, tomato, slaw and garlic mayo.', price:15500, category:'Wraps', image:'cafeJavas' },
@@ -65,7 +89,7 @@ const chickenMenu: DemoMenuItem[] = [
 
 const pizzaMenu: DemoMenuItem[] = [
   { id:'pi-margherita', name:'Margherita', description:'Tomato sauce, mozzarella and fresh basil.', price:22000, category:'Pizza', image:'cafeJavas' },
-  { id:'pi-chicken', name:'BBQ Chicken Pizza', description:'BBQ chicken, red onion, mozzarella and peppers.', price:28500, category:'Pizza', image:'chickenTonight', popular:true, badge:'25% off' },
+  { id:'pi-chicken', name:'BBQ Chicken Pizza', description:'BBQ chicken, red onion, mozzarella and peppers.', price:28500, category:'Pizza', image:'chickenTonight', popular:true },
   { id:'pi-meat', name:'Meat Deluxe Pizza', description:'Beef, chicken, sausage, peppers and mozzarella.', price:32000, category:'Pizza', image:'chickenTonight' },
   { id:'pi-veggie', name:'Garden Veggie Pizza', description:'Mushrooms, peppers, onion, olives and mozzarella.', price:26000, category:'Pizza', image:'tamaraThai' },
   { id:'pi-hawaiian', name:'Hawaiian Chicken Pizza', description:'Chicken, pineapple, mozzarella and tomato sauce.', price:29000, category:'Pizza', image:'cafeJavas' },
@@ -76,6 +100,11 @@ const pizzaMenu: DemoMenuItem[] = [
   { id:'pi-coleslaw', name:'Fresh Coleslaw', description:'Crunchy cabbage, carrot and creamy dressing.', price:6000, category:'Sides', image:'tamaraThai' },
   { id:'pi-soda', name:'1L Soda', description:'Choice of Coke, Fanta or Sprite.', price:6000, category:'Drinks', image:'tamaraThai' },
   { id:'pi-brownie', name:'Chocolate Brownie', description:'Warm chocolate brownie with sauce.', price:9000, category:'Desserts', image:'cafeJavas' },
+];
+
+const javaHouseMenu: DemoMenuItem[] = [
+  { id:'java-chicken-mushroom-medley-curry', name:'Chicken & Mushroom Medley Curry', description:'Chicken and mushroom curry served with rice and avocado.', price:36000, category:'Signature dishes', image:'javaHouseChickenMushroomCurry', popular:true, isBestSeller:true, imageSource:'restaurant-catalogue', badge:'Best seller', referencePrice:{amount:36000,currency:'UGX',lastVerifiedAt:REFERENCE_VERIFIED_AT,priceIsLive:false} },
+  ...menuWithPrefix('java', javasMenu.filter((item) => !item.isBestSeller)),
 ];
 
 function menuWithPrefix(prefix: string, base: DemoMenuItem[]): DemoMenuItem[] {
@@ -113,22 +142,38 @@ const RESTAURANT_LISTING_META: Partial<Record<string, Partial<DemoRestaurant>>> 
   'smokery': { photoUrl: REAL_RESTAURANT_PHOTOS.burger, neighborhood: 'Kampala', priceLevel: '$$$', featuredDish: 'BBQ & burgers' },
 };
 
+const CAFE_JAVAS_TRUST: ContentTrustMetadata = {
+  source: 'Café Javas official menu and locations',
+  sourceUrl: 'https://cafejavas.co.ug/user/menu',
+  sourceKind: 'merchant-official',
+  market: 'Uganda',
+  demoReference: true,
+  liveAvailability: false,
+  lastVerifiedAt: REFERENCE_VERIFIED_AT,
+  imageSource: 'editorial-reference',
+};
+
 export const DEMO_RESTAURANTS: DemoRestaurant[] = ([
-  { id:'cafe-javas', name:'Café Javas', cuisine:'Café · Burgers · Local favourites', image:'cafeJavas', rating:4.7, reviews:'2.4k', eta:'20–30 min', deliveryFee:2000, distance:'1.3 km', offer:'30% off selected meals', plus:true, categories:['Burgers','Local dishes','Coffee','Desserts'], menu:javasMenu },
-  { id:'chicken-tonight', name:'Chicken Tonight', cuisine:'Chicken · Grills · Fast food', image:'chickenTonight', rating:4.6, reviews:'1.9k', eta:'18–28 min', deliveryFee:2500, distance:'1.8 km', offer:'Free delivery over UGX 35,000', plus:true, categories:['Chicken','Grills','Healthy'], menu:chickenMenu },
-  { id:'pizza-inn', name:'Pizza Inn', cuisine:'Pizza · Wings · Desserts', image:'cafeJavas', rating:4.5, reviews:'3.1k', eta:'25–35 min', deliveryFee:3000, distance:'2.4 km', offer:'25% off pizzas', categories:['Pizza','Desserts'], menu:pizzaMenu },
-  { id:'tamarind-thai', name:'Tamarind Thai', cuisine:'Thai · Asian · Noodles', image:'tamaraThai', rating:4.8, reviews:'840', eta:'30–40 min', deliveryFee:3500, distance:'3.0 km', offer:'UGX 5,000 off over UGX 45,000', plus:true, categories:['Healthy','Grills'], menu:menuWithPrefix('thai', javasMenu.slice(5)) },
-  { id:'rolex-stop', name:'The Rolex Stop', cuisine:'Rolex · Chapati · Local', image:'chickenTonight', rating:4.6, reviews:'1.2k', eta:'12–20 min', deliveryFee:1500, distance:'0.8 km', offer:'Buy 2, get 1 free', categories:['Local dishes'], menu:menuWithPrefix('rolex', chickenMenu.slice(0,8)) },
-  { id:'kampala-grill', name:'Kampala Grill House', cuisine:'Grills · Steak · Local', image:'chickenTonight', rating:4.7, reviews:'960', eta:'28–38 min', deliveryFee:3000, distance:'2.7 km', offer:'20% off grills', categories:['Grills','Local dishes'], menu:menuWithPrefix('grill', javasMenu.slice(3,11)) },
-  { id:'java-house', name:'Java House', cuisine:'Coffee · Breakfast · Café', image:'cafeJavas', rating:4.6, reviews:'1.6k', eta:'20–32 min', deliveryFee:2500, distance:'1.9 km', offer:'Coffee + pastry bundle', categories:['Coffee','Desserts','Burgers'], menu:menuWithPrefix('java', javasMenu) },
-  { id:'urban-bowl', name:'Urban Bowl Kampala', cuisine:'Healthy · Bowls · Salads', image:'tamaraThai', rating:4.8, reviews:'620', eta:'18–25 min', deliveryFee:2000, distance:'1.5 km', offer:'Free delivery today', plus:true, categories:['Healthy'], menu:menuWithPrefix('bowl', chickenMenu.slice(6)) },
-  { id:'kampala-bites', name:'Kampala Bites', cuisine:'Local · African · Grills', image:'chickenTonight', rating:4.5, reviews:'1.1k', eta:'22–34 min', deliveryFee:1800, distance:'2.1 km', offer:'15% off local favourites', categories:['Local dishes','Grills'], menu:menuWithPrefix('bites', javasMenu.slice(6)) },
-  { id:'sweet-tooth', name:'Sweet Tooth', cuisine:'Desserts · Ice cream · Coffee', image:'tamaraThai', rating:4.7, reviews:'710', eta:'15–25 min', deliveryFee:2000, distance:'1.2 km', offer:'2 desserts for UGX 20,000', categories:['Desserts','Coffee'], menu:menuWithPrefix('sweet', javasMenu.slice(9)) },
-  { id:'roast-rhyme', name:'Roast & Rhyme', cuisine:'Grills · Chicken · Local favourites', image:'chickenTonight', rating:4.7, reviews:'1.3k', eta:'22–32 min', deliveryFee:2500, distance:'2.2 km', offer:'20% off selected grills', plus:true, categories:['Chicken','Grills','Local dishes'], menu:menuWithPrefix('roast', chickenMenu) },
-  { id:'smokery', name:'The Smokery', cuisine:'BBQ · Burgers · Grills', image:'chickenTonight', rating:4.8, reviews:'880', eta:'25–38 min', deliveryFee:3000, distance:'2.9 km', offer:'Free delivery over UGX 45,000', categories:['Burgers','Chicken','Grills'], menu:menuWithPrefix('smokery', [...chickenMenu.slice(0,8), ...javasMenu.slice(3,6)]) },
+  { id:'cafe-javas', name:'Café Javas', cuisine:'Café · Burgers · Local favourites', image:'cafeJavas', logo:'cafeJavas', logoBackgroundColor:'#123D35', isPopularRestaurant:true, rating:4.7, reviews:'2.4k', eta:'20–30 min', deliveryFee:2000, distance:'1.3 km', plus:true, categories:['Burgers','Local dishes','Coffee','Desserts'], menu:javasMenu },
+  { id:'chicken-tonight', name:'Chicken Tonight Uganda', cuisine:'Chicken · Grills · Fast food', image:'chickenTonight', logo:'chickenTonight', logoBackgroundColor:'#FFFFFF', isPopularRestaurant:true, rating:4.6, reviews:'1.9k', eta:'18–28 min', deliveryFee:2500, distance:'1.8 km', plus:true, categories:['Chicken','Grills','Healthy'], menu:chickenMenu },
+  { id:'pizza-inn', name:'Pizza Inn', cuisine:'Pizza · Wings · Desserts', image:'cafeJavas', logo:'pizzaInn', logoBackgroundColor:'#FFFFFF', isPopularRestaurant:true, rating:4.5, reviews:'3.1k', eta:'25–35 min', deliveryFee:3000, distance:'2.4 km', categories:['Pizza','Desserts'], menu:pizzaMenu },
+  { id:'tamarind-thai', name:'Tamarind Thai', cuisine:'Thai · Asian · Noodles', image:'tamaraThai', rating:4.8, reviews:'840', eta:'30–40 min', deliveryFee:3500, distance:'3.0 km', plus:true, categories:['Healthy','Grills'], menu:menuWithPrefix('thai', javasMenu.slice(5)) },
+  { id:'rolex-stop', name:'The Rolex Stop', cuisine:'Rolex · Chapati · Local', image:'chickenTonight', rating:4.6, reviews:'1.2k', eta:'12–20 min', deliveryFee:1500, distance:'0.8 km', categories:['Local dishes'], menu:menuWithPrefix('rolex', chickenMenu.slice(0,8)) },
+  { id:'kampala-grill', name:'Kampala Grill House', cuisine:'Grills · Steak · Local', image:'chickenTonight', rating:4.7, reviews:'960', eta:'28–38 min', deliveryFee:3000, distance:'2.7 km', categories:['Grills','Local dishes'], menu:menuWithPrefix('grill', javasMenu.slice(3,11)) },
+  { id:'java-house', name:'Java House Uganda', cuisine:'Coffee · Breakfast · Café', image:'cafeJavas', logo:'javaHouse', logoBackgroundColor:'#FFFFFF', isPopularRestaurant:true, rating:4.6, reviews:'1.6k', eta:'20–32 min', deliveryFee:2500, distance:'1.9 km', categories:['Coffee','Desserts','Burgers'], menu:javaHouseMenu },
+  { id:'urban-bowl', name:'Urban Bowl Kampala', cuisine:'Healthy · Bowls · Salads', image:'tamaraThai', rating:4.8, reviews:'620', eta:'18–25 min', deliveryFee:2000, distance:'1.5 km', plus:true, categories:['Healthy'], menu:menuWithPrefix('bowl', chickenMenu.slice(6)) },
+  { id:'kampala-bites', name:'Kampala Bites', cuisine:'Local · African · Grills', image:'chickenTonight', rating:4.5, reviews:'1.1k', eta:'22–34 min', deliveryFee:1800, distance:'2.1 km', categories:['Local dishes','Grills'], menu:menuWithPrefix('bites', javasMenu.slice(6)) },
+  { id:'sweet-tooth', name:'Sweet Tooth', cuisine:'Desserts · Ice cream · Coffee', image:'tamaraThai', rating:4.7, reviews:'710', eta:'15–25 min', deliveryFee:2000, distance:'1.2 km', categories:['Desserts','Coffee'], menu:menuWithPrefix('sweet', javasMenu.slice(9)) },
+  { id:'roast-rhyme', name:'Roast & Rhyme', cuisine:'Grills · Chicken · Local favourites', image:'chickenTonight', rating:4.7, reviews:'1.3k', eta:'22–32 min', deliveryFee:2500, distance:'2.2 km', plus:true, categories:['Chicken','Grills','Local dishes'], menu:menuWithPrefix('roast', chickenMenu) },
+  { id:'smokery', name:'The Smokery', cuisine:'BBQ · Burgers · Grills', image:'chickenTonight', rating:4.8, reviews:'880', eta:'25–38 min', deliveryFee:3000, distance:'2.9 km', categories:['Burgers','Chicken','Grills'], menu:menuWithPrefix('smokery', [...chickenMenu.slice(0,8), ...javasMenu.slice(3,6)]) },
 ] as DemoRestaurant[]).map((restaurant) => ({
   ...restaurant,
   ...(RESTAURANT_LISTING_META[restaurant.id] ?? {}),
+  contentTrust: restaurant.id === 'cafe-javas' ? CAFE_JAVAS_TRUST : {
+    source: 'Kareebu editorial fixture', sourceKind: 'kareebu-editorial', market: 'multi-market',
+    demoReference: true, liveAvailability: false, imageSource: 'editorial-reference',
+  },
+  menu: restaurant.menu.map((item) => ({ ...item, contentTrust: restaurant.id === 'cafe-javas' ? CAFE_JAVAS_TRUST : undefined })),
 }));
 
 export type DemoShop = {
@@ -146,25 +191,62 @@ export type DemoShop = {
   deal: string;
   icon: 'medical' | 'cart' | 'bag' | 'phone-portrait' | 'paw' | 'sparkles' | 'home';
   tone: 'black' | 'yellow' | 'red';
+  contentTrust?: ContentTrustMetadata;
 };
 
 const REAL_SHOP_PHOTOS = {
-  grocery: 'https://images.unsplash.com/photo-1670684684445-a4504dca0bbc?auto=format&fit=crop&w=1200&q=82',
-  produce: 'https://images.unsplash.com/photo-1775830443507-2a047e6eb49a?auto=format&fit=crop&w=1200&q=82',
-  pharmacy: 'https://images.unsplash.com/photo-1696861286643-341a8d7a79e9?auto=format&fit=crop&w=1200&q=82',
-  electronics: 'https://images.unsplash.com/photo-1641440615796-5302077ce9fe?auto=format&fit=crop&w=1200&q=82',
-  pets: 'https://images.unsplash.com/photo-1722336131103-cfaa6461e8d6?auto=format&fit=crop&w=1200&q=82',
-  beauty: 'https://images.unsplash.com/photo-1757800946096-b3f14edd6809?auto=format&fit=crop&w=1200&q=82',
-  home: 'https://images.unsplash.com/photo-1770385605649-11de1a033064?auto=format&fit=crop&w=1200&q=82',
+  grocery: [
+    'https://images.unsplash.com/photo-1670684684445-a4504dca0bbc?auto=format&fit=crop&w=1200&q=82',
+    'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=82',
+    'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?auto=format&fit=crop&w=1200&q=82',
+  ],
+  produce: [
+    'https://images.unsplash.com/photo-1775830443507-2a047e6eb49a?auto=format&fit=crop&w=1200&q=82',
+    'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=1200&q=82',
+    'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=82',
+  ],
+  pharmacy: [
+    'https://images.unsplash.com/photo-1696861286643-341a8d7a79e9?auto=format&fit=crop&w=1200&q=82',
+    'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=82',
+    'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=1200&q=82',
+  ],
+  electronics: [
+    'https://images.unsplash.com/photo-1641440615796-5302077ce9fe?auto=format&fit=crop&w=1200&q=82',
+    'https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=1200&q=82',
+    'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=82',
+  ],
+  pets: [
+    'https://images.unsplash.com/photo-1722336131103-cfaa6461e8d6?auto=format&fit=crop&w=1200&q=82',
+    'https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=1200&q=82',
+    'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=1200&q=82',
+  ],
+  beauty: [
+    'https://images.unsplash.com/photo-1757800946096-b3f14edd6809?auto=format&fit=crop&w=1200&q=82',
+    'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1200&q=82',
+    'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=1200&q=82',
+  ],
+  home: [
+    'https://images.unsplash.com/photo-1770385605649-11de1a033064?auto=format&fit=crop&w=1200&q=82',
+    'https://images.unsplash.com/photo-1484101403633-562f891dc89a?auto=format&fit=crop&w=1200&q=82',
+    'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1200&q=82',
+  ],
 } as const;
 
+function stableShopHash(value:string){
+  let hash=2166136261;
+  for(let index=0;index<value.length;index+=1){hash^=value.charCodeAt(index);hash=Math.imul(hash,16777619);}
+  return hash>>>0;
+}
+
+function shopPhotoFrom(pool:readonly string[],shop:DemoShop){return pool[stableShopHash(shop.id)%pool.length]!;}
+
 function realShopPhoto(shop: DemoShop): string {
-  if (shop.category === 'Pharmacy' || shop.category === 'Nutrition' || shop.category === 'Eye care') return REAL_SHOP_PHOTOS.pharmacy;
-  if (shop.category === 'Electronics' || shop.category === 'Marketplace') return REAL_SHOP_PHOTOS.electronics;
-  if (shop.category === 'Beauty') return REAL_SHOP_PHOTOS.beauty;
-  if (shop.category === 'Pets') return REAL_SHOP_PHOTOS.pets;
-  if (shop.category === 'Home') return REAL_SHOP_PHOTOS.home;
-  return ['quality', 'village-tz', 'quickmart'].includes(shop.id) ? REAL_SHOP_PHOTOS.produce : REAL_SHOP_PHOTOS.grocery;
+  if (shop.category === 'Pharmacy' || shop.category === 'Nutrition' || shop.category === 'Eye care') return shopPhotoFrom(REAL_SHOP_PHOTOS.pharmacy,shop);
+  if (shop.category === 'Electronics' || shop.category === 'Marketplace') return shopPhotoFrom(REAL_SHOP_PHOTOS.electronics,shop);
+  if (shop.category === 'Beauty') return shopPhotoFrom(REAL_SHOP_PHOTOS.beauty,shop);
+  if (shop.category === 'Pets') return shopPhotoFrom(REAL_SHOP_PHOTOS.pets,shop);
+  if (shop.category === 'Home') return shopPhotoFrom(REAL_SHOP_PHOTOS.home,shop);
+  return shopPhotoFrom(['quality', 'village-tz', 'quickmart'].includes(shop.id) ? REAL_SHOP_PHOTOS.produce : REAL_SHOP_PHOTOS.grocery,shop);
 }
 
 function shopInventoryHint(shop: DemoShop): string {
@@ -179,27 +261,45 @@ function shopInventoryHint(shop: DemoShop): string {
   return shop.deal;
 }
 
+function shopTrust(shop: DemoShop): ContentTrustMetadata {
+  const official: Partial<Record<string, { source:string; sourceUrl:string; market:'Uganda'|'Kenya'|'Tanzania' }>> = {
+    carrefour: { source:'Carrefour Uganda official store directory', sourceUrl:'https://www.carrefouruganda.com/find-store', market:'Uganda' },
+    naivas: { source:'Naivas official online catalogue', sourceUrl:'https://naivas.online/', market:'Kenya' },
+    quickmart: { source:'Quickmart Kenya official site', sourceUrl:'https://www.quickmart.co.ke/', market:'Kenya' },
+    'shoppers-tz': { source:'Shoppers Supermarket official catalogue', sourceUrl:'https://shoppers.co.tz/', market:'Tanzania' },
+  };
+  const reference = official[shop.id];
+  return reference ? {
+    ...reference, sourceKind:'merchant-official', demoReference:true, liveAvailability:false,
+    lastVerifiedAt:REFERENCE_VERIFIED_AT, imageSource:'editorial-reference',
+  } : {
+    source:'Kareebu editorial fixture', sourceKind:'kareebu-editorial', market:'multi-market',
+    demoReference:true, liveAvailability:false, imageSource:'editorial-reference',
+  };
+}
+
 export const DEMO_SHOPS: DemoShop[] = ([
   { id:'goodlife', name:'Goodlife Pharmacy', category:'Pharmacy', rating:4.8, eta:'12–20 min', minOrder:20000, deliveryFee:0, deal:'Kareebu+ wellness delivery', icon:'medical', tone:'black' },
+  { id:'gentlemans-pharmacy', name:"Gentleman's Pharmacy", category:'Pharmacy', rating:4.6, eta:'20–35 min', minOrder:20000, deliveryFee:2000, deal:'Health, medicine & personal care', icon:'medical', tone:'black' },
   { id:'carrefour', name:'Carrefour Uganda', category:'Groceries', rating:4.7, eta:'25–35 min', minOrder:25000, deliveryFee:2500, deal:'Groceries, fresh food & household', icon:'cart', tone:'red' },
   { id:'capital', name:'Capital Shoppers', category:'Groceries', rating:4.7, eta:'20–30 min', minOrder:25000, deliveryFee:2000, deal:'Groceries & household shopping', icon:'cart', tone:'red' },
   { id:'quality', name:'Quality Supermarket', category:'Groceries', rating:4.5, eta:'25–35 min', minOrder:25000, deliveryFee:2500, deal:'Fresh produce & home essentials', icon:'cart', tone:'black' },
   { id:'jumia', name:'Jumia Uganda', category:'Marketplace', rating:4.6, eta:'30–45 min', minOrder:20000, deliveryFee:3000, deal:'Tech, home & everyday essentials', icon:'phone-portrait', tone:'yellow' },
-  { id:'beautybasket', name:'Beauty Basket', category:'Beauty', rating:4.7, eta:'20–30 min', minOrder:20000, deliveryFee:2000, deal:'Up to 35% off beauty', icon:'sparkles', tone:'red' },
+  { id:'beautybasket', name:'Beauty Basket', category:'Beauty', rating:4.7, eta:'20–30 min', minOrder:20000, deliveryFee:2000, deal:'Skincare, beauty & personal care', icon:'sparkles', tone:'red' },
   { id:'techpoint', name:'TechPoint Kampala', category:'Electronics', rating:4.6, eta:'35–50 min', minOrder:40000, deliveryFee:5000, deal:'Accessories from UGX 15,000', icon:'phone-portrait', tone:'black' },
-  { id:'homehub', name:'HomeHub Uganda', category:'Home', rating:4.5, eta:'35–55 min', minOrder:35000, deliveryFee:4500, deal:'20% off home basics', icon:'home', tone:'yellow' },
-  { id:'petcare', name:'PetCare Kampala', category:'Pets', rating:4.8, eta:'25–40 min', minOrder:25000, deliveryFee:2500, deal:'Free delivery over UGX 60,000', icon:'paw', tone:'red' },
-  { id:'kareebu-health', name:'Kareebu Health', category:'Pharmacy', rating:4.9, eta:'10–18 min', minOrder:15000, deliveryFee:0, deal:'Kareebu+ member prices', icon:'medical', tone:'yellow' },
+  { id:'homehub', name:'HomeHub Uganda', category:'Home', rating:4.5, eta:'35–55 min', minOrder:35000, deliveryFee:4500, deal:'Homeware, cleaning & essentials', icon:'home', tone:'yellow' },
+  { id:'petcare', name:'PetCare Kampala', category:'Pets', rating:4.8, eta:'25–40 min', minOrder:25000, deliveryFee:2500, deal:'Pet food, care & accessories', icon:'paw', tone:'red' },
+  { id:'kareebu-health', name:'Kareebu Health', category:'Pharmacy', rating:4.9, eta:'10–18 min', minOrder:15000, deliveryFee:0, deal:'Health & wellness essentials', icon:'medical', tone:'yellow' },
   { id:'nutrition-hub', name:'Nutrition Hub', category:'Nutrition', rating:4.6, eta:'20–35 min', minOrder:25000, deliveryFee:2000, deal:'Protein & wellness bundles', icon:'bag', tone:'black' },
-  { id:'eye-care', name:'Vision & Eye Care', category:'Eye care', rating:4.7, eta:'25–40 min', minOrder:30000, deliveryFee:3000, deal:'Save on contact lens care', icon:'bag', tone:'red' },
-  { id:'healthplus', name:'HealthPlus Pharmacy', category:'Pharmacy', rating:4.7, eta:'20–35 min', minOrder:25000, deliveryFee:0, deal:'30% off selected wellness items', icon:'medical', tone:'yellow' },
-  { id:'sunlife', name:'Sunlife Pharmacy', category:'Pharmacy', rating:4.5, eta:'20–35 min', minOrder:20000, deliveryFee:0, deal:'Up to 70% off selected lines', icon:'medical', tone:'red' },
-  { id:'tyros', name:'Tyros Pharmacy', category:'Pharmacy', rating:4.6, eta:'20–35 min', minOrder:20000, deliveryFee:2000, deal:'Kareebu+ wellness picks', icon:'medical', tone:'black' },
-  { id:'silverglow', name:'Silver Glow Pharma', category:'Pharmacy', rating:4.5, eta:'25–40 min', minOrder:20000, deliveryFee:2500, deal:'Beauty and wellness savings', icon:'medical', tone:'red' },
-  { id:'lifecare', name:'LifeCare Pharmacy', category:'Pharmacy', rating:4.6, eta:'20–35 min', minOrder:20000, deliveryFee:0, deal:'Free delivery on selected baskets', icon:'medical', tone:'yellow' },
-  { id:'rapid', name:'Rapid Chemist', category:'Pharmacy', rating:4.4, eta:'15–30 min', minOrder:15000, deliveryFee:0, deal:'Up to 50% off selected items', icon:'medical', tone:'black' },
+  { id:'eye-care', name:'Vision & Eye Care', category:'Eye care', rating:4.7, eta:'25–40 min', minOrder:30000, deliveryFee:3000, deal:'Contact lens & eye care essentials', icon:'bag', tone:'red' },
+  { id:'healthplus', name:'HealthPlus Pharmacy', category:'Pharmacy', rating:4.7, eta:'20–35 min', minOrder:25000, deliveryFee:0, deal:'Health, wellness & personal care', icon:'medical', tone:'yellow' },
+  { id:'sunlife', name:'Sunlife Pharmacy', category:'Pharmacy', rating:4.5, eta:'20–35 min', minOrder:20000, deliveryFee:0, deal:'Health, wellness & personal care', icon:'medical', tone:'red' },
+  { id:'tyros', name:'Tyros Pharmacy', category:'Pharmacy', rating:4.6, eta:'20–35 min', minOrder:20000, deliveryFee:2000, deal:'Health, wellness & personal care', icon:'medical', tone:'black' },
+  { id:'silverglow', name:'Silver Glow Pharma', category:'Pharmacy', rating:4.5, eta:'25–40 min', minOrder:20000, deliveryFee:2500, deal:'Beauty, wellness & personal care', icon:'medical', tone:'red' },
+  { id:'lifecare', name:'LifeCare Pharmacy', category:'Pharmacy', rating:4.6, eta:'20–35 min', minOrder:20000, deliveryFee:0, deal:'Health, wellness & personal care', icon:'medical', tone:'yellow' },
+  { id:'rapid', name:'Rapid Chemist', category:'Pharmacy', rating:4.4, eta:'15–30 min', minOrder:15000, deliveryFee:0, deal:'Health, wellness & personal care', icon:'medical', tone:'black' },
   { id:'careplus', name:'Care Plus Pharmacy', category:'Pharmacy', rating:4.6, eta:'25–40 min', minOrder:20000, deliveryFee:0, deal:'Everyday health essentials', icon:'medical', tone:'yellow' },
-  { id:'mediq', name:'MediQ Pharmacy', category:'Pharmacy', rating:4.5, eta:'20–35 min', minOrder:20000, deliveryFee:1500, deal:'Wellness and personal care offers', icon:'medical', tone:'red' },
+  { id:'mediq', name:'MediQ Pharmacy', category:'Pharmacy', rating:4.5, eta:'20–35 min', minOrder:20000, deliveryFee:1500, deal:'Wellness & personal care', icon:'medical', tone:'red' },
 
   // Kenya locale catalogue
   { id:'naivas', name:'Naivas', category:'Groceries', rating:4.8, eta:'20–35 min', minOrder:1500, deliveryFee:150, deal:'Fresh groceries & household essentials', icon:'cart', tone:'yellow' },
@@ -209,13 +309,20 @@ export const DEMO_SHOPS: DemoShop[] = ([
   { id:'shoppers-tz', name:'Shoppers Supermarket', category:'Groceries', rating:4.7, eta:'25–40 min', minOrder:15000, deliveryFee:3000, deal:'Groceries, fresh foods & household', icon:'cart', tone:'red' },
   { id:'village-tz', name:'Village Supermarket', category:'Groceries', rating:4.8, eta:'25–40 min', minOrder:20000, deliveryFee:3500, deal:'Fine foods, fresh produce & home', icon:'cart', tone:'black' },
   { id:'breeze-tz', name:'Breeze Pharmacy', category:'Pharmacy', rating:4.7, eta:'20–35 min', minOrder:15000, deliveryFee:2500, deal:'Health, wellness & personal care', icon:'medical', tone:'yellow' },
-] as DemoShop[]).map((shop, index) => ({
-  ...shop,
-  photoUrl: realShopPhoto(shop),
-  reviews: `${Math.max(240, 480 + index * 73).toLocaleString('en-US')}`,
-  location: shop.id.endsWith('-tz') ? 'Dar es Salaam' : ['naivas', 'quickmart'].includes(shop.id) ? 'Nairobi' : 'Kampala',
-  inventoryHint: shopInventoryHint(shop),
-}));
+] as DemoShop[]).map((shop, index) => {
+  const trust = shopTrust(shop);
+  const inventoryHint = shopInventoryHint(shop);
+  return {
+    ...shop,
+    // Reference merchants must not leak synthetic discounts or benefits into discovery.
+    deal: trust.liveAvailability ? shop.deal : inventoryHint,
+    photoUrl: realShopPhoto(shop),
+    reviews: `${Math.max(240, 480 + index * 73).toLocaleString('en-US')}`,
+    location: shop.id.endsWith('-tz') ? 'Dar es Salaam' : ['naivas', 'quickmart'].includes(shop.id) ? 'Nairobi' : 'Kampala',
+    inventoryHint,
+    contentTrust: trust,
+  };
+});
 
 export type DemoPromotion = {
   id: string;
@@ -228,12 +335,12 @@ export type DemoPromotion = {
 };
 
 export const DEMO_PROMOTIONS: DemoPromotion[] = [
-  { id:'weekend', eyebrow:'KAREEBU+ WEEKEND', title:'Up to 70% off', body:'Big savings across food, pharmacy and everyday essentials.', cta:'Shop offers', tone:'red', target:'shops' },
-  { id:'black', eyebrow:'KAREEBU BLACK', title:'Member-only perks', body:'Priority support, better rewards and selected free deliveries.', cta:'See benefits', tone:'black', target:'wallet' },
-  { id:'boda', eyebrow:'BODA HAPPY HOUR', title:'Save on quick trips', body:'Lower demo fares on selected Kampala Boda journeys.', cta:'Book Boda', tone:'yellow', target:'whereTo' },
-  { id:'lunch', eyebrow:'LUNCH SORTED', title:'Meals from UGX 12,000', body:'Fast lunch picks from restaurants around Kampala.', cta:'Order lunch', tone:'red', target:'food' },
-  { id:'delivery', eyebrow:'FREE DELIVERY', title:'Selected stores today', body:'Look for the Kareebu+ free-delivery badge in Shops.', cta:'Browse stores', tone:'yellow', target:'shops' },
-  { id:'rewards', eyebrow:'KAREEBU REWARDS', title:'Every order counts', body:'Collect points on rides, food, shops and parcel deliveries.', cta:'View wallet', tone:'black', target:'wallet' },
+  { id:'weekend', eyebrow:'WEEKEND DISCOVERY', title:'Explore what is nearby', body:'Browse food, pharmacy and everyday essentials around your market.', cta:'Browse shops', tone:'red', target:'shops' },
+  { id:'black', eyebrow:'KAREEBU+', title:'Explore member benefits', body:'See the benefits currently configured for your market before joining.', cta:'See benefits', tone:'black', target:'wallet' },
+  { id:'boda', eyebrow:'BODA', title:'Plan a quick trip', body:'Choose a destination and review the current Boda estimate before booking.', cta:'Book Boda', tone:'yellow', target:'whereTo' },
+  { id:'lunch', eyebrow:'LUNCH DISCOVERY', title:'Find something for lunch', body:'Browse restaurants and menu ideas around your city.', cta:'Explore food', tone:'red', target:'food' },
+  { id:'delivery', eyebrow:'STORE DISCOVERY', title:'Browse local stores', body:'Open a seller to confirm current catalogue and delivery details.', cta:'Browse stores', tone:'yellow', target:'shops' },
+  { id:'rewards', eyebrow:'KAREEBU REWARDS', title:'See your rewards', body:'Open your wallet to review rewards recorded on your account.', cta:'View wallet', tone:'black', target:'wallet' },
 ];
 
 
@@ -257,78 +364,76 @@ export type HomeRetailPromotion = {
 // pretending unsynchronised merchant promotions are live production offers.
 export const HOME_RETAIL_PROMOTIONS: HomeRetailPromotion[] = [
   {
-    id: 'glovo-daily-deals',
+    id: 'glovo-discovery',
     brand: 'Glovo',
-    eyebrow: 'DAILY DEALS',
-    headline: 'Up to 30% OFF',
-    detail: 'On groceries',
-    cta: 'Order now',
+    eyebrow: 'DELIVERY DISCOVERY',
+    headline: 'Browse grocery options',
+    detail: 'Open the reference listing and confirm live availability with the merchant.',
+    cta: 'Explore',
     target: 'shops',
     visual: 'groceries',
     accent: 'black',
     demoLabel: 'Reference creative',
   },
   {
-    id: 'carrefour-weekend-deals',
+    id: 'carrefour-discovery',
     brand: 'Carrefour',
-    eyebrow: 'WEEKEND DEALS',
-    headline: 'UP TO 30% OFF',
-    detail: 'On selected items',
-    cta: 'Shop now',
+    eyebrow: 'GROCERY DISCOVERY',
+    headline: 'Explore everyday essentials',
+    detail: 'Browse the reference storefront without assuming a live promotion.',
+    cta: 'Explore',
     target: 'shops',
     visual: 'groceries',
     accent: 'red',
     demoLabel: 'Reference creative',
   },
   {
-    id: 'goodlife-stay-well',
+    id: 'goodlife-discovery',
     brand: 'Goodlife Pharmacy',
-    eyebrow: 'STAY WELL',
-    headline: 'THIS SEASON',
-    detail: 'Up to 20% OFF healthcare essentials',
-    cta: 'Shop now',
+    eyebrow: 'HEALTH & WELLNESS',
+    headline: 'Explore wellness essentials',
+    detail: 'Open the reference storefront and confirm current availability before ordering.',
+    cta: 'Explore',
     target: 'shops',
     visual: 'pharmacy',
     accent: 'green',
     demoLabel: 'Reference creative',
   },
   {
-    id: 'jumia-tech-week',
+    id: 'jumia-discovery',
     brand: 'Jumia',
-    eyebrow: 'TECH WEEK',
-    headline: 'UP TO 20% OFF',
-    detail: 'Phones & accessories',
-    cta: 'Shop now',
+    eyebrow: 'MARKETPLACE DISCOVERY',
+    headline: 'Browse phones & accessories',
+    detail: 'Explore the reference marketplace without an unverified discount claim.',
+    cta: 'Explore',
     target: 'shops',
     visual: 'tech',
     accent: 'yellow',
     demoLabel: 'Reference creative',
   },
   {
-    id: 'capital-shoppers-basket',
+    id: 'capital-shoppers-discovery',
     brand: 'Capital Shoppers',
     eyebrow: 'FRESH BASKET',
     headline: 'Groceries made easy',
     detail: 'Fresh produce, pantry staples and household shopping.',
-    priceLine: 'Delivery from UGX 2,000',
     cta: 'Browse',
     target: 'shops',
     visual: 'groceries',
     accent: 'red',
-    demoLabel: 'Demo partner offer',
+    demoLabel: 'Reference creative',
   },
   {
     id: 'quality-home',
     brand: 'Quality Supermarket',
     eyebrow: 'HOME ESSENTIALS',
-    headline: 'Stock up this week',
-    detail: 'Groceries, fresh produce and household basics in one basket.',
-    priceLine: 'Kampala delivery available',
+    headline: 'Browse household basics',
+    detail: 'Groceries, fresh produce and household basics in one place.',
     cta: 'Browse',
     target: 'shops',
     visual: 'groceries',
     accent: 'black',
-    demoLabel: 'Demo partner offer',
+    demoLabel: 'Reference creative',
   },
 ];
 

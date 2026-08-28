@@ -25,7 +25,8 @@ export type KareebuDiscoveryFilterId =
   | 'today'
   | 'verified'
   | 'emergency'
-  | 'member';
+  | 'member'
+  | 'delivery-details';
 
 export type KareebuDiscoveryFilter = {
   id: KareebuDiscoveryFilterId;
@@ -44,11 +45,11 @@ export type KareebuDiscoveryPromo = {
 };
 
 export type KareebuDiscoveryItem = UnifiedCatalogItem & {
-  etaMinutes: number;
-  distanceKm: number;
-  freeDelivery: boolean;
+  etaMinutes: number | null;
+  distanceKm: number | null;
+  freeDelivery: boolean | null;
   offerLabel: string | null;
-  verified: boolean;
+  verified: boolean | null;
   photo: string;
 };
 
@@ -92,6 +93,7 @@ export type KareebuDiscoveryController = {
   filtersOpen:boolean;
   setFiltersOpen:(value:boolean)=>void;
   selectVertical:(id:string)=>void;
+  openVertical:(id:string,title:string)=>void;
   selectCategory:(id:string)=>void;
   selectSubcategory:(id:string)=>void;
   toggleFilter:(id:KareebuDiscoveryFilterId)=>void;

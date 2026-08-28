@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { buildFoodHomeDocument } from './document';
 import type {
+  FoodBestSellerDish,
   FoodDiscoveryAdvancedFilters,
   FoodDiscoverySurface,
   FoodDishSearchResult,
@@ -11,7 +12,20 @@ import type {
   FoodHomeRestaurant,
 } from './types';
 
+const POPULAR_RESTAURANT_ORDER = [
+  'cafe-javas',
+  'chicken-tonight',
+  'java-house',
+  'pizza-inn',
+] as const;
+
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  Ugandan: ['ugandan', 'local', 'matooke', 'rolex'],
+  Kenyan: ['kenyan', 'nyama choma', 'pilau'],
+  Tanzanian: ['tanzanian', 'pilau', 'grill'],
+  Rolex: ['rolex', 'chapati'],
+  'Nyama Choma': ['nyama choma', 'grill', 'bbq'],
+  Pilau: ['pilau', 'rice'],
   Asian: ['asian', 'chinese', 'thai', 'japanese', 'korean'],
   'Chicken & Wings': ['chicken', 'wings', 'grill'],
   Burger: ['burger', 'fast food'],
@@ -71,6 +85,11 @@ function etaMinutes(restaurant: FoodHomeRestaurant) {
   return match ? Number.parseInt(match[0], 10) : 99;
 }
 
+function etaUpperBoundMinutes(restaurant: FoodHomeRestaurant) {
+  const values = restaurant.eta.match(/\d+/g)?.map(value => Number.parseInt(value, 10)) ?? [];
+  return values.length ? Math.max(...values) : Number.POSITIVE_INFINITY;
+}
+
 function filterByCategory(
   restaurants: FoodHomeRestaurant[],
   category: string,
@@ -107,11 +126,11 @@ function applyAdvancedFilters(
   let rows = [...restaurants];
 
   if (filters.minRating !== null) {
-    rows = rows.filter((restaurant) => restaurant.rating >= filters.minRating!);
+    rows = rows.filter((restaurant) => restaurant.liveAvailability && restaurant.rating >= filters.minRating!);
   }
 
   if (filters.offersOnly) {
-    rows = rows.filter((restaurant) => Boolean(restaurant.offer));
+    rows = rows.filter((restaurant) => restaurant.liveAvailability && Boolean(restaurant.offer));
   }
 
   if (filters.plusOnly) {
@@ -120,15 +139,17 @@ function applyAdvancedFilters(
 
   if (filters.freeDeliveryOnly) {
     rows = rows.filter((restaurant) =>
-      restaurant.deliveryLabel.toLowerCase().includes('free delivery'),
+      restaurant.liveAvailability && restaurant.deliveryLabel.toLowerCase().includes('free delivery'),
     );
   }
 
   if (filters.sort === 'Top rated') {
+    rows = rows.filter((restaurant) => restaurant.liveAvailability);
     rows.sort((a, b) => b.rating - a.rating);
   }
 
   if (filters.sort === 'Fastest') {
+    rows = rows.filter((restaurant) => restaurant.liveAvailability);
     rows.sort((a, b) => etaMinutes(a) - etaMinutes(b));
   }
 
@@ -175,22 +196,35 @@ export function useKareebuFoodHomeController({
   const visibleRestaurants = useMemo(() => {
     let rows = restaurants;
 
-    if (activeFilter === '4.7+ Rated') {
-      rows = rows.filter((restaurant) => restaurant.rating >= 4.7);
+    if (activeFilter === 'Top rated') {
+      rows = rows.filter((restaurant) => restaurant.liveAvailability && restaurant.rating >= 4.7);
     }
 
-    if (activeFilter === 'Top Choices') {
-      rows = [...rows].sort((a, b) => b.rating - a.rating);
+    if (activeFilter === 'Kareebu+') {
+      rows = rows.filter((restaurant) => restaurant.plus);
     }
 
-    if (activeFilter === '30% Off') {
+    if (activeFilter === 'Offers') {
+      rows = rows.filter((restaurant) => restaurant.liveAvailability && Boolean(restaurant.offer));
+    }
+
+    if (activeFilter === 'Fast delivery') {
+      rows = rows.filter((restaurant) => restaurant.liveAvailability && etaUpperBoundMinutes(restaurant) <= 30);
+    }
+
+    if (activeFilter === 'Under 30 mins') {
+      rows = rows.filter((restaurant) => restaurant.liveAvailability && etaUpperBoundMinutes(restaurant) < 30);
+    }
+
+    if (activeFilter === 'Free delivery') {
+      rows = rows.filter((restaurant) => restaurant.liveAvailability && restaurant.deliveryLabel.toLowerCase().includes('free'));
+    }
+
+    if (activeFilter === 'Healthy') {
       rows = rows.filter((restaurant) =>
-        (restaurant.offer ?? '').toLowerCase().includes('30'),
+        `${restaurant.cuisine} ${restaurant.categories.join(' ')}`.toLowerCase().includes('healthy'),
       );
     }
-
-    // The current restaurant model does not expose calorie data, so the chip
-    // remains selectable without fabricating nutritional values.
 
     if (activeCategory) {
       rows = filterByCategory(rows, activeCategory);
@@ -200,12 +234,79 @@ export function useKareebuFoodHomeController({
   }, [activeCategory, activeFilter, restaurants]);
 
   const rankedRestaurants = useMemo(
-    () => [...restaurants].sort((a, b) => b.rating - a.rating),
+    () =>
+      restaurants
+        .filter((restaurant) => restaurant.liveAvailability)
+        .slice()
+        .sort((a, b) => b.rating - a.rating),
     [restaurants],
   );
 
   const nearbyRestaurants = useMemo(
-    () => [...restaurants].sort((a, b) => etaMinutes(a) - etaMinutes(b)),
+    () =>
+      restaurants
+        .filter((restaurant) => restaurant.liveAvailability)
+        .slice()
+        .sort((a, b) => etaMinutes(a) - etaMinutes(b)),
+    [restaurants],
+  );
+
+  const speedyRestaurants = useMemo(
+    () => restaurants.filter(
+      restaurant => restaurant.liveAvailability && etaUpperBoundMinutes(restaurant) <= 20,
+    ),
+    [restaurants],
+  );
+
+  const popularRestaurants = useMemo(() => {
+    const order = new Map<string, number>(
+      POPULAR_RESTAURANT_ORDER.map((id, index) => [id, index]),
+    );
+
+    return restaurants
+      .filter(
+        (restaurant) =>
+          restaurant.isPopularRestaurant === true && Boolean(restaurant.logo),
+      )
+      .slice()
+      .sort(
+        (a, b) =>
+          (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+          (order.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+      );
+  }, [restaurants]);
+
+  const bestSellerDishes = useMemo<FoodBestSellerDish[]>(
+    () =>
+      restaurants.flatMap((restaurant) => {
+        if (!restaurant.logo) return [];
+
+        return restaurant.menu
+          .filter(
+            (item) =>
+              item.isBestSeller === true &&
+              item.imageSource === 'restaurant-catalogue',
+          )
+          .map((item) => ({
+            restaurantId: restaurant.id,
+            restaurantName: restaurant.name,
+            restaurantLogo: restaurant.logo!,
+            restaurantLogoBackgroundColor:
+              restaurant.logoBackgroundColor ?? '#FFFFFF',
+            menuItemId: item.id,
+            dishName: item.name,
+            dishImage: item.image,
+            priceUGX: item.price,
+            route: {
+              restaurantId: restaurant.id,
+              menuItemId: item.id,
+            },
+            availability: restaurant.liveAvailability
+              ? ('available' as const)
+              : ('confirm-when-opened' as const),
+            item,
+          }));
+      }),
     [restaurants],
   );
 
@@ -266,12 +367,27 @@ export function useKareebuFoodHomeController({
       return nearbyRestaurants;
     }
 
+    if (surface.source === 'speedy') {
+      return speedyRestaurants;
+    }
+
     if (surface.source === 'best-sellers') {
-      return rankedRestaurants;
+      const restaurantIds = new Set(
+        bestSellerDishes.map((dish) => dish.restaurantId),
+      );
+      return restaurants.filter((restaurant) =>
+        restaurantIds.has(restaurant.id),
+      );
+    }
+
+    if (surface.source === 'popular-restaurants') {
+      return popularRestaurants;
     }
 
     if (surface.source === 'promo') {
-      return restaurants.filter((restaurant) => Boolean(restaurant.offer));
+      return restaurants.filter(
+        (restaurant) => restaurant.liveAvailability && Boolean(restaurant.offer),
+      );
     }
 
     if (surface.source === 'brand') {
@@ -292,7 +408,7 @@ export function useKareebuFoodHomeController({
     }
 
     return restaurants;
-  }, [nearbyRestaurants, rankedRestaurants, restaurants, surface]);
+  }, [bestSellerDishes, nearbyRestaurants, popularRestaurants, restaurants, speedyRestaurants, surface]);
 
   const listingRestaurants = useMemo(
     () => applyAdvancedFilters(listingBaseRestaurants, advancedFilters),
@@ -310,27 +426,17 @@ export function useKareebuFoodHomeController({
   };
 
   const openCategory = (category: string) => {
-    if (category === 'Offers' || category === 'Exclusive Offers') {
-      actions.openOffers();
-      return;
-    }
-
     if (category === 'Best Selling') {
       setSurface({
         kind: 'listing',
-        title: 'Best sellers',
+        title: 'Restaurant menu picks',
         source: 'best-sellers',
       });
       return;
     }
 
-    setActiveCategory(category);
-    setSurface({
-      kind: 'listing',
-      title: category,
-      source: 'category',
-      value: category,
-    });
+    actions.openCategoryLanding(category);
+    return;
   };
 
   const openNearby = () => {
@@ -341,11 +447,27 @@ export function useKareebuFoodHomeController({
     });
   };
 
+  const openSpeedyDelivery = () => {
+    setSurface({
+      kind: 'listing',
+      title: 'Restaurants within 20 minutes',
+      source: 'speedy',
+    });
+  };
+
   const openBestSellers = () => {
     setSurface({
       kind: 'listing',
-      title: 'Best sellers',
+      title: 'Restaurant menu picks',
       source: 'best-sellers',
+    });
+  };
+
+  const openPopularRestaurants = () => {
+    setSurface({
+      kind: 'listing',
+      title: 'Popular restaurants',
+      source: 'popular-restaurants',
     });
   };
 
@@ -392,7 +514,7 @@ export function useKareebuFoodHomeController({
     }
 
     if (surface.kind === 'home') {
-      actions.openFoodHome();
+      actions.exitFood();
       return;
     }
 
@@ -410,6 +532,9 @@ export function useKareebuFoodHomeController({
     visibleRestaurants,
     rankedRestaurants,
     nearbyRestaurants,
+    speedyRestaurants,
+    bestSellerDishes,
+    popularRestaurants,
     restaurantSearchResults,
     dishSearchResults,
     listingRestaurants,
@@ -427,7 +552,9 @@ export function useKareebuFoodHomeController({
     selectCategory,
     openCategory,
     openNearby,
+    openSpeedyDelivery,
     openBestSellers,
+    openPopularRestaurants,
     openPromo,
     openBrand,
     openFilters,

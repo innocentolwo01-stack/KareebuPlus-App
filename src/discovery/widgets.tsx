@@ -31,9 +31,6 @@ function semanticFor(title:string,fallback:BrandIconSemantic):BrandIconSemantic{
   return fallback;
 }
 
-function money(value:number){
-  return `UGX ${Math.max(0,value).toLocaleString('en-US')}`;
-}
 
 function SectionHeading({title,subtitle}:{title:string;subtitle?:string}){
   return <View style={styles.sectionHeading}><View style={styles.flex}><Text style={styles.sectionTitle}>{title}</Text>{subtitle?<Text style={styles.sectionSubtitle}>{subtitle}</Text>:null}</View></View>;
@@ -80,17 +77,20 @@ export function DiscoveryHeroCarousel({
   domainId:KareebuDiscoveryController['domainId'];
 }){
   const {width}=useWindowDimensions();
-  const cardWidth=Math.max(290,width-28);
+  const cardWidth=Math.round(Math.max(272,width-52));
+  const interval=cardWidth+16;
   const [active,setActive]=useState(0);
   return <View>
     <ScrollView
       horizontal
-      pagingEnabled
       showsHorizontalScrollIndicator={false}
       decelerationRate="fast"
-      snapToInterval={cardWidth}
+      snapToInterval={interval}
+      snapToAlignment="start"
+      disableIntervalMomentum
+      contentContainerStyle={styles.heroRail}
       onMomentumScrollEnd={(event)=>{
-        setActive(Math.max(0,Math.min(items.length-1,Math.round(event.nativeEvent.contentOffset.x/cardWidth))));
+        setActive(Math.max(0,Math.min(items.length-1,Math.round(event.nativeEvent.contentOffset.x/interval))));
       }}
     >
       {items.map((promo)=>(
@@ -139,8 +139,8 @@ export function DiscoveryVerticalGrid({
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.verticalRail}>
       {items.map((item:any)=>{
         const active=item.id===activeId;
-        return <Pressable key={item.id} onPress={()=>controller.selectVertical(item.id)} style={({pressed})=>[styles.verticalTile,{width:tileWidth},active&&styles.verticalTileActive,pressed&&styles.pressed]}>
-          <View style={styles.verticalArt}><DiscoveryArt title={item.title} domainId={controller.domainId} size={58} fallback={semanticFor(item.title,fallback)}/></View>
+        return <Pressable key={item.id} onPress={()=>controller.openVertical(item.id,item.title)} style={({pressed})=>[styles.verticalTile,{width:tileWidth},active&&styles.verticalTileActive,pressed&&styles.pressed]}>
+          <View style={styles.verticalArt}><DiscoveryArt title={item.title} domainId={controller.domainId} size={72} fallback={semanticFor(item.title,fallback)}/></View>
           <Text numberOfLines={2} style={[styles.verticalLabel,active&&styles.verticalLabelActive]}>{item.title}</Text>
         </Pressable>;
       })}
@@ -216,8 +216,8 @@ function ItemMeta({item}:{item:KareebuDiscoveryItem}){
   return <>
     <Text numberOfLines={1} style={styles.itemName}>{dineOut?item.providerOrBrand:item.name}</Text>
     <Text numberOfLines={1} style={styles.itemProvider}>{dineOut?item.name:item.providerOrBrand}</Text>
-    <Text style={styles.itemRating}>★ {item.rating.toFixed(1)} · {item.etaMinutes} min · {item.distanceKm} km</Text>
-    <Text style={styles.itemDelivery}>{service?`${money(item.basePriceUGX)}${item.durationMinutes?` · ${item.durationMinutes} min`:''}`:item.freeDelivery?'Free delivery':money(item.basePriceUGX)}</Text>
+    <Text style={styles.itemRating}>Reference listing · check live details</Text>
+    <Text style={styles.itemDelivery}>{service?'Service details confirmed before booking':'Open to view current store details'}</Text>
   </>;
 }
 
@@ -277,7 +277,7 @@ export function DiscoveryMembershipStrip({controller}:{controller:KareebuDiscove
   return <Pressable onPress={controller.openMembership} style={({pressed})=>[styles.member,pressed&&styles.pressed]}>
     <View style={styles.memberMark}><Text style={styles.memberMarkText}>K+</Text></View>
     <View style={styles.memberRule}/>
-    <View style={styles.flex}><Text style={styles.memberTitle}>Try free delivery with Kareebu+</Text><Text style={styles.memberBody}>Member offers and delivery savings across Kareebu+</Text></View>
+    <View style={styles.flex}><Text style={styles.memberTitle}>Explore Kareebu+ benefits</Text><Text style={styles.memberBody}>See benefits configured for your market before joining</Text></View>
     <View style={styles.memberArrow}><Feather name="arrow-right" size={18} color={COLORS.black}/></View>
   </Pressable>;
 }
@@ -290,6 +290,7 @@ const styles=StyleSheet.create({
   sectionTitle:{fontFamily:FONT.bold,fontSize:20,lineHeight:24,fontWeight:'900',letterSpacing:-.35,color:COLORS.black},
   sectionSubtitle:{...TYPE.caption,color:COLORS.muted,marginTop:2},
   hero:{height:186,borderRadius:17,overflow:'hidden'},
+  heroRail:{paddingHorizontal:14,paddingRight:34,gap:16},
   heroImage:{flex:1,justifyContent:'space-between',position:'relative',overflow:'hidden'},
   heroFallback:{...StyleSheet.absoluteFill,backgroundColor:'#F3F4F4',alignItems:'center',justifyContent:'center'},
   heroShade:{...StyleSheet.absoluteFill,backgroundColor:'rgba(0,0,0,.31)'},
@@ -314,11 +315,11 @@ const styles=StyleSheet.create({
   filterText:{...TYPE.small,color:COLORS.black,fontWeight:'700'},
   filterTextStrong:{...TYPE.small,color:COLORS.black,fontWeight:'900'},
   filterTextActive:{fontWeight:'900'},
-  verticalRail:{paddingHorizontal:14,paddingRight:28,gap:8},
-  verticalTile:{height:104,borderRadius:15,borderWidth:1,borderColor:COLORS.line,backgroundColor:'#F6F7F7',alignItems:'center',justifyContent:'center',paddingHorizontal:4},
+  verticalRail:{paddingHorizontal:14,paddingRight:32,gap:12},
+  verticalTile:{minHeight:132,borderRadius:18,borderWidth:1,borderColor:COLORS.line,backgroundColor:'#F6F7F7',alignItems:'center',justifyContent:'center',paddingHorizontal:8,paddingVertical:10},
   verticalTileActive:{backgroundColor:COLORS.yellowWash,borderColor:COLORS.yellowDeep},
-  verticalArt:{height:58,alignItems:'center',justifyContent:'center'},
-  verticalLabel:{...TYPE.caption,color:'#34383A',fontWeight:'800',textAlign:'center'},
+  verticalArt:{height:76,alignItems:'center',justifyContent:'center'},
+  verticalLabel:{...TYPE.small,color:'#34383A',fontWeight:'800',textAlign:'center',marginTop:4},
   verticalLabelActive:{color:COLORS.black,fontWeight:'900'},
   categoryRail:{paddingHorizontal:14,paddingRight:28,gap:8},
   categoryPill:{minHeight:38,borderRadius:19,borderWidth:1,borderColor:COLORS.lineDark,backgroundColor:COLORS.white,paddingHorizontal:15,alignItems:'center',justifyContent:'center'},

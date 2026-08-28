@@ -75,6 +75,8 @@ export const CONTROL = {
   chip: 34,
   row: 56,
   bottomNav: 64,
+  pageHeaderAction: 48,
+  pageHeaderSearch: 52,
 };
 
 export const LAYOUT = {
@@ -83,6 +85,8 @@ export const LAYOUT = {
   cardGap: 8,
   contentBottom: 22,
   maxReadableWidth: 520,
+  pageHeaderGutter: 18,
+  pageHeaderGap: 14,
 };
 
 export const RADIUS = {
@@ -90,6 +94,8 @@ export const RADIUS = {
   md: 14,
   lg: 16,
   xl: 20,
+  pageHeaderControl: 15,
+  pageCanvas: 28,
 };
 
 export const SHADOW = Platform.select({

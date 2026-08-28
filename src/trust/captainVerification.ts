@@ -1,0 +1,4 @@
+export type CaptainVerificationState='pending'|'verified'|'expired'|'manual_review'|'suspended';
+export type CaptainVerificationProfile={captainId:string;identityLiveness:boolean;drivingLicence:boolean;vehicleRegistration:boolean;insurance:boolean;inspection?:boolean;deviceBound:boolean;state:CaptainVerificationState;lastCheckedAt?:string;nextRecheckAt?:string};
+export function captainCanGoOnline(profile:CaptainVerificationProfile){return profile.state==='verified'&&profile.identityLiveness&&profile.drivingLicence&&profile.vehicleRegistration&&profile.insurance&&profile.deviceBound;}
+export function captainRecheckRequired(profile:CaptainVerificationProfile,now=new Date()){return !profile.nextRecheckAt||new Date(profile.nextRecheckAt)<=now||profile.state==='expired'||profile.state==='manual_review';}

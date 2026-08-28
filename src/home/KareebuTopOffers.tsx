@@ -36,16 +36,16 @@ const LARGE_OFFERS: LargeOffer[] = [
   {
     id: 'toys',
     partner: 'KIDS & TOYS',
-    headline: 'Big toy deals.\nBest-selling toys.',
+    headline: 'Toys and family favourites.',
     image: require('../../assets/kareebu-plus/top-offers/offer-toys.jpg'),
-    discount: '20% off',
+    discount: 'Discover',
   },
   {
     id: 'wellness',
     partner: 'HEALTH & WELLNESS',
-    headline: 'Everyday wellness.\nBetter prices.',
+    headline: 'Everyday wellness.\nBrowse essentials.',
     image: require('../../assets/kareebu-plus/top-offers/offer-wellness.jpg'),
-    discount: '15% off',
+    discount: 'Discover',
   },
 ];
 
@@ -57,7 +57,7 @@ const SMALL_OFFERS: SmallOffer[] = [
   },
   {
     id: 'flowers',
-    title: 'Flowers\non discount',
+    title: 'Flowers &\ngifting',
     image: require('../../assets/kareebu-plus/top-offers/category-flowers.jpg'),
   },
   {

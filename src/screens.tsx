@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AccessibilityInfo,
   Alert,
   Image,
   ImageSourcePropType,
@@ -26,6 +27,8 @@ import {
   BottomNav,
   BrandIcon,
   Header,
+  KareebuPageHeader,
+  KareebuSearchField,
   LocationDot,
   MenuRow,
   PaymentLogo,
@@ -49,13 +52,25 @@ import { COLORS, FONT, SHADOW, TYPE } from './theme';
 import { MarketplaceCategoryGrid, MarketplaceCategoryHeader, MarketplaceMembershipStrip, MarketplacePromoBanner, MarketplacePromoGrid, MarketplaceRecommendedRail, marketplaceSemanticForCategory } from './marketplace/MarketplaceCategoryChrome';
 import { useRegisterBackControl } from './navigation/AppNavigation';
 import { dialCodeFor, formatMoney, localeProfile, primaryMobileMoneyFor, secondaryMobileMoneyFor } from './locale';
-import { DEMO_PROMOTIONS, DEMO_RESTAURANTS as BASE_DEMO_RESTAURANTS, DEMO_SHOPS, HOME_REAL_BRANDS, HOME_RETAIL_PROMOTIONS, DemoMenuItem, DemoRestaurant, DemoShop, HomeRealBrand, HomeRetailPromotion, demoDirections } from './demoData';
+import { DEMO_RESTAURANTS as BASE_DEMO_RESTAURANTS, DEMO_SHOPS, HOME_REAL_BRANDS, HOME_RETAIL_PROMOTIONS, DemoMenuItem, DemoRestaurant, DemoShop, HomeRealBrand, HomeRetailPromotion, demoDirections } from './demoData';
 import { askKareebuAssistant, KareebuAssistantAction, KareebuAssistantRecommendation } from './ai/kareebuAssistant';
 import { FoodItemDetailsView, FoodCheckoutView, FoodOrderSuccessView, cartLineDescription, calculateFoodCartSubtotal } from './food/screens';
 import type { FoodCartLine, FoodCheckoutDraft, FoodOrder } from './food/types';
+import { FoodCategoryLandingScreen } from './food/category/FoodCategoryLandingScreen';
+import { DineOutRestaurantScreen } from './dineout/screens';
+import { DineOutCollectionScreen, DineOutHomeScreen } from './dineout/DineOutDiscoveryScreens';
+import { DineOutConfirmationScreen, DineOutReservationScreen } from './dineout/DineOutReservationFlow';
+import { mobilityVisual } from './visuals/mobilityVisuals';
+import { ServiceArtwork } from './components/ServiceArtwork';
+import { ShopsLandingScreen } from './shops/ShopsLandingScreen';
 import type { CommerceCartLine, CommerceCheckoutDraft, CommerceOrder, ParcelDraft, ParcelOrder, RentalBooking, ServiceBooking, ServiceRequest } from './parity/types';
-import { commerceProductsFor } from './commerce/catalog';
+import { commerceProductsFor, commerceProductsForTaxonomy } from './commerce/catalog';
 import { CommerceProductScreen, CommerceCartScreen, CommerceCheckoutScreen, CommerceOrderSuccessScreen } from './commerce/screens';
+import { SellerLogo } from './commerce/SellerLogo';
+import { commerceProductVisual } from './commerce/productVisuals';
+import { MerchantCampaignBanner } from './commerce/MerchantCampaignBanner';
+import { MerchantStorefrontScreen } from './commerce/MerchantStorefrontScreen';
+import { merchantTypeFor } from './commerce/merchantStorefront';
 import { ParcelStartScreen, ParcelContactsScreen, ParcelReviewScreen, ParcelSuccessScreen, ParcelTrackingScreen } from './parcels/screens';
 import { RentalsScreen, RentalVehicleScreen, RentalCheckoutScreen, RentalTripScreen, RENTAL_VEHICLES } from './rental/screens';
 import { ServiceMarketplaceScreen, ServiceProvidersScreen, ServiceDetailScreen, ServiceRequestScreen, ServiceBidsScreen, ServiceCheckoutScreen, ServiceTrackingScreen, SERVICE_DEFS } from './services/screens';
@@ -144,14 +159,38 @@ function demandAdjustedDeliveryFee(baseFee: number, service: 'food-delivery' | '
 
 import { KareebuServiceCarousel } from './home/KareebuServiceCarousel';
 import { KareebuQuickActionsCarousel } from './home/KareebuQuickActionsCarousel';
-import { KareebuTopPicks } from './home/KareebuTopPicks';
-import { KareebuDineOutSection } from './home/KareebuDineOutSection';
 import { KareebuCareemDiscoveryScreen } from './discovery/KareebuCareemDiscoveryScreen';
 import { KAREEBU_CATALOG_VERTICALS, type KareebuDomainId, type UnifiedCatalogItem } from './catalog/master/kareebuUnifiedCatalog';
-import { KareebuTopOffers } from './home/KareebuTopOffers';
-import { KareebuRidesHomeScreen } from './ride/kareebuRidesHome';
+import { KareebuRidesHomeScreen } from './ride/KareebuRidesLandingScreen';
+import { FocusedRideBookingScreen } from './ride/FocusedRideBookingScreen';
 import { KareebuFoodDiscoveryHome } from './food/discovery/FoodDiscoveryHome';
 import { buildKareebuRestaurantCatalog } from './food/realisticCatalog';
+import type { ServicePreference } from './preferences';
+import { trackEvent } from './analytics';
+import { CompactPromotion, DoublePromotionGrid, PromotionHero } from './promotions/PromotionCards';
+import { promotionsFor } from './promotions/catalog';
+import type { PromotionCampaign } from './promotions/types';
+import { PromoCarousel } from './promotions/PromoCarousel';
+import { promotionalBannerAssets } from './promotions/promotionalBannerAssets';
+import { BrandedEmptyState } from './components/BrandedState';
+import { VerticalLandingScreen } from './experience/VerticalLandingScreen';
+import { VERTICAL_CONFIGS, type VerticalId } from './experience/verticals';
+import { HomeDiscoveryModule, useHomePage } from './home/HomeDiscoveryFeed';
+import { AppEnginePage } from './appEngine/AppEnginePage';
+import type { AppEngineContext, AppEngineSectionDefinition } from './appEngine/types';
+import type { HomeFeedItem, HomeFeedModule } from './home/homeFeed';
+import { MARKET_CONFIG, marketCities, marketConfig, mobilityProducts, type MobilityProductConfig } from './markets/config';
+import { restaurantSearchContext, searchContext, sellerSearchContext } from './search/context';
+import type { CategoryProduct, CategorySeller } from './categoryLanding/types';
+import { UniversalTaxonomyLandingScreen } from './taxonomy/UniversalTaxonomyLandingScreen';
+import { normaliseTaxonomyId, taxonomyPath, taxonomyProductTerms } from './taxonomy/registry';
+import type { TaxonomyDomain, TaxonomyNode } from './taxonomy/types';
+import type { VerticalSeller } from './experience/verticalLandingBlueprint';
+import { servicesForMarket, type KareebuServiceDefinition } from './services/serviceRegistry';
+import { GlobalBasketScreen, GlobalCheckoutScreen, GlobalCollectionScreen, GlobalHomeScreen, GlobalProductScreen, GlobalReturnsScreen, GlobalTrackingScreen } from './global/screens';
+import type { GlobalCartLine, GlobalOrder } from './global/types';
+import type { CommerceRouteContext } from './commerce/context';
+import { SecurityCenterScreen, DisputeCenterScreen, ReceiptsDocumentsScreen } from './trust/screens';
 
 // KAREEBU_V6_REALISTIC_RESTAURANTS
 const DEMO_RESTAURANTS = buildKareebuRestaurantCatalog(BASE_DEMO_RESTAURANTS);
@@ -180,6 +219,7 @@ export type AppData = {
   tip: number;
   selectedRestaurantId: string;
   selectedFoodItemId: string | null;
+  selectedFoodCategory: string;
   foodCartLines: FoodCartLine[];
   foodCheckout: FoodCheckoutDraft;
   lastFoodOrder: FoodOrder | null;
@@ -210,10 +250,20 @@ export type AppData = {
   rewardPoints: number;
   walletTransactions: WalletTransaction[];
   supportTickets: SupportTicket[];
+  servicePreferences: ServicePreference[];
+  selectedVerticalCategory: string;
+  globalSearchQuery: string;
+  selectedGlobalMarketplace: string | null;
+  selectedGlobalCategory: string | null;
+  selectedGlobalProductId: string | null;
+  globalCartLines: GlobalCartLine[];
+  lastGlobalOrder: GlobalOrder | null;
+  commerceContext: CommerceRouteContext;
 };
 
 export type AppActions = {
   go: (screen: Screen) => void;
+  back: () => void;
   setGuest: (value: boolean) => void;
   setAuthReturn: (value: Screen) => void;
   setLocationReturn: (value: Screen) => void;
@@ -225,6 +275,7 @@ export type AppActions = {
   setEmail: (value: string) => void;
   setLocationAllowed: (value: boolean) => void;
   setNotificationsAllowed: (value: boolean) => void;
+  setSelectedVerticalCategory: (value:string) => void;
   setDestinationPlace: (value: PlaceSelection | null) => void;
   setDeliveryPlace: (value: PlaceSelection | null) => void;
   setFocusedPlace: (value: PlaceSelection | null) => void;
@@ -237,6 +288,7 @@ export type AppActions = {
   setTip: (value: number) => void;
   selectRestaurant: (restaurantId: string) => void;
   selectFoodItem: (itemId: string | null) => void;
+  setSelectedFoodCategory: (category: string) => void;
   addFoodCartLine: (line: FoodCartLine) => void;
   setFoodCartLineQuantity: (lineId: string, quantity: number) => void;
   removeFoodCartLine: (lineId: string) => void;
@@ -271,19 +323,25 @@ export type AppActions = {
   setCartItemQuantity: (itemId: string, quantity: number) => void;
   toggleFavoriteRestaurant: (restaurantId: string) => void;
   toggleFavoriteShop: (shopId: string) => void;
+  setGlobalSearchQuery: (value: string) => void;
+  setSelectedGlobalMarketplace: (value: string | null) => void;
+  setSelectedGlobalCategory: (value: string | null) => void;
+  selectGlobalProduct: (value: string | null) => void;
+  addGlobalCartLine: (line: GlobalCartLine) => void;
+  setGlobalCartLineQuantity: (lineId: string, quantity: number) => void;
+  placeGlobalOrder: (order: GlobalOrder) => void;
+  updateCommerceContext: (patch: Partial<CommerceRouteContext>) => void;
 };
 
-const countryCities: Record<string, string[]> = {
-  Uganda: ['Kampala', 'Entebbe', 'Jinja', 'Wakiso', 'Mbarara', 'Gulu'],
-  Kenya: ['Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret'],
-  Tanzania: ['Dar es Salaam', 'Arusha', 'Mwanza', 'Dodoma', 'Mbeya'],
-};
+const countryCities = Object.fromEntries(Object.keys(MARKET_CONFIG).map((country) => [country, marketCities(country)]));
 
-const countryData = [
-  { name: 'Uganda', code: 'UG', dial: '+256', capital: 'Kampala', icon: 'sunny-outline' as const },
-  { name: 'Kenya', code: 'KE', dial: '+254', capital: 'Nairobi', icon: 'business-outline' as const },
-  { name: 'Tanzania', code: 'TZ', dial: '+255', capital: 'Dar es Salaam', icon: 'images-outline' as const },
-];
+const countryData = (Object.values(MARKET_CONFIG)).map((market, index) => ({
+  name: market.country,
+  code: market.iso,
+  dial: market.dialCode,
+  capital: market.primaryCity,
+  icon: (index === 0 ? 'sunny-outline' : index === 1 ? 'business-outline' : 'images-outline') as 'sunny-outline' | 'business-outline' | 'images-outline',
+}));
 
 // Bundled onboarding photography is required directly here instead of being
 // read through the shared `assets` object. This makes the Country screen
@@ -296,19 +354,6 @@ const COUNTRY_SELECTION_ASSETS = {
   Kenya: require('../assets/kareebu-plus/country-landmarks/kenya.jpg'),
   Tanzania: require('../assets/kareebu-plus/country-landmarks/tanzania.jpg'),
 } as const;
-
-const COUNTRY_REGIONS: Record<string, Region> = {
-  Uganda: { latitude: 1.25, longitude: 32.65, latitudeDelta: 6.2, longitudeDelta: 5.5 },
-  Kenya: { latitude: 0.15, longitude: 37.80, latitudeDelta: 9.2, longitudeDelta: 8.0 },
-  Tanzania: { latitude: -6.15, longitude: 35.25, latitudeDelta: 10.6, longitudeDelta: 9.2 },
-};
-
-const EAST_AFRICA_COUNTRY_REGION: Region = {
-  latitude: -1.25,
-  longitude: 35.25,
-  latitudeDelta: 12.2,
-  longitudeDelta: 10.8,
-};
 
 const REAL_COUNTRY_LANDMARKS: Record<string, { city: string; landmark: string; image: ImageSourcePropType }> = {
   Uganda: {
@@ -344,13 +389,20 @@ function countryCodeFor(country: string) {
   return countryData.find((item) => item.name === country)?.code ?? 'UG';
 }
 
-const rideData: Array<{ id: RideId; name: string; eta: string; baseFare: number; icon: ImageSourcePropType }> = [
-  { id: 'boda', name: 'Boda', eta: '2 min away', baseFare: 2000, icon: assets.service.boda },
-  { id: 'economy', name: 'Economy', eta: '4 min away', baseFare: 6500, icon: assets.service.rides },
-  { id: 'comfort', name: 'Comfort', eta: '6 min away', baseFare: 11000, icon: assets.service.rides },
-  { id: 'xl', name: 'XL', eta: '7 min away', baseFare: 16000, icon: assets.service.rides },
-  { id: 'delivery', name: 'Delivery', eta: '10 min away', baseFare: 5000, icon: assets.service.send },
-];
+type RideOptionData = MobilityProductConfig & { eta: string; baseFare: number; icon: ImageSourcePropType };
+function rideDataFor(country: string, mode: VehicleMode): RideOptionData[] {
+  return mobilityProducts(country, mode).map((product) => ({
+    ...product,
+    eta: `${product.etaMinutes} min away`,
+    baseFare: product.baseFareUgx,
+    icon: mode === 'BODA' ? assets.service.boda : assets.service.rides,
+  }));
+}
+
+function selectedRideData(data: Pick<AppData, 'country' | 'selectedVehicleMode' | 'selectedRide'>): RideOptionData {
+  const products = rideDataFor(data.country, data.selectedVehicleMode);
+  return products.find((ride) => ride.id === data.selectedRide) ?? products[0]!;
+}
 
 function selectVehicleMode(actions: AppActions, mode: VehicleMode) {
   actions.setSelectedVehicleMode(mode);
@@ -367,7 +419,7 @@ const serviceData: Array<{ label: string; image: ImageSourcePropType; screen: Sc
   { label: 'Groceries', image: assets.service.groceries, screen: 'groceries' },
   { label: 'Pay', image: assets.service.pay, screen: 'wallet' },
   { label: 'DineOut', image: assets.service.dineout, screen: 'dineOut' },
-  { label: 'Electronics', image: assets.service.electronics, screen: 'electronics' },
+  { label: 'Electronics', image: assets.service.electronics, screen: 'electronicsHome' },
   { label: 'Home & Care', image: assets.service.homeCare, screen: 'homeCare' },
   { label: 'Fix', image: assets.service.fix, screen: 'fix' },
   { label: 'All services', image: assets.service.all, screen: 'services' },
@@ -378,7 +430,7 @@ const homeServiceData: Array<{ label: string; screen: Screen; image?: ImageSourc
   { label: 'Rides', screen: 'mobilityHome', image: assets.service.rides },
   { label: 'Boda', screen: 'mobilityHome', image: assets.service.boda },
   { label: 'Groceries', screen: 'groceries', image: assets.service.groceries },
-  { label: 'Pharmacies', screen: 'shops', icon: 'medical-outline' },
+  { label: 'Pharmacies', screen: 'pharmacyHome', icon: 'medical-outline' },
   { label: 'Stores', screen: 'shops', image: assets.service.shops },
   { label: 'Send', screen: 'parcel', image: assets.service.send },
   { label: 'More', screen: 'services', icon: 'grid-outline' },
@@ -386,11 +438,11 @@ const homeServiceData: Array<{ label: string; screen: Screen; image?: ImageSourc
 
 type StoreBrand = 'jumia' | 'carrefour' | 'game' | 'pharmacy';
 
-const storeData: Array<{ id: StoreBrand; name: string; rating: string; meta: string; delivery: string }> = [
-  { id: 'jumia', name: 'Jumia', rating: '4.5', meta: 'Marketplace', delivery: '25–35 min' },
-  { id: 'carrefour', name: 'Capital Shoppers', rating: '4.6', meta: 'Groceries & home', delivery: '20–30 min' },
-  { id: 'game', name: 'Quality Supermarket', rating: '4.4', meta: 'Groceries & household', delivery: '25–40 min' },
-  { id: 'pharmacy', name: 'Goodlife Pharmacy', rating: '4.7', meta: 'Health & wellness', delivery: '15–25 min' },
+const storeData: Array<{ id: StoreBrand; name: string; meta: string }> = [
+  { id: 'jumia', name: 'Jumia', meta: 'Marketplace reference' },
+  { id: 'carrefour', name: 'Capital Shoppers', meta: 'Groceries & home' },
+  { id: 'game', name: 'Quality Supermarket', meta: 'Groceries & household' },
+  { id: 'pharmacy', name: 'Goodlife Pharmacy', meta: 'Health & wellness' },
 ];
 
 function StoreBrandMark({ brand, compact = false }: { brand: StoreBrand; compact?: boolean }) {
@@ -517,8 +569,8 @@ async function shareReferral(data: AppData) {
 }
 
 async function shareReceipt(data: AppData) {
-  const ride = rideData.find((item) => item.id === data.selectedRide) ?? rideData[0];
-  const fare = (ride?.baseFare ?? 0) + 500;
+  const ride = selectedRideData(data);
+  const fare = currentRideFare(data).total;
   try {
     await Share.share({
       title: 'Kareebu+ receipt',
@@ -555,19 +607,6 @@ function formatRouteDuration(durationSeconds?: number) {
   return remainder ? `${hours} hr ${remainder} min` : `${hours} hr`;
 }
 
-const ROUTE_POINTS = [
-  { latitude: 0.3389, longitude: 32.5796 },
-  { latitude: 0.3418, longitude: 32.5829 },
-  { latitude: 0.3441, longitude: 32.5862 },
-  { latitude: 0.3483, longitude: 32.5905 },
-];
-
-const NEARBY_VEHICLE_POINTS = [
-  { latitude: 0.3404, longitude: 32.5778, heading: 74 },
-  { latitude: 0.3454, longitude: 32.5838, heading: 132 },
-  { latitude: 0.3503, longitude: 32.5884, heading: 218 },
-];
-
 function VehicleMarkerVisual({ vehicleMode, compact = false }: { vehicleMode: VehicleMode; compact?: boolean }) {
   return (
     <View style={[styles.vehicleMarkerShell, compact && styles.vehicleMarkerShellCompact, vehicleMode === 'BODA' ? styles.vehicleMarkerBoda : styles.vehicleMarkerRide]}>
@@ -603,7 +642,8 @@ function InteractiveKareebuMap({
   mode = 'preview',
   onOpen,
   onPinChange,
-  initialRegion = KAMPALA_REGION,
+  initialRegion,
+  marketCountry = 'Uganda',
   requestLocationOnMount = false,
   onLocationPermissionChange,
   vehicleMode = 'RIDE',
@@ -625,6 +665,7 @@ function InteractiveKareebuMap({
   hidePickerControls?: boolean;
   onMapRegionChange?: (region: Region) => void;
   initialRegion?: Region;
+  marketCountry?: string;
   requestLocationOnMount?: boolean;
   onLocationPermissionChange?: (allowed: boolean) => void;
   vehicleMode?: VehicleMode;
@@ -635,27 +676,38 @@ function InteractiveKareebuMap({
   destinationLabel?: string;
 }) {
   const mapRef = useRef<MapView>(null);
-  const [region, setRegion] = useState<Region>(initialRegion);
-  const [pin, setPin] = useState({ latitude: initialRegion.latitude, longitude: initialRegion.longitude });
+  const market = marketConfig(marketCountry);
+  const resolvedInitialRegion = initialRegion ?? market.map.primaryCityRegion;
+  const marketRoute = market.map.routePoints;
+  const [region, setRegion] = useState<Region>(resolvedInitialRegion);
+  const [pin, setPin] = useState({ latitude: resolvedInitialRegion.latitude, longitude: resolvedInitialRegion.longitude });
   const [hasLocation, setHasLocation] = useState(false);
   const modeConfig = VEHICLE_MODE_CONFIG[vehicleMode];
   const animationPath = useMemo(() => {
-    const source = routePath && routePath.length >= 2 ? routePath : ROUTE_POINTS;
+    const source = routePath && routePath.length >= 2 ? routePath : marketRoute;
     if (source.length <= 8) return source;
     return Array.from({ length: 8 }, (_, index) => source[Math.round((source.length - 1) * (index / 7))]);
-  }, [routePath]);
+  }, [routePath, marketRoute]);
   const [liveVehicle, setLiveVehicle] = useState<VehicleGpsPayload>(() => ({
     driverId: 'demo-peter',
     vehicleType: modeConfig.vehicleType,
-    latitude: ROUTE_POINTS[0].latitude,
-    longitude: ROUTE_POINTS[0].longitude,
-    heading: bearingBetween(ROUTE_POINTS[0] as any, ROUTE_POINTS[1] as any),
+    latitude: marketRoute[0].latitude,
+    longitude: marketRoute[0].longitude,
+    heading: bearingBetween(marketRoute[0] as any, marketRoute[1] as any),
     timestamp: Date.now(),
   }));
 
   useEffect(() => {
     setLiveVehicle((current) => ({ ...current, vehicleType: modeConfig.vehicleType, timestamp: Date.now() }));
   }, [modeConfig.vehicleType]);
+
+  useEffect(() => {
+    const next = initialRegion ?? market.map.primaryCityRegion;
+    setRegion(next);
+    setPin({ latitude: next.latitude, longitude: next.longitude });
+    setLiveVehicle((current) => ({ ...current, latitude: marketRoute[0].latitude, longitude: marketRoute[0].longitude, timestamp: Date.now() }));
+    requestAnimationFrame(() => mapRef.current?.animateToRegion(next, 420));
+  }, [initialRegion, market, marketRoute]);
 
   useEffect(() => {
     if (!focusCoordinate) return;
@@ -749,19 +801,24 @@ function InteractiveKareebuMap({
       onPinChange?.(coordinate);
       animate({ ...coordinate, latitudeDelta: 0.085, longitudeDelta: 0.074 });
     } catch {
-      // Keep Kampala as the reliable fallback when the emulator/device has no GPS fix.
+      // Keep the configured market city as fallback when the device has no GPS fix.
     }
   };
 
   const isPreview = mode === 'preview';
   const isPicker = mode === 'picker';
   const showRoute = mode === 'route' || mode === 'driver' || mode === 'trip';
-  const routeOrigin = originCoordinate ?? ROUTE_POINTS[0];
+  const routeOrigin = originCoordinate ?? marketRoute[0];
   const routeCoordinates = routePath && routePath.length >= 2
     ? routePath
     : destinationCoordinate
       ? [routeOrigin, destinationCoordinate]
-      : ROUTE_POINTS;
+      : marketRoute;
+  const nearbyVehicles = marketRoute.slice(0, 3).map((point, index) => ({
+    latitude: point.latitude + (index - 1) * 0.003,
+    longitude: point.longitude + (1 - index) * 0.002,
+    heading: index * 55,
+  }));
   const needsCloserZoom = isPicker && region.latitudeDelta > 0.085;
 
   useEffect(() => {
@@ -780,7 +837,7 @@ function InteractiveKareebuMap({
       <MapView
         ref={mapRef}
         style={styles.liveMap}
-        initialRegion={initialRegion}
+        initialRegion={resolvedInitialRegion}
         onRegionChangeComplete={(nextRegion) => {
           setRegion(nextRegion);
           onMapRegionChange?.(nextRegion);
@@ -821,9 +878,9 @@ function InteractiveKareebuMap({
       >
         {showRoute ? <Polyline coordinates={routeCoordinates} strokeColor={COLORS.black} strokeWidth={routePath?.length ? 5 : destinationCoordinate ? 3 : 5} lineDashPattern={routePath?.length ? undefined : destinationCoordinate ? [8, 8] : undefined} /> : null}
         {showRoute ? <Marker coordinate={routeOrigin} pinColor={COLORS.green} title="Pickup" /> : null}
-        {showRoute ? <Marker coordinate={destinationCoordinate ?? ROUTE_POINTS[ROUTE_POINTS.length - 1]} pinColor={COLORS.red} title={destinationCoordinate ? destinationLabel : 'Acacia Mall'} /> : null}
+        {showRoute ? <Marker coordinate={destinationCoordinate ?? marketRoute[marketRoute.length - 1]} pinColor={COLORS.red} title={destinationCoordinate ? destinationLabel : market.primaryCity} /> : null}
         {isPicker && pickerPinMode === 'marker' ? <Marker coordinate={pin} pinColor={pickerPinColor} draggable onDragEnd={(event) => { const coordinate = event.nativeEvent.coordinate; setPin(coordinate); onPinChange?.(coordinate); }} /> : null}
-        {mode === 'route' ? NEARBY_VEHICLE_POINTS.map((vehicle, index) => (
+        {mode === 'route' ? nearbyVehicles.map((vehicle, index) => (
           <Marker key={`${vehicleMode}-${index}`} coordinate={{ latitude: vehicle.latitude, longitude: vehicle.longitude }} rotation={vehicle.heading} flat anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
             <VehicleMarkerVisual vehicleMode={vehicleMode} compact />
           </Marker>
@@ -952,9 +1009,47 @@ export function WelcomeScreen({ go, setGuest }: Pick<AppActions, 'go' | 'setGues
 }
 
 function CountrySelectionMap({ country }: { country: string }) {
+  const mapRef = useRef<MapView>(null);
+  const market = marketConfig(country);
+  const [markerVisible, setMarkerVisible] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    let markerTimer: ReturnType<typeof setTimeout> | undefined;
+    setMarkerVisible(false);
+    void AccessibilityInfo.isReduceMotionEnabled().then((reduceMotion) => {
+      if (!active) return;
+      requestAnimationFrame(() => mapRef.current?.animateToRegion(market.map.countryRegion, reduceMotion ? 0 : 420));
+      markerTimer = setTimeout(() => {
+        if (active) setMarkerVisible(true);
+      }, reduceMotion ? 0 : 300);
+    });
+    return () => {
+      active = false;
+      if (markerTimer) clearTimeout(markerTimer);
+    };
+  }, [market]);
+
   return (
     <View style={styles.v36CountryMapWrap} pointerEvents="none">
-      <Image source={COUNTRY_SELECTION_ASSETS.map} style={styles.v36CountryMap} resizeMode="cover" />
+      <MapView
+        ref={mapRef}
+        style={styles.v36CountryMap}
+        initialRegion={market.map.countryRegion}
+        customMapStyle={COUNTRY_MAP_STYLE}
+        rotateEnabled={false}
+        pitchEnabled={false}
+        toolbarEnabled={false}
+      >
+        {markerVisible ? (
+          <Marker coordinate={market.map.primaryCityRegion} title={market.primaryCity} description={`${market.primaryCity}, ${market.country}`}>
+            <View style={styles.v401CountryLocationPill}>
+              <Ionicons name="location" size={15} color={COLORS.red} />
+              <Text style={styles.v401CountryLocationText}>{market.primaryCity}</Text>
+            </View>
+          </Marker>
+        ) : null}
+      </MapView>
       <View style={styles.v36CountryMapFadeTop} />
       <View style={styles.v36CountryMapFadeBottom} />
     </View>
@@ -1415,36 +1510,8 @@ export function PermissionsScreen({ data, actions }: { data: AppData; actions: A
   );
 }
 
-function HomeHeader({ city, country, balance, go, onLocation }: { city: string; country: string; balance: number; go: (screen: Screen) => void; onLocation: () => void }) {
-  return (
-    <View style={styles.v31HomeHeader}>
-      <View style={styles.v31HomeTopRow}>
-        <View style={styles.v31HomeLogoSurface}>
-          <Image source={assets.wordmark} style={styles.v31HomeWordmark} resizeMode="contain" />
-        </View>
-        <Pressable style={styles.v31BalancePill} onPress={() => go('wallet')}>
-          <Image source={assets.mark} style={styles.v31BalanceMark} resizeMode="contain" />
-          <Text style={styles.v31BalanceText}>{formatMoney(country, balance)}</Text>
-        </Pressable>
-      </View>
-      <View style={styles.v31LocationUtilityRow}>
-        <Pressable style={styles.v31HomeLocation} onPress={onLocation}>
-          <Ionicons name="location" size={19} color={COLORS.red} />
-          <Text style={styles.v31HomeLocationLabel}>Deliver to</Text>
-          <Text numberOfLines={1} style={styles.v31HomeLocationText}>{city}, {country}</Text>
-          <Feather name="chevron-down" size={16} color={COLORS.black} />
-        </Pressable>
-        <View style={styles.v31HeaderActions}>
-          <Pressable style={styles.v31HeaderCircle} onPress={() => go('notifications')}>
-            <Ionicons name="notifications-outline" size={20} color={COLORS.black} />
-          </Pressable>
-          <Pressable style={styles.v31HeaderMarkButton} onPress={() => go('account')}>
-            <Image source={assets.mark} style={styles.v31HeaderMark} resizeMode="contain" />
-          </Pressable>
-        </View>
-      </View>
-    </View>
-  );
+function HomeHeader({ city, country, go, onLocation }: { city: string; country: string; go: (screen: Screen) => void; onLocation: () => void }) {
+  return <KareebuPageHeader title="Deliver to" country={country} city={city} locationEnabled onLocationPress={onLocation} searchEnabled searchContext={searchContext('global',{market:country,city})} onSearchPress={()=>go('search')} variant="root" rootIcon="person-outline" onRootAction={()=>go('account')} rightIcon="notifications-outline" rightLabel="Notifications" onRightAction={()=>go('notifications')}/>;
 }
 
 function KareebuBlackPromo({ onPress }: { onPress: () => void }) {
@@ -1495,11 +1562,11 @@ function HomeFoodSection({ data, actions }: { data: AppData; actions: AppActions
         {items.map((item) => (
           <Pressable key={item.id} onPress={() => { actions.selectRestaurant(item.id); actions.go('restaurant'); }} style={({ pressed }) => [styles.homeFoodCard, pressed && styles.v26CardPressed]}>
             <Image source={assets.food[item.image]} style={styles.homeFoodImage} />
-            {item.offer ? <View style={styles.v30MiniOffer}><Text style={styles.v30MiniOfferText}>{item.offer}</Text></View> : null}
+            {item.contentTrust?.liveAvailability && item.offer ? <View style={styles.v30MiniOffer}><Text style={styles.v30MiniOfferText}>{item.offer}</Text></View> : null}
             <View style={styles.v27HomeFoodCopy}>
               <Text numberOfLines={1} style={styles.homeFoodTitle}>{localisedRestaurantName(item, data.country, data.city)}</Text>
               <Text numberOfLines={1} style={styles.v30RestaurantCuisine}>{item.cuisine}</Text>
-              <Text style={styles.homeFoodMeta}><Text style={styles.star}>★</Text> {item.rating.toFixed(1)} · {item.eta}</Text>
+              <Text style={styles.homeFoodMeta}>{item.contentTrust?.liveAvailability?`★ ${item.rating.toFixed(1)} · ${item.eta}`:'Reference listing · check current availability'}</Text>
             </View>
           </Pressable>
         ))}
@@ -1510,9 +1577,9 @@ function HomeFoodSection({ data, actions }: { data: AppData; actions: AppActions
 
 const LOCAL_POPULAR_STORE_IDS: Record<string, Record<string, string[]>> = {
   Uganda: {
-    Kampala: ['carrefour', 'goodlife', 'capital', 'quality', 'jumia', 'healthplus', 'sunlife', 'tyros', 'silverglow', 'lifecare', 'rapid', 'careplus', 'mediq', 'beautybasket', 'nutrition-hub', 'eye-care', 'techpoint', 'homehub', 'petcare'],
-    Entebbe: ['carrefour', 'goodlife', 'jumia', 'healthplus', 'sunlife', 'lifecare'],
-    Wakiso: ['carrefour', 'goodlife', 'capital', 'quality', 'jumia', 'healthplus', 'sunlife', 'lifecare', 'rapid'],
+    Kampala: ['carrefour', 'goodlife', 'gentlemans-pharmacy', 'capital', 'quality', 'jumia', 'healthplus', 'sunlife', 'tyros', 'silverglow', 'lifecare', 'rapid', 'careplus', 'mediq', 'beautybasket', 'nutrition-hub', 'eye-care', 'techpoint', 'homehub', 'petcare'],
+    Entebbe: ['carrefour', 'goodlife', 'gentlemans-pharmacy', 'jumia', 'healthplus', 'sunlife', 'lifecare'],
+    Wakiso: ['carrefour', 'goodlife', 'gentlemans-pharmacy', 'capital', 'quality', 'jumia', 'healthplus', 'sunlife', 'lifecare', 'rapid'],
     Jinja: ['goodlife', 'jumia', 'quality'],
     Mbarara: ['goodlife', 'jumia', 'quality'],
     Gulu: ['goodlife', 'jumia'],
@@ -1551,6 +1618,12 @@ function localeStores(country: string, city: string) {
 
 function localisedRestaurantName(restaurant: DemoRestaurant, country: string, city: string) {
   if (country === 'Uganda') return restaurant.name;
+  const marketNames:Record<string,Record<string,string>>={
+    Kenya:{'cafe-javas':'Nairobi City Café','chicken-tonight':'Nairobi Chicken Kitchen','pizza-inn':'Nairobi Pizza Kitchen','tamarind-thai':'Nairobi Asian Kitchen','rolex-stop':'Chapati & Wrap Stop','kampala-grill':'Nairobi Grill House','java-house':'Java House Kenya','urban-bowl':'Urban Bowl Nairobi','kampala-bites':'Nairobi Bites','sweet-tooth':'Nairobi Dessert Kitchen','roast-rhyme':'Nairobi Roast Kitchen','smokery':'Nairobi Smokery'},
+    Tanzania:{'cafe-javas':'Dar City Café','chicken-tonight':'Dar Chicken Kitchen','pizza-inn':'Dar Pizza Kitchen','tamarind-thai':'Masaki Asian Kitchen','rolex-stop':'Chapati & Chipsi Stop','kampala-grill':'Dar Grill House','java-house':'Masaki Coffee House','urban-bowl':'Urban Bowl Dar','kampala-bites':'Dar Bites','sweet-tooth':'Dar Dessert Kitchen','roast-rhyme':'Dar Roast Kitchen','smokery':'Dar Smokery'},
+  };
+  const configured=marketNames[country]?.[restaurant.id];
+  if(configured)return configured;
   if (restaurant.id === 'kampala-grill') return `${city} Grill House`;
   if (restaurant.id === 'urban-bowl') return `Urban Bowl ${city}`;
   if (restaurant.id === 'kampala-bites') return `${city} Bites`;
@@ -1559,40 +1632,7 @@ function localisedRestaurantName(restaurant: DemoRestaurant, country: string, ci
 }
 
 function PopularStoreLogo({ store }: { store: DemoShop }) {
-  const imageById: Partial<Record<string, ImageSourcePropType>> = {
-    carrefour: assets.homeBrands.carrefour,
-    goodlife: assets.homeBrands.goodlife,
-    jumia: assets.homeBrands.jumia,
-  };
-  const logo = imageById[store.id];
-  if (logo) {
-    return <Image source={logo} style={styles.v35StoreBrandImage} resizeMode="contain" />;
-  }
-  if (store.id === 'capital') {
-    return <View style={styles.v35CapitalLogo}><Ionicons name="cart" size={22} color="#087A3E"/><Text style={styles.v35CapitalLogoText}>CAPITAL</Text></View>;
-  }
-  if (store.id === 'quality') {
-    return <View style={styles.v35QualityLogo}><Text style={styles.v35QualityQ}>Q</Text><Text style={styles.v35QualityText}>QUALITY</Text></View>;
-  }
-  if (store.id === 'kareebu-health') {
-    return <View style={styles.v35KareebuStoreLogo}><Image source={assets.mark} style={styles.v35KareebuStoreMark} resizeMode="contain"/><Text style={styles.v35KareebuStoreText}>HEALTH</Text></View>;
-  }
-  if (store.id === 'naivas') {
-    return <View style={styles.v37NaivasLogo}><Text style={styles.v37NaivasName}>Naivas</Text><View style={styles.v37NaivasLeaf}/></View>;
-  }
-  if (store.id === 'quickmart') {
-    return <View style={styles.v37QuickmartLogo}><Text style={styles.v37QuickmartQuick}>Quick</Text><Text style={styles.v37QuickmartMart}>mart</Text></View>;
-  }
-  if (store.id === 'shoppers-tz') {
-    return <View style={styles.v37ShoppersLogo}><Text style={styles.v37ShoppersName}>SHOPPERS</Text><Text style={styles.v37ShoppersSub}>SUPERMARKET</Text></View>;
-  }
-  if (store.id === 'village-tz') {
-    return <View style={styles.v37VillageLogo}><Text style={styles.v37VillageName}>Village</Text><Text style={styles.v37VillageSub}>SUPERMARKET</Text></View>;
-  }
-  if (store.id === 'breeze-tz') {
-    return <View style={styles.v37BreezeLogo}><Ionicons name="medical" size={20} color="#1B83C5"/><View><Text style={styles.v37BreezeName}>Breeze</Text><Text style={styles.v37BreezeSub}>PHARMACY</Text></View></View>;
-  }
-  return <View style={styles.v35FallbackStoreLogo}><Ionicons name={shopIconName(store.icon)} size={25} color={COLORS.black}/><Text numberOfLines={1} style={styles.v35FallbackStoreText}>{store.name}</Text></View>;
+  return <SellerLogo name={store.name}/>;
 }
 
 function ResilientMerchantPhoto({
@@ -1752,41 +1792,17 @@ function RestaurantDishPhoto({
   );
 }
 
-const V614_PRODUCT_PHOTOS = {
-  pharmacy: 'https://images.unsplash.com/photo-1696861286643-341a8d7a79e9?auto=format&fit=crop&w=700&q=88',
-  grocery: 'https://images.unsplash.com/photo-1775830443507-2a047e6eb49a?auto=format&fit=crop&w=700&q=88',
-  electronics: 'https://images.unsplash.com/photo-1641440615796-5302077ce9fe?auto=format&fit=crop&w=700&q=88',
-  beauty: 'https://images.unsplash.com/photo-1757800946096-b3f14edd6809?auto=format&fit=crop&w=700&q=88',
-  pet: 'https://images.unsplash.com/photo-1722336131103-cfaa6461e8d6?auto=format&fit=crop&w=700&q=88',
-  home: 'https://images.unsplash.com/photo-1770385605649-11de1a033064?auto=format&fit=crop&w=700&q=88',
-  retail: 'https://images.unsplash.com/photo-1670684684445-a4504dca0bbc?auto=format&fit=crop&w=700&q=88',
-} as const;
-
-function productPhotoUri(store: DemoShop, item: { name: string; category: string; detail: string }) {
-  const haystack = `${store.category} ${item.category} ${item.name} ${item.detail}`.toLowerCase();
-  if (haystack.includes('pharmacy') || haystack.includes('medicine') || haystack.includes('vitamin') || haystack.includes('wellness')) return V614_PRODUCT_PHOTOS.pharmacy;
-  if (haystack.includes('electronic') || haystack.includes('phone') || haystack.includes('charger') || haystack.includes('earbud') || haystack.includes('speaker')) return V614_PRODUCT_PHOTOS.electronics;
-  if (haystack.includes('beauty') || haystack.includes('skin') || haystack.includes('personal care')) return V614_PRODUCT_PHOTOS.beauty;
-  if (haystack.includes('pet')) return V614_PRODUCT_PHOTOS.pet;
-  if (haystack.includes('home') || haystack.includes('household')) return V614_PRODUCT_PHOTOS.home;
-  if (haystack.includes('grocery') || haystack.includes('food') || haystack.includes('milk') || haystack.includes('bread') || haystack.includes('rice') || haystack.includes('fruit')) return V614_PRODUCT_PHOTOS.grocery;
-  return V614_PRODUCT_PHOTOS.retail;
-}
-
 function StoreProductPhoto({
   store,
   item,
+  style,
 }: {
   store: DemoShop;
-  item: { name: string; category: string; detail: string };
+  item: { id?:string; name: string; category: string; subcategory?:string; detail: string; brand?:string; metadata?:{imageKey?:string} };
+  style?: any;
 }) {
-  return (
-    <ResilientMerchantPhoto
-      uri={productPhotoUri(store, item)}
-      fallback={assets.service.shops}
-      style={styles.v614ProductPhoto}
-    />
-  );
+  const visual=commerceProductVisual({id:item.id,name:item.name,category:item.category,subcategory:item.subcategory,detail:item.detail,brand:item.brand,imageKey:item.metadata?.imageKey,storeCategory:store.category});
+  return <View style={[style??styles.v614ProductPhoto,{backgroundColor:visual.background}]}>{visual.image?<Image source={visual.image} resizeMode="cover" style={StyleSheet.absoluteFill}/>:<View style={StyleSheet.absoluteFill}/>}</View>;
 }
 
 function HomeShopSection({ data, actions }: { data: AppData; actions: AppActions }) {
@@ -1800,7 +1816,7 @@ function HomeShopSection({ data, actions }: { data: AppData; actions: AppActions
             <ShopPhoto store={store} style={styles.v35StorePhotoArea}/>
             <Text numberOfLines={2} style={[styles.homeStoreName, styles.v35HomeStoreName]}>{localisedStoreName(store, data.country)}</Text>
             <Text numberOfLines={1} style={styles.v27HomeStoreType}>{store.category} · {store.location ?? data.city}</Text>
-            <Text style={styles.homeStoreMeta}><Text style={styles.star}>★</Text> {store.rating.toFixed(1)} ({store.reviews ?? 'New'}) · {store.eta}</Text>
+            <Text style={styles.homeStoreMeta}>{store.contentTrust?.liveAvailability ? `★ ${store.rating.toFixed(1)} (${store.reviews ?? 'New'}) · ${store.eta}` : 'Reference listing · check current availability'}</Text>
             <Text numberOfLines={1} style={styles.v30StoreDeal}>{store.inventoryHint ?? store.deal}</Text>
           </Pressable>
         ))}
@@ -1841,7 +1857,7 @@ function HomeNewFinds({ go }: { go: (screen: Screen) => void }) {
   return (
     <View style={styles.v25SurfaceSection}>
       <View style={styles.v25SectionHeadingRow}>
-        <View><Text style={styles.v25SectionTitle}>New finds up to <Text style={{ color: COLORS.red }}>30% off</Text></Text><Text style={styles.v25SectionSubtitle}>Discover more, spend less</Text></View>
+        <View><Text style={styles.v25SectionTitle}>New finds nearby</Text><Text style={styles.v25SectionSubtitle}>Explore named stores and current catalogues</Text></View>
         <TextButton label="See all" onPress={() => go('shops')} color={COLORS.red} />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v25MerchantRow}>
@@ -1849,9 +1865,9 @@ function HomeNewFinds({ go }: { go: (screen: Screen) => void }) {
           <Pressable key={store.id} onPress={() => go('shops')} style={styles.v25MerchantCard}>
             <StoreBrandMark brand={store.id} compact />
             <Text numberOfLines={1} style={styles.v25MerchantName}>{store.name}</Text>
-            <Text style={styles.v25MerchantMeta}><Text style={styles.star}>★</Text> {store.rating}</Text>
-            <Text style={styles.v25MerchantEta}>{store.delivery}</Text>
-            <Text style={styles.v25MerchantDelivery}>{store.id === 'pharmacy' ? 'Free delivery' : 'From UGX 2,000'}</Text>
+            <Text style={styles.v25MerchantMeta}>{store.meta}</Text>
+            <Text style={styles.v25MerchantEta}>Reference listing</Text>
+            <Text style={styles.v25MerchantDelivery}>Check current availability</Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -1905,7 +1921,7 @@ function HomeRetailPromoCard({ promo, onPress, width, height }: { promo: HomeRet
         onPress={onPress}
         style={({ pressed }) => [styles.v33ReferencePromoCard, { width, height }, pressed && styles.v26CardPressed]}
       >
-        <Image source={referenceCreative} style={styles.v33ReferencePromoImage} resizeMode="stretch" />
+        <Image source={referenceCreative} style={styles.v33ReferencePromoImage} resizeMode="cover" />
       </Pressable>
     );
   }
@@ -1950,11 +1966,10 @@ function localeHomePromotions(country: string, city: string): HomeRetailPromotio
   return stores.map((store, index) => ({
     id: `locale-${country.toLowerCase()}-${store.id}`,
     brand: localisedStoreName(store, country),
-    eyebrow: store.category === 'Pharmacy' ? 'HEALTH & WELLNESS' : 'LOCAL DEALS',
-    headline: store.category === 'Groceries' ? 'Fresh basket picks' : store.deal,
-    detail: `${store.eta} delivery around ${city}.`,
-    priceLine: store.deliveryFee === 0 ? 'Free delivery on selected baskets' : `${formatMoney(country, demandAdjustedDeliveryFee(store.deliveryFee, 'store-delivery'))} delivery now`,
-    cta: 'Shop now',
+    eyebrow: store.category === 'Pharmacy' ? 'HEALTH & WELLNESS' : 'STORE DISCOVERY',
+    headline: store.category === 'Groceries' ? 'Fresh basket picks' : `Explore ${store.category.toLowerCase()}`,
+    detail: `Open ${localisedStoreName(store, country)} to confirm current availability around ${city}.`,
+    cta: 'Explore',
     target: 'shops',
     visual: store.category === 'Pharmacy' ? 'pharmacy' : store.category === 'Marketplace' ? 'tech' : 'groceries',
     accent: accents[index % accents.length],
@@ -1986,9 +2001,9 @@ function HomeRealBrands({ data, actions }: { data: AppData; actions: AppActions 
         <View style={styles.v31SectionRow}><Text style={styles.v34SectionTitle}>Big brands near you</Text><TextButton label="See all" onPress={() => actions.go('shops')} color={COLORS.red}/></View>
         <View style={styles.v34BrandList}>
           {HOME_REAL_BRANDS.map((brand) => (
-            <Pressable key={brand.id} accessibilityRole="button" accessibilityLabel={`${brand.name}, ${brand.eta}`} onPress={() => openBrand(brand)} style={({pressed}) => [styles.v34BrandTile,{width:brandWidth},pressed&&styles.v26CardPressed]}>
+            <Pressable key={brand.id} accessibilityRole="button" accessibilityLabel={`${brand.name}, ${brand.category} reference listing`} onPress={() => openBrand(brand)} style={({pressed}) => [styles.v34BrandTile,{width:brandWidth},pressed&&styles.v26CardPressed]}>
               <View style={styles.v34BrandLogoWrap}><Image source={homeReferenceBrandLogo(brand.id)} style={styles.v34BrandLogo} resizeMode="contain" /></View>
-              <Text numberOfLines={1} style={styles.v34BrandEta}>{brand.eta}</Text>
+              <Text numberOfLines={1} style={styles.v34BrandEta}>{brand.category}</Text>
             </Pressable>
           ))}
         </View>
@@ -2004,7 +2019,7 @@ function HomeRealBrands({ data, actions }: { data: AppData; actions: AppActions 
         {brands.map((store) => (
           <Pressable key={store.id} onPress={() => { actions.selectShop(store.id); actions.go('shop'); }} style={({pressed}) => [styles.v34BrandTile,{width:brandWidth},pressed&&styles.v26CardPressed]}>
             <ShopPhoto store={store} style={styles.v34BrandPhoto}/>
-            <Text numberOfLines={1} style={styles.v34BrandEta}>★ {store.rating.toFixed(1)} · {store.eta}</Text>
+            <Text numberOfLines={1} style={styles.v34BrandEta}>{store.contentTrust?.liveAvailability ? `★ ${store.rating.toFixed(1)} · ${store.eta}` : 'Reference listing'}</Text>
           </Pressable>
         ))}
       </View>
@@ -2013,31 +2028,15 @@ function HomeRealBrands({ data, actions }: { data: AppData; actions: AppActions 
 }
 
 function HomeRecentActivityCompact({ data, go }: { data: AppData; go: (screen: Screen) => void }) {
-  const { width: viewportWidth } = useWindowDimensions();
-  const mapWidth = Math.max(92, Math.min(124, viewportWidth * 0.27));
-  const cityRegion = CITY_REGIONS[data.city] ?? KAMPALA_REGION;
-  const miniRegion: Region = { ...cityRegion, latitudeDelta: Math.min(0.055, cityRegion.latitudeDelta), longitudeDelta: Math.min(0.045, cityRegion.longitudeDelta) };
-  const recentStore = localeStores(data.country, data.city)[0] ?? DEMO_SHOPS[0]!;
+  const hasActivity = Boolean(data.lastFoodOrder || data.lastCommerceOrder || data.lastParcelOrder || data.lastServiceBooking || data.lastRideReceipt || data.walletTransactions.length);
+  const activityLabel = data.lastFoodOrder ? 'Food order' : data.lastCommerceOrder ? 'Shop order' : data.lastParcelOrder ? 'Parcel delivery' : data.lastServiceBooking ? 'Service booking' : data.lastRideReceipt ? 'Recent ride' : 'Wallet activity';
   return (
     <View>
       <View style={styles.v31SectionRow}><Text style={styles.v34SectionTitle}>Recent activity</Text><TextButton label="See all" onPress={() => go('activity')} color={COLORS.red}/></View>
-      <Pressable onPress={() => go('orders')} style={({pressed}) => [styles.v34RecentCard,pressed&&styles.v26CardPressed]}>
-        <ShopPhoto store={recentStore} style={styles.v34RecentPhoto}/>
-        <View style={styles.v34RecentCopy}>
-          <Text numberOfLines={1} style={styles.v34RecentTitle}>{localisedStoreName(recentStore, data.country)}</Text>
-          <Text numberOfLines={1} style={styles.v34RecentMeta}>{recentStore.category} · Delivered</Text>
-          <Text numberOfLines={1} style={styles.v34RecentTime}>Today, 9:15 AM</Text>
-        </View>
-        <View style={styles.v34RecentAmountWrap}>
-          <Text numberOfLines={1} style={styles.v34RecentAmount}>{formatMoney(data.country, 45000)}</Text>
-          <View style={styles.v34DeliveredPill}><Text style={styles.v34DeliveredText}>Delivered</Text></View>
-        </View>
-        <View style={[styles.v34RecentMapWrap,{width:mapWidth}]} pointerEvents="none">
-          <MapView style={StyleSheet.absoluteFill} initialRegion={miniRegion} scrollEnabled={false} zoomEnabled={false} rotateEnabled={false} pitchEnabled={false} toolbarEnabled={false} liteMode={Platform.OS === 'android'}>
-            <Marker coordinate={{latitude:miniRegion.latitude, longitude:miniRegion.longitude}}><View style={styles.v31MapPin}><Ionicons name="location" size={16} color={COLORS.white}/></View></Marker>
-          </MapView>
-        </View>
-      </Pressable>
+      {!hasActivity ? <Pressable accessibilityRole="button" onPress={() => go('exploreHub')} style={({pressed}) => [styles.v34RecentCard,pressed&&styles.v26CardPressed]}><View style={styles.v34RecentCopy}><Text style={styles.v34RecentTitle}>Nothing active right now</Text><Text style={styles.v34RecentMeta}>Your trips, orders and bookings will appear here.</Text></View></Pressable> : <Pressable accessibilityRole="button" onPress={() => go('activity')} style={({pressed}) => [styles.v34RecentCard,pressed&&styles.v26CardPressed]}>
+        <View style={styles.v34RecentActivityIcon}><Ionicons name="time-outline" size={27} color={COLORS.black}/></View>
+        <View style={styles.v34RecentCopy}><Text numberOfLines={1} style={styles.v34RecentTitle}>{activityLabel}</Text><Text numberOfLines={2} style={styles.v34RecentMeta}>Open Activity for its current status, details and receipt.</Text></View><Feather name="chevron-right" size={22}/>
+      </Pressable>}
     </View>
   );
 }
@@ -2061,13 +2060,12 @@ function V40HomeHeroBanner({ data, actions }: { data: AppData; actions: AppActio
         <Image source={assets.wordmark} style={styles.v40HomeHeroLogo} resizeMode="contain" />
         <Text style={styles.v40HomeHeroTitle}>Glowing{`
 `}<Text style={styles.v40HomeHeroTitleAccent}>Summer</Text></Text>
-        <Text style={styles.v40HomeHeroDiscount}>UP TO 70% OFF</Text>
-        <Text style={styles.v40HomeHeroBody}>Top brands. Lower prices.{`
-`}Delivered around {data.city}.</Text>
+        <Text style={styles.v40HomeHeroDiscount}>BEAUTY DISCOVERY</Text>
+        <Text style={styles.v40HomeHeroBody}>Explore beauty, skincare and personal-care picks around {data.city}.</Text>
         <View style={styles.v40HomeHeroCta}><Text style={styles.v40HomeHeroCtaText}>Shop now</Text><Feather name="arrow-right" size={16} color={COLORS.red}/></View>
       </View>
       <View style={styles.v40HomeHeroVisual}>
-        <View style={styles.v40HomeHeroFree}><Ionicons name="bicycle-outline" size={14} color={COLORS.red}/><Text style={styles.v40HomeHeroFreeText}>FREE DELIVERY</Text></View>
+        <View style={styles.v40HomeHeroFree}><Ionicons name="sparkles-outline" size={14} color={COLORS.red}/><Text style={styles.v40HomeHeroFreeText}>DISCOVER</Text></View>
         <Image source={assets.shops.pharmacy} style={styles.v40HomeHeroProductA} resizeMode="contain" />
         <Image source={assets.service.shops} style={styles.v40HomeHeroProductB} resizeMode="contain" />
       </View>
@@ -2079,9 +2077,9 @@ function V40NewFinds({ data, actions }: { data: AppData; actions: AppActions }) 
   const stores = localeStores(data.country, data.city).slice(0, 5);
   return (
     <View>
-      <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>New finds up to <Text style={styles.v40AccentText}>30% off</Text></Text><Text style={styles.v40SectionSub}>Discover more, spend less</Text></View><TextButton label="See all" onPress={()=>actions.go('shops')} color={COLORS.red}/></View>
+      <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>New finds nearby</Text><Text style={styles.v40SectionSub}>Explore named stores and current catalogues</Text></View><TextButton label="See all" onPress={()=>actions.go('shops')} color={COLORS.red}/></View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FindsRow}>
-        {stores.map((store)=><Pressable key={store.id} onPress={()=>{actions.selectShop(store.id);actions.go('shop')}} style={({pressed})=>[styles.v40FindCard,pressed&&styles.v26CardPressed]}><ShopPhoto store={store} style={styles.v40FindPhoto}/><Text numberOfLines={1} style={styles.v40FindName}>{localisedStoreName(store,data.country)}</Text><Text style={styles.v40FindMeta}>★ {store.rating.toFixed(1)} ({store.reviews ?? 'New'}) · {store.eta}</Text><Text style={[styles.v40FindDelivery,store.deliveryFee===0&&styles.v40FindDeliveryFree]}>{store.deliveryFee===0?'Free delivery':`${formatMoney(data.country,demandAdjustedDeliveryFee(store.deliveryFee,'store-delivery'))} delivery`}</Text></Pressable>)}
+        {stores.map((store)=><Pressable key={store.id} onPress={()=>{actions.selectShop(store.id);actions.go('shop')}} style={({pressed})=>[styles.v40FindCard,pressed&&styles.v26CardPressed]}><ShopPhoto store={store} style={styles.v40FindPhoto}/><Text numberOfLines={1} style={styles.v40FindName}>{localisedStoreName(store,data.country)}</Text><Text style={styles.v40FindMeta}>{store.contentTrust?.liveAvailability ? `★ ${store.rating.toFixed(1)} (${store.reviews ?? 'New'}) · ${store.eta}` : 'Reference listing'}</Text><Text style={styles.v40FindDelivery}>{store.contentTrust?.liveAvailability ? (store.deliveryFee===0?'Free delivery':`${formatMoney(data.country,demandAdjustedDeliveryFee(store.deliveryFee,'store-delivery'))} delivery`) : 'Check availability'}</Text></Pressable>)}
       </ScrollView>
     </View>
   );
@@ -2092,7 +2090,7 @@ function V40PopularStores({ data, actions }: { data: AppData; actions: AppAction
   return (
     <View>
       <View style={styles.v40SectionHeader}><View><Text style={styles.v40SectionTitle}>Popular stores</Text><Text style={styles.v40SectionSub}>Around {data.city}</Text></View><TextButton label="See all" onPress={()=>actions.go('shops')} color={COLORS.red}/></View>
-      <View style={styles.v40PopularStoreList}>{stores.map((store)=><Pressable key={store.id} onPress={()=>{actions.selectShop(store.id);actions.go('shop')}} style={({pressed})=>[styles.v40PopularStoreRow,pressed&&styles.v26CardPressed]}><ShopPhoto store={store} style={styles.v40PopularStorePhoto}/><View style={styles.flex}><Text numberOfLines={1} style={styles.v40PopularStoreName}>{localisedStoreName(store,data.country)}</Text><Text numberOfLines={1} style={styles.v40PopularStoreMeta}>{store.category} · {store.location ?? data.city} · {store.eta}</Text><Text numberOfLines={1} style={styles.v40PopularStoreInventory}>{store.inventoryHint ?? store.deal}</Text></View><View style={styles.v40PopularStoreRight}><Text style={styles.v40PopularStoreRating}>★ {store.rating.toFixed(1)} ({store.reviews ?? 'New'})</Text><Text numberOfLines={1} style={styles.v40PopularStoreDeal}>{store.deliveryFee===0?'Free delivery':store.deal}</Text></View></Pressable>)}</View>
+      <View style={styles.v40PopularStoreList}>{stores.map((store)=><Pressable key={store.id} onPress={()=>{actions.selectShop(store.id);actions.go('shop')}} style={({pressed})=>[styles.v40PopularStoreRow,pressed&&styles.v26CardPressed]}><ShopPhoto store={store} style={styles.v40PopularStorePhoto}/><View style={styles.flex}><Text numberOfLines={1} style={styles.v40PopularStoreName}>{localisedStoreName(store,data.country)}</Text><Text numberOfLines={1} style={styles.v40PopularStoreMeta}>{store.category} · {store.location ?? data.city} · {store.contentTrust?.liveAvailability ? store.eta : 'Reference listing'}</Text><Text numberOfLines={1} style={styles.v40PopularStoreInventory}>{store.inventoryHint ?? store.deal}</Text></View><View style={styles.v40PopularStoreRight}>{store.contentTrust?.liveAvailability ? <Text style={styles.v40PopularStoreRating}>★ {store.rating.toFixed(1)} ({store.reviews ?? 'New'})</Text> : <Text style={styles.v40PopularStoreRating}>Reference</Text>}<Text numberOfLines={1} style={styles.v40PopularStoreDeal}>{store.contentTrust?.liveAvailability ? (store.deliveryFee===0?'Configured free delivery':store.deal) : 'Check availability'}</Text></View></Pressable>)}</View>
     </View>
   );
 }
@@ -2102,118 +2100,88 @@ function V40WeekendPicks({ data, actions }: { data: AppData; actions: AppActions
   return (
     <View style={styles.v40WeekendPanel}>
       <View style={styles.v40WeekendLead}><Text style={styles.v40WeekendTitle}>Weekend{`
-`}<Text style={styles.v40AccentText}>picks</Text></Text><Text style={styles.v40WeekendBody}>Great deals. Delivered fast.</Text><Pressable onPress={()=>actions.go('food')} style={styles.v40WeekendCta}><Text style={styles.v40WeekendCtaText}>See offers</Text><Feather name="arrow-right" size={14} color={COLORS.red}/></Pressable></View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40WeekendCards}>{picks.map((restaurant,index)=><Pressable key={restaurant.id} onPress={()=>{actions.selectRestaurant(restaurant.id);actions.go('restaurant')}} style={styles.v40WeekendCard}><Text style={styles.v40WeekendOffer}>{index===2?'Free delivery':`${30-index*5}% off`}</Text><Text numberOfLines={1} style={styles.v40WeekendRestaurant}>{localisedRestaurantName(restaurant,data.country,data.city)}</Text><RestaurantPhoto restaurant={restaurant} style={styles.v40WeekendImage}/></Pressable>)}</ScrollView>
+`}<Text style={styles.v40AccentText}>picks</Text></Text><Text style={styles.v40WeekendBody}>Popular restaurants and weekend food ideas.</Text><Pressable onPress={()=>actions.go('food')} style={styles.v40WeekendCta}><Text style={styles.v40WeekendCtaText}>See offers</Text><Feather name="arrow-right" size={14} color={COLORS.red}/></Pressable></View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40WeekendCards}>{picks.map((restaurant,index)=><Pressable key={restaurant.id} onPress={()=>{actions.selectRestaurant(restaurant.id);actions.go('restaurant')}} style={styles.v40WeekendCard}><Text style={styles.v40WeekendOffer}>{index===2?'Local favourite':'Weekend pick'}</Text><Text numberOfLines={1} style={styles.v40WeekendRestaurant}>{localisedRestaurantName(restaurant,data.country,data.city)}</Text><RestaurantPhoto restaurant={restaurant} style={styles.v40WeekendImage}/></Pressable>)}</ScrollView>
     </View>
   );
 }
 
+function HomeCampaignPager({campaigns,onPress}:{campaigns:PromotionCampaign[];onPress:(campaign:PromotionCampaign)=>void}){
+  const {width}=useWindowDimensions();
+  const [active,setActive]=useState(0);
+  const pageWidth=Math.max(300,width-28);
+  return <View><ScrollView horizontal pagingEnabled decelerationRate="fast" snapToInterval={pageWidth} disableIntervalMomentum showsHorizontalScrollIndicator={false} onMomentumScrollEnd={event=>setActive(Math.max(0,Math.min(campaigns.length-1,Math.round(event.nativeEvent.contentOffset.x/pageWidth))))}>{campaigns.map(campaign=><View key={campaign.id} style={{width:pageWidth}}><PromotionHero campaign={campaign} onPress={onPress}/></View>)}</ScrollView><View style={styles.homeCampaignDots}>{campaigns.map((campaign,index)=><View key={`${campaign.id}-dot`} style={[styles.homeCampaignDot,index===active&&styles.homeCampaignDotActive]}/>)}</View></View>;
+}
+
+function HomeMobilityStrip({actions}:{actions:AppActions}){
+  const open=(mode:VehicleMode)=>{selectVehicleMode(actions,mode);trackEvent('service_entry',{service:mode.toLowerCase(),source:'home_mobility'});actions.go('mobilityHome')};
+  return <View style={styles.homeMobilityStrip}>
+    <View><Text style={styles.homeMobilityStripTitle}>Getting around</Text><Text style={styles.homeMobilityStripSubtitle}>Choose how you want to move</Text></View>
+    <View style={styles.homeMobilityStripRow}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Ride, cars for everyday journeys" onPress={()=>open('RIDE')} style={({pressed})=>[styles.homeMobilityChoice,pressed&&styles.pressed]}><View style={styles.homeMobilityChoiceArt}><Image source={require('../assets/kareebu-plus/lifestyle-cutouts/service-rides.png')} resizeMode="contain" style={styles.homeMobilityChoiceImage}/></View><View style={styles.flex}><Text style={styles.homeMobilityChoiceTitle}>Ride</Text><Text numberOfLines={1} style={styles.homeMobilityChoiceBody}>Car journeys</Text></View><Feather name="chevron-right" size={18} color={COLORS.black}/></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Boda, motorcycle journeys" onPress={()=>open('BODA')} style={({pressed})=>[styles.homeMobilityChoice,pressed&&styles.pressed]}><View style={[styles.homeMobilityChoiceArt,styles.homeMobilityChoiceArtBoda]}><Image source={require('../assets/kareebu-plus/lifestyle-cutouts/service-boda.png')} resizeMode="contain" style={styles.homeMobilityChoiceImage}/></View><View style={styles.flex}><Text style={styles.homeMobilityChoiceTitle}>Boda</Text><Text numberOfLines={1} style={styles.homeMobilityChoiceBody}>Bike journeys</Text></View><Feather name="chevron-right" size={18} color={COLORS.black}/></Pressable>
+    </View>
+  </View>;
+}
+
 export function HomeScreen({ data, actions }: { data: AppData; actions: AppActions }) {
-  const openService = (label: string, screen: Screen) => {
-    if (label === 'Boda') selectVehicleMode(actions, 'BODA');
-    if (label === 'Rides') selectVehicleMode(actions, 'RIDE');
-    if (label === 'Groceries') actions.setShopCategoryPreset('Groceries');
-    if (label === 'Healthcare') actions.setShopCategoryPreset('Pharmacy');
-    if (label === 'Pharmacies') actions.setShopCategoryPreset('Pharmacy');
-    if (label === 'Stores') actions.setShopCategoryPreset('All');
-    if (label === 'More') return actions.go('services');
-    actions.go(screen);
+  const homePromotions = promotionsFor({service:'home',country:data.country,city:data.city});
+  const heroPromotions = homePromotions.filter(item=>item.slot==='hero');
+  const mainHomeHero:PromotionCampaign={...heroPromotions[0]!,id:'home-super-app',headline:'Move. Shop. Send. Pay.',body:'Everything you need around your city, in one Kareebu+ app.',image:promotionalBannerAssets.home.superApp,imageOnly:true,backgroundImage:undefined,foregroundImage:undefined,backgroundTreatment:'photo',ctaLabel:'Explore Kareebu',ctaScreen:'exploreHub'};
+  const homeCampaigns:PromotionCampaign[]=[mainHomeHero,{...mainHomeHero,id:'home-rides',campaign:'home-rides',headline:'Your city, one ride away.',image:promotionalBannerAssets.home.ride,ctaLabel:'Book a ride',ctaScreen:'mobilityHome',service:'rides'},{...mainHomeHero,id:'home-shopping',campaign:'home-shopping',headline:'Shop more. Live easier.',image:promotionalBannerAssets.home.shopping,ctaLabel:'Start shopping',ctaScreen:'shops',service:'shops'},{...mainHomeHero,id:'home-send',campaign:'home-send',headline:'Send it across town.',image:promotionalBannerAssets.home.send,ctaLabel:'Start a delivery',ctaScreen:'parcel',service:'send'}];
+  const secondaryPromotion = homePromotions.find(item=>item.slot==='secondary');
+  const contextualPromotions = homePromotions.filter(item=>item.slot==='contextual').slice(0,2);
+  const openPromotion = (campaign:PromotionCampaign) => { trackEvent('discovery_interaction',{campaign:campaign.campaign,slot:campaign.slot});if(campaign.service==='rides')selectVehicleMode(actions,'RIDE');actions.go(campaign.ctaScreen); };
+  const openService = (service: KareebuServiceDefinition) => {
+    trackEvent('service_entry', { service: service.analyticsKey, source: 'home' });
+    if(service.vehicleMode)selectVehicleMode(actions,service.vehicleMode);
+    if(service.shopCategory)actions.setShopCategoryPreset(service.shopCategory);
+    const commerceDomain:Partial<Record<string,CommerceRouteContext['domainId']>>={groceries:'groceries',pharmacy:'pharmacy',shops:'shops'};
+    const domain=commerceDomain[service.id];
+    if(domain)actions.updateCommerceContext({domainId:domain,verticalId:domain,categoryId:undefined,categoryLabel:undefined,sellerId:undefined,productId:undefined,entrySource:'service-home',entryScreen:'home'});
+    actions.go(service.route);
   };
+  const hasHistory=Boolean(data.lastFoodOrder||data.lastCommerceOrder||data.lastParcelOrder||data.lastServiceBooking||data.lastRideReceipt);
+  const page=useHomePage(data.country,data.city,hasHistory);
+  const appEngineContext=useMemo<AppEngineContext>(()=>({country:data.country,city:data.city,audience:hasHistory?'returning':'signed-in',member:false}),[data.country,data.city,hasHistory]);
+  const openFeedScreen=useCallback((screen:Screen,item?:HomeFeedItem)=>{
+    trackEvent('discovery_interaction',{source:'home_feed',destination:screen,entityId:item?.merchantId??item?.restaurantId??null});
+    if(item?.mobilityMode)selectVehicleMode(actions,item.mobilityMode);
+    if(item?.merchantId){actions.updateCommerceContext({domainId:'shops',sellerId:item.merchantId,categoryId:undefined,categoryLabel:undefined,productId:undefined,entrySource:'home-recommendation',entryScreen:'home'});actions.selectShop(item.merchantId);actions.go('shop');return;}
+    if(item?.restaurantId){actions.selectRestaurant(item.restaurantId);actions.go('restaurant');return;}
+    actions.go(screen);
+  },[actions]);
+  const renderFeedModule=useCallback((section:AppEngineSectionDefinition)=>{const module=section.data?.homeModule as HomeFeedModule|undefined;return module?<HomeDiscoveryModule module={module} rewardPoints={data.rewardPoints} onOpen={openFeedScreen}/>:null},[data.rewardPoints,openFeedScreen]);
+  const homeIntro=<View style={styles.v42HomeIntro}>
+    <View style={styles.homeQuickServices}><SectionTitle title="Quick services" subtitle="Get where you need to go, shop and send in a tap" /><KareebuServiceCarousel country={data.country} preferences={[]} onOpen={openService} /><KareebuQuickActionsCarousel balance={formatMoney(data.country,data.walletBalance)} onOpen={(_,screen)=>actions.go(screen)} /></View>
+    <HomeCampaignPager campaigns={homeCampaigns} onPress={openPromotion}/>
+    <HomeMobilityStrip actions={actions}/>
+  </View>;
   return (
     <ScreenShell>
-      <HomeHeader city={data.city} country={data.country} balance={data.walletBalance} go={actions.go} onLocation={() => { actions.setLocationReturn('home'); actions.go('locationPicker'); }} />
-      <ScrollView style={styles.flex} contentContainerStyle={styles.v40HomeScroll} showsVerticalScrollIndicator={false}>
-        <Pressable style={styles.v40HomeSearch} onPress={() => actions.go('search')}><Feather name="search" size={20} color={COLORS.black}/><Text style={styles.v40HomeSearchText}>Search for food, groceries, medicine and more</Text></Pressable>
-
-        <Pressable onPress={() => actions.go('assistant')} style={({pressed})=>[styles.v40AiStrip,pressed&&styles.v26CardPressed]}><View style={styles.v40AiStripIcon}><Ionicons name="sparkles" size={18} color={COLORS.black}/></View><View style={styles.flex}><Text style={styles.v40AiStripTitle}>Ask Kareebu AI</Text><Text style={styles.v40AiStripBody}>Tell me what you need and I’ll recommend the best options nearby.</Text></View><Feather name="chevron-right" size={18} color={COLORS.white}/></Pressable>
-
-        <HomeStoriesRail actions={actions}/>
-
-        <View style={styles.uxHomeSectionHeading}><Text style={styles.uxHomeSectionTitle}>What do you need?</Text><Text style={styles.uxHomeSectionHint}>Everything in one place</Text></View>
-        <View>
-          <KareebuServiceCarousel
-            onOpen={(label, screen) => openService(label, screen)}
-          />
-          <KareebuQuickActionsCarousel
-            onOpen={(label, screen) => openService(label, screen)}
-          />
-          <KareebuTopPicks
-            onOpenProduct={(productId) => {
-              const groceryStore =
-                localeStores(data.country, data.city).find(
-                  (item) => item.category === 'Groceries',
-                ) ??
-                DEMO_SHOPS.find(
-                  (item) => item.category === 'Groceries',
-                );
-
-              if (!groceryStore) {
-                actions.setShopCategoryPreset('Groceries');
-                actions.go('shops');
-                return;
-              }
-
-              actions.selectShop(groceryStore.id);
-              actions.selectCommerceProduct(productId);
-              actions.go('commerceProduct');
-            }}
-          />
-          <KareebuDineOutSection
-            onOpenRestaurant={(restaurantId) => {
-              if ('selectRestaurant' in actions && typeof (actions as any).selectRestaurant === 'function') {
-                (actions as any).selectRestaurant(restaurantId);
-                actions.go('restaurant' as any);
-                return;
-              }
-
-              actions.setShopCategoryPreset('Food');
-              actions.go('food' as any);
-            }}
-            onOpenDineOut={() => {
-              actions.setShopCategoryPreset('Food');
-              actions.go('food' as any);
-            }}
-          />
-          <KareebuTopOffers
-            onOpenOffer={(offerId) => {
-              if (offerId === 'vitamins') {
-                actions.setShopCategoryPreset('Pharmacies' as any);
-                actions.go('shops' as any);
-                return;
-              }
-
-              actions.go('shops' as any);
-            }}
-          />
-        </View>
-
-        <View style={styles.v41BrowseBlock}>
-          <View style={styles.v41BrowseHeader}><Text style={styles.v41BrowseTitle}>Explore Kareebu+</Text><Pressable onPress={()=>actions.go('allStores')}><Text style={styles.v41BrowseAction}>See all</Text></Pressable></View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v41BrowseRail}>
-            {[
-              ['Categories','grid-outline','categories'],['Brands','ribbon-outline','brands'],['Offers','pricetag-outline','offers'],['Flash sale','flash-outline','flashSale'],['Campaigns','megaphone-outline','campaigns'],['All stores','storefront-outline','allStores']
-            ].map(([label,icon,screen])=><Pressable key={label} onPress={()=>actions.go(screen as Screen)} style={styles.v41BrowsePill}><View style={styles.v41BrowseIcon}><Ionicons name={icon as any} size={20} color={COLORS.black}/></View><Text style={styles.v41BrowseLabel}>{label}</Text></Pressable>)}
-          </ScrollView>
-        </View>
-
-        <V40HomeHeroBanner data={data} actions={actions}/>
-        <PromoDots count={4}/>
-        <V40NewFinds data={data} actions={actions}/>
-        <HomeRedeemSave go={actions.go}/>
-        <HomeRealBrands data={data} actions={actions}/>
-        <V40PopularStores data={data} actions={actions}/>
-        <V40WeekendPicks data={data} actions={actions}/>
-        <HomeFoodSection data={data} actions={actions}/>
-        <HomeShopSection data={data} actions={actions}/>
-        <HomeRecentActivityCompact data={data} go={actions.go}/>
-        <View style={styles.v40HomeEndSpacer}><Image source={assets.wordmark} style={styles.v40HomeEndLogo} resizeMode="contain"/><Text style={styles.v40HomeEndText}>Everything you need, around {data.city}.</Text></View>
-      </ScrollView>
+      <HomeHeader city={data.city} country={data.country} go={actions.go} onLocation={() => { actions.setLocationReturn('home'); actions.go('locationPicker'); }} />
+      <AppEnginePage page={page} context={appEngineContext} renderSection={renderFeedModule} header={homeIntro} footer={<View style={styles.v40HomeEndSpacer}><Image source={assets.wordmark} style={styles.v40HomeEndLogo} resizeMode="contain"/><Text style={styles.v40HomeEndText}>Everything you need, around {data.city}.</Text><View style={styles.v42EndLinks}>{[['Explore','exploreHub'],['Activity','activity'],['Pay','wallet'],['Account','account']].map(([label,screen])=><Pressable key={label} onPress={()=>actions.go(screen as Screen)}><Text style={styles.v42EndLink}>{label}</Text></Pressable>)}</View></View>}/>
       <BottomNav active="home" go={actions.go}/>
     </ScreenShell>
   );
 }
 
-type GlobalSearchKind = 'Service' | 'Food' | 'Shop' | 'Place' | 'Kareebu+';
+function DineOutPlanningScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+  const [when, setWhen] = useState('Tonight');
+  const [guests, setGuests] = useState(2);
+  const dinePromotion=promotionsFor({service:'dineout',country:data.country,city:data.city},'hero')[0];
+  return <ScreenShell><Header title="DineOut" onBack={() => actions.go('home')} /><ScrollView style={styles.flex} contentContainerStyle={styles.genericScroll}>
+    {dinePromotion?<PromotionHero campaign={dinePromotion} onPress={()=>undefined}/>:null}
+    <View style={styles.v40AiStrip}><View style={styles.flex}><Text style={styles.v40AiStripTitle}>Plan a table in {data.city}</Text><Text style={styles.v40AiStripBody}>Choose when and party size, then discover dine-in offers. Availability is confirmed by the restaurant.</Text></View></View>
+    <SectionTitle title="Where" /><RoundedCard><MenuRow icon="location-outline" label={data.city} detail={data.country} onPress={() => { actions.setLocationReturn('dineOut'); actions.go('locationPicker'); }} /></RoundedCard>
+    <SectionTitle title="When" /><View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{['Tonight','Tomorrow','This weekend'].map(item => <Pressable accessibilityRole="button" accessibilityState={{selected:when===item}} key={item} onPress={() => setWhen(item)} style={{minHeight:44,borderRadius:22,paddingHorizontal:16,alignItems:'center',justifyContent:'center',backgroundColor:when===item?COLORS.yellow:COLORS.surfaceStrong}}><Text style={{...TYPE.bodyStrong,color:COLORS.black}}>{item}</Text></Pressable>)}</View>
+    <SectionTitle title="Party size" /><RoundedCard style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}><Pressable accessibilityRole="button" accessibilityLabel="Remove guest" onPress={() => setGuests(Math.max(1, guests-1))}><Ionicons name="remove-circle-outline" size={34}/></Pressable><Text style={TYPE.navTitle}>{guests} guest{guests===1?'':'s'}</Text><Pressable accessibilityRole="button" accessibilityLabel="Add guest" onPress={() => setGuests(Math.min(12, guests+1))}><Ionicons name="add-circle-outline" size={34}/></Pressable></RoundedCard>
+    <PrimaryButton label="Find a table" onPress={() => { trackEvent('discovery_interaction',{domain:'dineout',when,guests}); Alert.alert('Restaurant discovery', `Showing dine-in ideas in ${data.city} for ${guests} on ${when.toLowerCase()}. Live table availability will be confirmed by the restaurant.`); }} />
+    <TrustNote icon="calendar-check-outline" title="Reservation intent, clearly labelled" body="Kareebu+ does not claim a table is held until a restaurant integration confirms it." />
+  </ScrollView></ScreenShell>;
+}
+
+type GlobalSearchKind = 'Service' | 'Food' | 'Shop' | 'Place' | 'Global' | 'Kareebu+';
 type GlobalSearchItem = {
   id: string;
   title: string;
@@ -2231,9 +2199,10 @@ const GLOBAL_SEARCH_ITEMS: GlobalSearchItem[] = [
   { id:'rides', title:'Rides', subtitle:'Book a car across the city', kind:'Service', icon:'car-outline', keywords:['taxi','cab','car','ride','transport','travel'], screen:'whereTo', ride:'economy' },
   { id:'boda', title:'Boda', subtitle:'Fast motorcycle rides nearby', kind:'Service', icon:'bicycle-outline', keywords:['boda','bike','motorcycle','ride','transport'], screen:'whereTo', ride:'boda' },
   { id:'food', title:'Food', subtitle:'Restaurants, meals and delivery', kind:'Food', icon:'restaurant-outline', keywords:['food','restaurant','meal','lunch','dinner','breakfast','delivery'], screen:'food' },
-  { id:'groceries', title:'Groceries', subtitle:'Supermarkets and everyday essentials', kind:'Shop', icon:'basket-outline', keywords:['groceries','supermarket','food shopping','essentials','market'], screen:'shops' },
-  { id:'pharmacy', title:'Pharmacies', subtitle:'Health, medicine and wellness', kind:'Shop', icon:'medical-outline', keywords:['pharmacy','chemist','medicine','health','wellness','drugs'], screen:'shops' },
+  { id:'groceries', title:'Groceries', subtitle:'Supermarkets and everyday essentials', kind:'Shop', icon:'basket-outline', keywords:['groceries','supermarket','food shopping','essentials','market'], screen:'groceries' },
+  { id:'pharmacy', title:'Pharmacies', subtitle:'Health, medicine and wellness', kind:'Shop', icon:'medical-outline', keywords:['pharmacy','chemist','medicine','health','wellness','drugs'], screen:'pharmacyHome' },
   { id:'shops', title:'Shops', subtitle:'Stores, products and local brands', kind:'Shop', icon:'bag-handle-outline', keywords:['shop','shops','store','shopping','products','marketplace'], screen:'shops' },
+  { id:'global-shopping', title:'Kareebu Global', subtitle:'International products with a local landed estimate', kind:'Global', icon:'globe-outline', keywords:['global','international','amazon','ebay','shein','temu','electronics','fashion','beauty','world'], screen:'globalHome' },
   { id:'parcel', title:'Send a parcel', subtitle:'Courier delivery in the city or across Uganda', kind:'Service', icon:'cube-outline', keywords:['send','parcel','package','courier','delivery','documents'], screen:'parcel' },
   { id:'order-anything', title:'Order anything', subtitle:'Ask Kareebu to find and deliver something', kind:'Service', icon:'bag-add-outline', keywords:['order anything','find item','buy for me','courier','concierge'], screen:'orderAnything' },
   { id:'wallet', title:'Wallet & Pay', subtitle:'Pay, top up and manage payment methods', kind:'Kareebu+', icon:'wallet-outline', keywords:['wallet','pay','payment','money','mtn','airtel','mobile money','top up'], screen:'wallet' },
@@ -2260,13 +2229,13 @@ const GLOBAL_SEARCH_ITEMS: GlobalSearchItem[] = [
   { id:'entebbe-airport', title:'Entebbe International Airport', subtitle:'Place · Entebbe', kind:'Place', icon:'airplane-outline', keywords:['entebbe airport','airport','entebbe','destination','place'], screen:'whereTo' },
   { id:'kololo', title:'Kololo', subtitle:'Place · Kampala', kind:'Place', icon:'location-outline', keywords:['kololo','kampala','destination','place'], screen:'whereTo' },
   ...DEMO_RESTAURANTS.filter((restaurant) => !['cafe-javas','chicken-tonight','pizza-inn'].includes(restaurant.id)).map((restaurant) => ({ id:`restaurant-${restaurant.id}`, title:restaurant.name, subtitle:`Restaurant · ${restaurant.cuisine}`, kind:'Food' as const, icon:'restaurant-outline' as const, keywords:[restaurant.name,restaurant.cuisine,...restaurant.categories,...restaurant.menu.map((item)=>item.name)], screen:'restaurant' as Screen, restaurantId:restaurant.id })),
-  ...DEMO_SHOPS.filter((shop) => !['goodlife','capital'].includes(shop.id)).map((shop) => ({ id:`shop-${shop.id}`, title:shop.name, subtitle:`${shop.category} · ${shop.eta}`, kind:'Shop' as const, icon:shopIconName(shop.icon), keywords:[shop.name,shop.category,shop.deal], screen:'shop' as Screen, shopId:shop.id })),
+  ...DEMO_SHOPS.filter((shop) => !['goodlife','capital'].includes(shop.id)).map((shop) => ({ id:`shop-${shop.id}`, title:shop.name, subtitle:shop.contentTrust?.liveAvailability?`${shop.category} · ${shop.eta}`:`${shop.category} · Reference listing`, kind:'Shop' as const, icon:shopIconName(shop.icon), keywords:[shop.name,shop.category,shop.inventoryHint??shop.category], screen:'shop' as Screen, shopId:shop.id })),
 ];
 
-const GLOBAL_SEARCH_ORDER: GlobalSearchKind[] = ['Service','Food','Shop','Place','Kareebu+'];
+const GLOBAL_SEARCH_ORDER: GlobalSearchKind[] = ['Service','Food','Shop','Global','Place','Kareebu+'];
 
 function GlobalSearchResult({ item, onPress }: { item: GlobalSearchItem; onPress: () => void }) {
-  const tone = item.kind === 'Food' ? COLORS.red : item.kind === 'Shop' ? COLORS.yellow : item.kind === 'Place' ? COLORS.black : item.kind === 'Kareebu+' ? COLORS.yellowSoft : COLORS.surface;
+  const tone = item.kind === 'Food' ? COLORS.red : item.kind === 'Shop' || item.kind === 'Global' ? COLORS.yellow : item.kind === 'Place' ? COLORS.black : item.kind === 'Kareebu+' ? COLORS.yellowSoft : COLORS.surface;
   const iconColor = tone === COLORS.black ? COLORS.white : COLORS.black;
   return (
     <Pressable onPress={onPress} style={({pressed}) => [styles.globalSearchResult, pressed && styles.pressed]}>
@@ -2304,24 +2273,29 @@ export function GlobalSearchScreen({ data, actions }: { data: AppData; actions: 
       actions.setSelectedVehicleMode(vehicleModeForRide(item.ride));
     }
     if(item.restaurantId) actions.selectRestaurant(item.restaurantId);
-    if(item.shopId) actions.selectShop(item.shopId);
-    if(item.id === 'groceries') actions.setShopCategoryPreset('Groceries');
-    if(item.id === 'pharmacy') actions.setShopCategoryPreset('Pharmacy');
-    if(item.id === 'shops') actions.setShopCategoryPreset('All');
+    if(item.shopId) { actions.updateCommerceContext({domainId:'shops',sellerId:item.shopId,categoryId:undefined,categoryLabel:undefined,productId:undefined,entrySource:'search',entryScreen:'search'}); actions.selectShop(item.shopId); }
+    if(item.id === 'groceries') { actions.setShopCategoryPreset('Groceries'); actions.updateCommerceContext({domainId:'groceries',verticalId:'groceries',entrySource:'search',entryScreen:'search'}); }
+    if(item.id === 'pharmacy') { actions.setShopCategoryPreset('Pharmacy'); actions.updateCommerceContext({domainId:'pharmacy',verticalId:'pharmacy',entrySource:'search',entryScreen:'search'}); }
+    if(item.id === 'shops') { actions.setShopCategoryPreset('All'); actions.updateCommerceContext({domainId:'shops',entrySource:'search',entryScreen:'search'}); }
     actions.go(item.screen);
   };
   const popular=['Food','Boda','Groceries','Pharmacy',data.city];
   return (
     <ScreenShell>
-      <View style={styles.globalSearchHeader}>
-        <Pressable onPress={()=>actions.go('home')} style={styles.globalSearchBack}><Feather name="arrow-left" size={24} color={COLORS.black}/></Pressable>
-        <View style={styles.globalSearchInputWrap}>
-          <Feather name="search" size={22} color={COLORS.black}/>
-          <TextInput autoFocus value={query} onChangeText={setQuery} placeholder={`Search Kareebu+ in ${data.city}`} placeholderTextColor={COLORS.mutedLight} style={styles.globalSearchInput} returnKeyType="search" />
-          {query.length>0?<Pressable onPress={()=>setQuery('')} style={styles.globalSearchClear}><Feather name="x" size={18} color={COLORS.black}/></Pressable>:null}
-        </View>
-        <Pressable onPress={()=>actions.go('searchFilters')} style={styles.globalSearchBack}><Ionicons name="options-outline" size={21} color={COLORS.black}/></Pressable>
-      </View>
+      <KareebuPageHeader
+        title="Search Kareebu"
+        country={data.country}
+        city={data.city}
+        backEnabled
+        onBack={()=>actions.go('home')}
+        searchEnabled
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchContext={searchContext('global',{market:data.country,city:data.city})}
+        rightIcon="options-outline"
+        rightLabel="Search filters"
+        onRightAction={()=>actions.go('searchFilters')}
+      />
       <KareebuContextBar label={`Search rides, food, shops and places around ${data.city}`} />
       <ScrollView keyboardShouldPersistTaps="handled" style={styles.flex} contentContainerStyle={styles.globalSearchScroll} showsVerticalScrollIndicator={false}>
         {!normalized ? <>
@@ -2329,56 +2303,16 @@ export function GlobalSearchScreen({ data, actions }: { data: AppData; actions: 
           <View><Text style={styles.globalSearchSectionTitle}>Popular near you</Text><View style={styles.globalSearchChips}>{popular.map((label)=><Pressable key={label} onPress={()=>setQuery(label)} style={styles.globalSearchChip}><Feather name="search" size={14} color={COLORS.black}/><Text style={styles.globalSearchChipText}>{label}</Text></Pressable>)}</View></View>
           <View><Text style={styles.globalSearchSectionTitle}>Browse Kareebu+</Text><View style={styles.globalSearchBrowseGrid}>{sourceItems.slice(0,8).map((item)=><Pressable key={item.id} onPress={()=>openItem(item)} style={({pressed})=>[styles.globalSearchBrowseCard,pressed&&styles.pressed]}><View style={styles.globalSearchBrowseIcon}><Ionicons name={item.icon} size={25} color={COLORS.black}/></View><Text style={styles.globalSearchBrowseTitle}>{item.title}</Text><Text numberOfLines={2} style={styles.globalSearchBrowseSub}>{item.subtitle}</Text></Pressable>)}</View></View>
         </> : null}
-        {normalized && results.length===0 ? <View style={styles.globalSearchEmpty}><View style={styles.globalSearchEmptyIcon}><Feather name="search" size={28} color={COLORS.black}/></View><Text style={styles.globalSearchEmptyTitle}>No results for “{query.trim()}”</Text><Text style={styles.globalSearchEmptyText}>Try another service, restaurant, local store, product category or place.</Text></View> : null}
+        {normalized && results.length===0 ? <View style={styles.globalSearchEmpty}><View style={styles.globalSearchEmptyIcon}><Feather name="search" size={28} color={COLORS.black}/></View><Text style={styles.globalSearchEmptyTitle}>No local results for “{query.trim()}”</Text><Text style={styles.globalSearchEmptyText}>Kareebu Global can search supported international sources using the same query.</Text><Pressable accessibilityRole="button" onPress={()=>{actions.setGlobalSearchQuery(query.trim());actions.go('globalHome')}} style={styles.uxSeeAllButton}><Text style={styles.uxSeeAllText}>Search Kareebu Global</Text><Feather name="arrow-right" size={18}/></Pressable></View> : null}
         {normalized ? GLOBAL_SEARCH_ORDER.map((kind)=>{
           const group=results.filter((item)=>item.kind===kind);
           if(!group.length) return null;
-          return <View key={kind} style={styles.globalSearchGroup}><Text style={styles.globalSearchSectionTitle}>{kind === 'Kareebu+' ? 'In Kareebu+' : kind === 'Food' ? 'Food & restaurants' : kind === 'Shop' ? 'Shops & essentials' : kind === 'Place' ? 'Places' : 'Services'}</Text><View style={styles.globalSearchResultList}>{group.map((item)=><GlobalSearchResult key={item.id} item={item} onPress={()=>openItem(item)}/>)}</View></View>;
+          return <View key={kind} style={styles.globalSearchGroup}><Text style={styles.globalSearchSectionTitle}>{kind === 'Kareebu+' ? 'In Kareebu+' : kind === 'Food' ? 'Food & restaurants' : kind === 'Shop' ? 'Shops & essentials' : kind === 'Global' ? 'Kareebu Global' : kind === 'Place' ? 'Places' : 'Services'}</Text><View style={styles.globalSearchResultList}>{group.map((item)=><GlobalSearchResult key={item.id} item={item} onPress={()=>openItem(item)}/>)}</View></View>;
         }) : null}
       </ScrollView>
     </ScreenShell>
   );
 }
-
-
-const ALL_SERVICE_OPTIONS: Array<{label:string; description:string; screen:Screen; image?:ImageSourcePropType; icon?:keyof typeof Ionicons.glyphMap; category?:string; mode?:VehicleMode}> = [
-  { label:'Food', description:'Restaurants, takeaway and delivery', screen:'food', image:assets.service.food },
-  { label:'Rides', description:'Cars for everyday trips', screen:'whereTo', image:assets.service.rides, mode:'RIDE' },
-  { label:'Boda', description:'Fast motorcycle rides', screen:'whereTo', image:assets.service.boda, mode:'BODA' },
-  { label:'Groceries', description:'Supermarkets and fresh essentials', screen:'shops', image:assets.service.groceries, category:'Groceries' },
-  { label:'Pharmacies', description:'Health and wellness stores', screen:'shops', icon:'medical-outline', category:'Pharmacy' },
-  { label:'Stores', description:'Local shops and marketplaces', screen:'shops', image:assets.service.shops, category:'All' },
-  { label:'Send parcel', description:'Tracked city and intercity delivery', screen:'parcel', image:assets.service.send },
-  { label:'Order anything', description:'Ask Kareebu to find, buy and deliver an item', screen:'orderAnything', icon:'bag-add-outline' },
-  { label:'Wallet & Pay', description:'Payments, balance and methods', screen:'wallet', image:assets.service.pay },
-  { label:'Send money', description:'Transfer money to a contact', screen:'paySend', icon:'paper-plane-outline' },
-  { label:'Pay bills', description:'Utilities, TV and internet', screen:'payBills', icon:'receipt-outline' },
-  { label:'Mobile recharge', description:'Airtime for MTN and Airtel', screen:'payRecharge', icon:'phone-portrait-outline' },
-  { label:'Send abroad', description:'International money transfers', screen:'payRemittance', icon:'globe-outline' },
-  { label:'Explore', description:'Places, activities and local discoveries', screen:'exploreHub', icon:'compass-outline' },
-  { label:'Kareebu+', description:'Membership, savings and benefits', screen:'plusManage', icon:'diamond-outline' },
-  { label:'Help & support', description:'Get help with any Kareebu service', screen:'support', icon:'help-buoy-outline' },
-  { label:'For Good', description:'Support local causes and organisations', screen:'donations', icon:'heart-outline' },
-  { label:'Vehicle rental', description:'Cars and vans from verified rental partners', screen:'rentals', icon:'car-sport-outline' },
-  { label:'Local services', description:'Cleaning, repairs, beauty and moving help', screen:'serviceMarketplace', icon:'construct-outline' },
-  { label:'Rewards', description:'Points, rewards and member benefits', screen:'rewards', icon:'gift-outline' },
-  { label:'Coupons', description:'Saved offers for rides, food, shops and parcels', screen:'coupons', icon:'pricetag-outline' },
-  { label:'Messages', description:'Secure chats with couriers, stores and providers', screen:'messages', icon:'chatbubbles-outline' },
-  { label:'Discover', description:'Reels and shoppable local inspiration', screen:'reels', icon:'play-circle-outline' },
-  { label:'Orders', description:'Track food, shops, parcels, rentals and services', screen:'orders', icon:'receipt-outline' },
-  { label:'Activity', description:'Trips, orders and receipts', screen:'activity', icon:'time-outline' },
-  { label:'Kareebu AI', description:'Ask for rides, food, shops and help in your own words', screen:'assistant', icon:'sparkles-outline' },
-  { label:'Categories', description:'Browse every shopping and service category', screen:'categories', icon:'grid-outline' },
-  { label:'Brands', description:'Browse popular brands and merchants', screen:'brands', icon:'ribbon-outline' },
-  { label:'Campaigns', description:'Seasonal campaigns and curated collections', screen:'campaigns', icon:'megaphone-outline' },
-  { label:'Flash sale', description:'Limited-time product offers', screen:'flashSale', icon:'flash-outline' },
-  { label:'All offers', description:'Coupons and promotions across Kareebu+', screen:'offers', icon:'ticket-outline' },
-  { label:'All stores', description:'Restaurants, groceries, pharmacies and shops', screen:'allStores', icon:'storefront-outline' },
-  { label:'Grocery list', description:'Build a reusable shopping list', screen:'groceryList', icon:'list-outline' },
-  { label:'Medicine list', description:'Send a prescription or medicine request', screen:'medicineList', icon:'document-attach-outline' },
-  { label:'Ride offers', description:'Coupons and savings for rides and Boda', screen:'rideOffers', icon:'car-sport-outline' },
-  { label:'Global cart', description:'See baskets from every Kareebu+ store in one place', screen:'globalCart', icon:'cart-outline' },
-];
 
 
 type AssistantMessage = {
@@ -2468,25 +2402,22 @@ export function KareebuAssistantScreen({ data, actions }: { data: AppData; actio
 }
 
 export function AllServicesScreen({ data, actions }: { data: AppData; actions: AppActions }) {
-  const open = (item: typeof ALL_SERVICE_OPTIONS[number]) => {
-    if (item.mode) selectVehicleMode(actions, item.mode);
-    if (item.category) actions.setShopCategoryPreset(item.category);
-    actions.go(item.screen);
+  const [query,setQuery]=useState('');
+  const services=useMemo(()=>{const term=query.trim().toLowerCase();return servicesForMarket(data.country).filter(item=>!term||`${item.label} ${item.description} ${item.group}`.toLowerCase().includes(term));},[data.country,query]);
+  const groups=useMemo(()=>Array.from(new Set(services.map(item=>item.group))),[services]);
+  const open = (item: KareebuServiceDefinition) => {
+    trackEvent('service_entry',{service:item.analyticsKey,source:'all_services'});
+    if (item.vehicleMode) selectVehicleMode(actions, item.vehicleMode);
+    if (item.shopCategory) actions.setShopCategoryPreset(item.shopCategory);
+    actions.go(item.route);
   };
   return (
     <ScreenShell>
-      <Header title="All services" onBack={()=>actions.go('home')}/>
-      <KareebuContextBar label={`Everything Kareebu+ can do around ${data.city}`} />
+      <KareebuPageHeader title="All services" country={data.country} city={data.city} locationEnabled={false} searchEnabled searchContext={searchContext('services',{market:data.country,city:data.city})} searchValue={query} onSearchChange={setQuery} onBack={()=>actions.go('home')} rightIcon="options-outline" rightLabel="Service categories"/>
       <ScrollView style={styles.flex} contentContainerStyle={styles.v38ServicesScroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.v38ServicesIntro}>Choose what you need. Kareebu+ keeps the same delivery location, payment methods and activity across every service.</Text>
-        <View style={styles.v38ServicesGrid}>
-          {ALL_SERVICE_OPTIONS.map((item)=><Pressable key={item.label} onPress={()=>open(item)} style={({pressed})=>[styles.v38ServiceCard,pressed&&styles.v26CardPressed]}>
-            <View style={styles.v38ServiceIconWrap}>{item.image?<Image source={item.image} style={styles.v38ServiceImage} resizeMode="contain"/>:<BrandIcon icon={item.icon ?? 'grid-outline'} size={42}/>}</View>
-            <Text style={styles.v38ServiceTitle}>{item.label}</Text>
-            <Text style={styles.v38ServiceBody}>{item.description}</Text>
-            <Feather name="arrow-up-right" size={18} color={COLORS.red}/>
-          </Pressable>)}
-        </View>
+        {groups.map(group=><View key={group}><SectionTitle title={group}/><View style={styles.v38ServicesGrid}>{services.filter(item=>item.group===group).map(item=><Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.label}. ${item.description}`} key={item.id} onPress={()=>open(item)} style={({pressed})=>[styles.v38ServiceCard,pressed&&styles.v26CardPressed]}><View style={styles.v38ServiceIconWrap}><ServiceArtwork visualKey={item.visualKey} size="large" maxWidth={68}/></View><Text style={styles.v38ServiceTitle}>{item.label}</Text><Text style={styles.v38ServiceBody}>{item.description}</Text><Feather name="arrow-up-right" size={18} color={COLORS.red}/></Pressable>)}</View></View>)}
+        {!services.length?<BrandedEmptyState art={assets.service.all} title="No matching services" body="Try another service name or category." actionLabel="Clear search" onAction={()=>setQuery('')}/>:null}
       </ScrollView>
       <BottomNav active="explore" go={actions.go}/>
     </ScreenShell>
@@ -2538,200 +2469,88 @@ function V615StoreProductPhoto({
   item,
 }: {
   store: DemoShop;
-  item: { name: string; category: string; detail: string };
+  item: { id?:string; name: string; category: string; subcategory?:string; detail: string; brand?:string; metadata?:{imageKey?:string} };
 }) {
-  return (
-    <ResilientMerchantPhoto
-      uri={productPhotoUri(store, item)}
-      fallback={assets.service.shops}
-      style={styles.v615ProductPhoto}
-    />
-  );
+  return <StoreProductPhoto store={store} item={item} style={styles.v615ProductPhoto}/>;
 }
 
-export function StorefrontScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+export function StorefrontScreen({ data, actions, focusedCategory = false }: { data: AppData; actions: AppActions; focusedCategory?: boolean }) {
   useRegisterBackControl(true);
   const local = localeStores(data.country, data.city);
   const store = local.find((item)=>item.id===data.selectedShopId) ?? local[0] ?? DEMO_SHOPS[0]!;
-  const [query,setQuery]=useState('');
-  const [category,setCategory]=useState('All');
-  const [deliverySlot,setDeliverySlot]=useState('Now');
-  const favorite=data.favoriteShopIds.includes(store.id);
-  const allProducts=commerceProductsFor(store);
-  const categories=Array.from(new Set(allProducts.map((item)=>item.category)));
-  const searchRef=useRef<TextInput>(null);
-  const insets=useSafeAreaInsets();
-  const { height }=useWindowDimensions();
-  const heroHeight=Math.max(330,Math.min(420,height*0.38));
-  const storeName=localisedStoreName(store,data.country);
-  const lines=data.commerceCartLines.filter((line)=>line.storeId===store.id);
-  const count=lines.reduce((sum,line)=>sum+line.quantity,0);
-  const total=lines.reduce((sum,line)=>sum+line.unitPrice*line.quantity,0);
-  const term=query.trim().toLowerCase();
-  const filtered=allProducts.filter((item)=>{
-    const matchesCategory=category==='All'||item.category===category;
-    const matchesQuery=!term||`${item.name} ${item.detail} ${item.category} ${item.brand ?? ''}`.toLowerCase().includes(term);
-    return matchesCategory&&matchesQuery;
-  });
-  const deliveryFee=demandAdjustedDeliveryFee(store.deliveryFee,'store-delivery');
-  const scheduleStore=()=>Alert.alert(
-    'Schedule delivery',
-    `Choose when you want ${storeName} delivered.`,
-    [
-      {text:'Now',onPress:()=>setDeliverySlot('Now')},
-      {text:'In 30 minutes',onPress:()=>setDeliverySlot('In 30 min')},
-      {text:'Tonight',onPress:()=>setDeliverySlot('Tonight')},
-      {text:'Tomorrow',onPress:()=>setDeliverySlot('Tomorrow')},
-      {text:'Cancel',style:'cancel'},
-    ],
-  );
-  const groupOrder=()=>void Share.share({message:`Join my Kareebu+ group order from ${storeName}.`});
+  const storeName = localisedStoreName(store, data.country);
+  const allProducts = commerceProductsFor(store);
+  const lines = data.commerceCartLines.filter((line)=>line.storeId===store.id);
+  const favourite = data.favoriteShopIds.includes(store.id);
+  const type = merchantTypeFor(store);
+  const domainId: CommerceRouteContext['domainId'] = type === 'supermarket' || type === 'convenience-store'
+    ? 'groceries'
+    : type === 'pharmacy'
+      ? 'pharmacy'
+      : type === 'electronics'
+        ? 'electronics'
+        : type === 'pet-store'
+          ? 'pets'
+          : type === 'beauty'
+            ? 'beauty'
+            : type === 'fashion'
+              ? 'fashion'
+              : type === 'home-kitchen'
+                ? 'home'
+                : 'shops';
+  const activeCategoryId = focusedCategory ? (data.commerceContext.categoryLabel ?? data.commerceContext.categoryId ?? null) : null;
 
   return (
-    <View style={styles.v615MerchantScreen}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content"/>
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={{paddingBottom:count>0?128+insets.bottom:36+insets.bottom}}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={[styles.v615Hero,{height:heroHeight}]}>
-          <ShopPhoto store={store} style={styles.v615HeroPhoto} logo={false}/>
-          <View pointerEvents="none" style={styles.v615HeroShade}/>
-          <View style={[styles.v615TopBar,{top:Math.max(insets.top,18)+14}]}>
-            <Pressable onPress={()=>actions.go('shops')} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Back">
-              <Feather name="arrow-left" size={28} color={COLORS.black}/>
-            </Pressable>
-            <View style={styles.v615TopButtonGroup}>
-              <Pressable onPress={()=>Share.share({message:`${storeName} on Kareebu+ · ${store.category}`})} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Share store">
-                <Feather name="share-2" size={22} color={COLORS.black}/>
-              </Pressable>
-              <Pressable onPress={()=>actions.toggleFavoriteShop(store.id)} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Favourite store">
-                <Ionicons name={favorite?'heart':'heart-outline'} size={27} color={favorite?COLORS.red:COLORS.black}/>
-              </Pressable>
-              <Pressable onPress={()=>searchRef.current?.focus()} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Search store">
-                <Feather name="search" size={25} color={COLORS.black}/>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.v615Sheet}>
-          <View style={styles.v615LogoCard}>
-            <PopularStoreLogo store={store}/>
-          </View>
-
-          <View style={styles.v615IdentityRow}>
-            <View style={styles.v615IdentityCopy}>
-              <View style={styles.v615NameLine}>
-                <Text numberOfLines={2} style={styles.v615MerchantName}>{storeName}</Text>
-                <View style={styles.v615PlusPill}><Text style={styles.v615PlusPillMark}>K+</Text><Text style={styles.v615PlusPillText}>Kareebu Plus</Text></View>
-              </View>
-              <View style={styles.v615CategoryLine}>
-                <View style={styles.v615PartnerBadge}><Text style={styles.v615PartnerBadgeText}>K+</Text></View>
-                <Text numberOfLines={2} style={styles.v615CategoryText}>{store.category} · {store.inventoryHint ?? 'Everyday essentials'}</Text>
-              </View>
-              <Text style={styles.v615LocationText}>{store.location ?? data.city} · {store.eta}</Text>
-            </View>
-            <MerchantRatingPanel rating={store.rating} reviews={store.reviews ?? 'New'}/>
-          </View>
-
-          <View style={styles.v615ActionRow}>
-            <Pressable onPress={scheduleStore} style={({pressed})=>[styles.v615OutlineAction,pressed&&styles.v615Pressed]}>
-              <Feather name="calendar" size={19} color={COLORS.black}/>
-              <Text style={styles.v615OutlineActionText}>{deliverySlot==='Now'?'Schedule':deliverySlot}</Text>
-              <Feather name="chevron-down" size={17} color={COLORS.black}/>
-            </Pressable>
-            <Pressable onPress={groupOrder} style={({pressed})=>[styles.v615OutlineAction,pressed&&styles.v615Pressed]}>
-              <Ionicons name="person-add-outline" size={20} color={COLORS.black}/>
-              <Text style={styles.v615OutlineActionText}>Group order</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.v615StatsPanel}>
-            <View style={styles.v615StatCell}>
-              <Text style={styles.v615StatLabel}>{deliverySlot==='Now'?'Deliver Now':deliverySlot}</Text>
-              <Text style={styles.v615StatValueAccent}>{store.eta}</Text>
-            </View>
-            <View style={styles.v615StatDivider}/>
-            <View style={styles.v615StatCell}>
-              <Text style={styles.v615StatLabel}>Minimum Order</Text>
-              <Text style={styles.v615StatValue}>{formatMoney(data.country,store.minOrder)}</Text>
-            </View>
-            <View style={styles.v615StatDivider}/>
-            <View style={styles.v615StatCell}>
-              <Text style={styles.v615StatLabel}>Delivery Fee</Text>
-              <Text style={styles.v615StatValue}>{store.deliveryFee===0?'Free':formatMoney(data.country,deliveryFee)}</Text>
-            </View>
-          </View>
-
-          <Pressable onPress={()=>Alert.alert('Offers',store.deal)} style={({pressed})=>[styles.v615OfferStrip,pressed&&styles.v615Pressed]}>
-            <Ionicons name="pricetag-outline" size={23} color={COLORS.black}/>
-            <Text numberOfLines={2} style={styles.v615OfferText}><Text style={styles.v615OfferStrong}>Offers</Text> — {store.deal}</Text>
-            <Feather name="chevron-right" size={21} color={COLORS.black}/>
-          </Pressable>
-
-          <View style={styles.v615SearchBox}>
-            <Feather name="search" size={22} color={COLORS.black}/>
-            <TextInput
-              ref={searchRef}
-              value={query}
-              onChangeText={setQuery}
-              placeholder={`Search ${storeName}`}
-              placeholderTextColor={COLORS.muted}
-              style={styles.v615SearchInput}
-            />
-            {query?<Pressable onPress={()=>setQuery('')} hitSlop={8}><Ionicons name="close-circle" size={20} color={COLORS.muted}/></Pressable>:null}
-          </View>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v615TabRail}>
-            {['All',...categories].map((item)=>(
-              <Pressable key={item} onPress={()=>setCategory(item)} style={[styles.v615Tab,category===item&&styles.v615TabActive]}>
-                <Text style={[styles.v615TabText,category===item&&styles.v615TabTextActive]}>{item}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-
-          <View style={styles.v615SectionHeader}>
-            <Text style={styles.v615SectionTitle}>Products</Text>
-            <Text style={styles.v615SectionCount}>{filtered.length} items</Text>
-          </View>
-
-          <View style={styles.v615ProductList}>
-            {filtered.map((item)=>{
-              const qty=lines.filter((line)=>line.productId===item.id).reduce((sum,line)=>sum+line.quantity,0);
-              return (
-                <Pressable key={item.id} onPress={()=>{actions.selectCommerceProduct(item.id);actions.go('commerceProduct')}} style={({pressed})=>[styles.v615ProductRow,pressed&&styles.v615Pressed]}>
-                  <View style={styles.v615ProductCopy}>
-                    {item.badge?<Text style={styles.v615ItemBadge}>{item.badge}</Text>:null}
-                    <Text numberOfLines={2} style={styles.v615ItemName}>{item.name}</Text>
-                    <Text numberOfLines={2} style={styles.v615ItemDescription}>{item.detail}{item.brand?` · ${item.brand}`:''}</Text>
-                    <Text style={styles.v615ItemPrice}>{formatMoney(data.country,item.basePrice)}</Text>
-                    {typeof item.rating==='number'?<Text style={styles.v615ItemRating}>★ {item.rating.toFixed(1)}{typeof item.reviewCount==='number'?` · ${item.reviewCount} reviews`:''}</Text>:null}
-                  </View>
-                  <View style={styles.v615ProductVisual}>
-                    <V615StoreProductPhoto store={store} item={item}/>
-                    <View style={[styles.v615AddButton,qty>0&&styles.v615AddButtonActive]}>
-                      <Text style={[styles.v615AddButtonText,qty>0&&styles.v615AddButtonTextActive]}>{qty>0?qty:'+'}</Text>
-                    </View>
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-      </ScrollView>
-
-      {count>0?(
-        <Pressable onPress={()=>actions.go('commerceCart')} style={[styles.v615BasketBar,{bottom:Math.max(8,insets.bottom+6)}]}>
-          <View style={styles.v615BasketCount}><Text style={styles.v615BasketCountText}>{count}</Text></View>
-          <View style={styles.flex}><Text style={styles.v615BasketTitle}>View basket</Text><Text style={styles.v615BasketMeta}>{storeName}</Text></View>
-          <Text style={styles.v615BasketTotal}>{formatMoney(data.country,total)}</Text>
-          <Feather name="chevron-right" size={21} color={COLORS.white}/>
-        </Pressable>
-      ):null}
-    </View>
+    <MerchantStorefrontScreen
+      country={data.country}
+      city={data.city}
+      store={store}
+      storeName={storeName}
+      products={allProducts}
+      cartLines={lines}
+      favourite={favourite}
+      activeCategoryId={activeCategoryId}
+      searchContext={sellerSearchContext(store.id,storeName,{market:data.country,city:data.city})}
+      onBack={actions.back}
+      onInfo={()=>Alert.alert(storeName, `${store.category} · ${store.location ?? data.city}\n\n${store.inventoryHint ?? 'Store catalogue'}\n\n${store.contentTrust?.liveAvailability ? 'Live merchant availability is connected.' : 'Reference merchant listing. Availability, fees and commercial offers are confirmed before checkout.'}`)}
+      onToggleFavourite={()=>actions.toggleFavoriteShop(store.id)}
+      onOpenProduct={(product)=>{
+        actions.updateCommerceContext({ domainId, sellerId:store.id, productId:product.id, entrySource:'seller' });
+        actions.selectCommerceProduct(product.id);
+        actions.go('commerceProduct');
+      }}
+      onOpenCategory={(category)=>{
+        actions.updateCommerceContext({ domainId, categoryId:category.id, categoryLabel:category.label, sellerId:store.id, entrySource:'seller', entryScreen:'shop' });
+        actions.go('shopCategory');
+      }}
+      onQuickAdd={(product)=>actions.addCommerceCartLine({
+        id:`${store.id}-${product.id}-standard`,
+        storeId:store.id,
+        productId:product.id,
+        quantity:1,
+        unitPrice:product.basePrice,
+        variantId:null,
+        variantLabel:null,
+        note:'',
+      })}
+      onOpenCart={()=>actions.go('commerceCart')}
+      onOpenPromotion={(campaign,plan)=>{
+        if (campaign.categoryId) {
+          const category=plan.categories.find(item=>item.id===campaign.categoryId);
+          if(category){
+            actions.updateCommerceContext({ domainId, categoryId:category.id, categoryLabel:category.label, sellerId:store.id, campaignId:campaign.id, entrySource:'promotion', entryScreen:'shop' });
+            actions.go('shopCategory');
+            return;
+          }
+        }
+        if(campaign.ctaScreen!=='shop') { actions.go(campaign.ctaScreen); return; }
+        const first=plan.categories[0];
+        if(first){
+          actions.updateCommerceContext({ domainId, categoryId:first.id, categoryLabel:first.label, sellerId:store.id, campaignId:campaign.id, entrySource:'promotion', entryScreen:'shop' });
+          actions.go('shopCategory');
+        }
+      }}
+    />
   );
 }
 
@@ -2804,6 +2623,7 @@ export function LocationPickerScreen({ data, actions }: { data: AppData; actions
       <View style={styles.v36LocationMapLayer}>
         <InteractiveKareebuMap
           mode="picker"
+          marketCountry={data.country}
           initialRegion={cityRegion}
           focusCoordinate={focusCoordinate}
           requestLocationOnMount={onboardingLocation}
@@ -2876,27 +2696,6 @@ export function LocationPickerScreen({ data, actions }: { data: AppData; actions
   );
 }
 
-function VehicleModeSelector({ value, onChange }: { value: VehicleMode; onChange: (mode: VehicleMode) => void }) {
-  return (
-    <View style={styles.vehicleModeSelector}>
-      {(['RIDE', 'BODA'] as VehicleMode[]).map((mode) => {
-        const selected = value === mode;
-        const config = VEHICLE_MODE_CONFIG[mode];
-        return (
-          <Pressable key={mode} onPress={() => onChange(mode)} style={[styles.vehicleModeOption, selected && styles.vehicleModeOptionSelected]}>
-            <Image source={config.marker} style={styles.vehicleModeOptionImage} resizeMode="contain" />
-            <View style={styles.flex}>
-              <Text style={[styles.vehicleModeOptionTitle, selected && styles.vehicleModeOptionTitleSelected]}>{config.label}</Text>
-              <Text style={[styles.vehicleModeOptionMeta, selected && styles.vehicleModeOptionMetaSelected]}>{mode === 'BODA' ? 'Motorbike' : 'Car'}</Text>
-            </View>
-            <View style={[styles.vehicleModeRadio, selected && styles.vehicleModeRadioSelected]}>{selected ? <View style={styles.vehicleModeRadioDot} /> : null}</View>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 function PlaceRow({ icon, title, subtitle, onPress }: { icon: keyof typeof Ionicons.glyphMap; title: string; subtitle: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.placeRow, pressed && styles.pressed]}>
@@ -2919,13 +2718,14 @@ export function WhereToScreen({ data, actions }: { data: AppData; actions: AppAc
   const routeState = useRouteEstimate(pickupCoordinate(data), data.destinationPlace ? destinationCoordinate(data) : null, data.selectedVehicleMode);
   const localResults = useMemo(() => {
     const term = destination.trim().toLowerCase();
-    if (!term) return places;
+    if (term.length < 2) return [];
     return places.filter((place) => `${place.title} ${place.subtitle}`.toLowerCase().includes(term));
   }, [destination, places]);
 
   const chooseLocalPlace = (place: LocalRideSuggestion) => {
     actions.setDestinationPlace({ placeId: `local-${place.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, name: place.title, address: place.subtitle, latitude: place.latitude, longitude: place.longitude, types: ['point_of_interest'], provider: 'manual' });
     setDestination(place.title);
+    actions.go('chooseRide');
   };
 
   const chooseSearchPlace = async (suggestion: PlaceSuggestion) => {
@@ -2934,6 +2734,7 @@ export function WhereToScreen({ data, actions }: { data: AppData; actions: AppAc
       actions.setDestinationPlace(details);
       setDestination(details.name);
       placeSearch.resetSession();
+      actions.go('chooseRide');
     } catch {
       // Keep local suggestions usable when remote search is unavailable.
     }
@@ -2952,15 +2753,16 @@ export function WhereToScreen({ data, actions }: { data: AppData; actions: AppAc
       </View>
 
       <View style={styles.v40WhereMapWrap}>
-        <InteractiveKareebuMap mode="route" vehicleMode={data.selectedVehicleMode} originCoordinate={pickupCoordinate(data)} destinationCoordinate={data.destinationPlace ? destinationCoordinate(data) : null} routePath={routeState.route?.coordinates} destinationLabel={destinationLabel(data)}/>
+        <InteractiveKareebuMap mode="route" marketCountry={data.country} vehicleMode={data.selectedVehicleMode} originCoordinate={pickupCoordinate(data)} destinationCoordinate={data.destinationPlace ? destinationCoordinate(data) : null} routePath={routeState.route?.coordinates} destinationLabel={destinationLabel(data)}/>
         {routeState.route ? <View style={styles.v40WhereEtaBubble}><Text style={styles.v40WhereEtaText}>{formatRouteDuration(routeState.route.durationSeconds)}</Text></View> : null}
         <View style={styles.v40WhereRouteMeta}><Ionicons name={data.selectedVehicleMode==='BODA'?'bicycle-outline':'car-outline'} size={15} color={COLORS.black}/><Text style={styles.v40WhereRouteMetaText}>{routeState.loading?'Calculating route…':routeState.route?`${formatRouteDistance(routeState.route.distanceMeters)} · ${routingAttribution()}`:`Explore ${data.city}`}</Text></View>
       </View>
 
       <View style={styles.v40WhereSheet}>
         <View style={styles.v40WhereHandle}/>
-        <Text style={styles.v40WhereSuggestedTitle}>{destination ? 'Places & suggestions' : 'Suggested places'}</Text>
+        <Text style={styles.v40WhereSuggestedTitle}>{destination.trim().length>=2?'Search results':'Start typing a destination'}</Text>
         <ScrollView style={styles.v40WhereSuggestionScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          {destination.trim().length<2?<View style={styles.v40WhereSearchHint}><Ionicons name="search-outline" size={24} color={COLORS.muted}/><Text style={styles.v40WhereSuggestionAddress}>Enter at least two characters to search places near {data.city}.</Text></View>:null}
           {showingRemote ? placeSearch.suggestions.slice(0,6).map((suggestion)=><Pressable key={suggestion.placeId} onPress={()=>void chooseSearchPlace(suggestion)} style={styles.v40WhereSuggestionRow}><View style={styles.v40WhereSuggestionIcon}><Ionicons name="location-outline" size={19} color={COLORS.black}/></View><View style={styles.flex}><Text numberOfLines={1} style={styles.v40WhereSuggestionName}>{suggestion.primaryText}</Text><Text numberOfLines={1} style={styles.v40WhereSuggestionAddress}>{suggestion.secondaryText}</Text></View><Feather name="chevron-right" size={20} color={COLORS.black}/></Pressable>) : localResults.slice(0,6).map((place)=><Pressable key={place.title} onPress={()=>chooseLocalPlace(place)} style={styles.v40WhereSuggestionRow}><View style={styles.v40WhereSuggestionIcon}><Ionicons name={place.icon} size={19} color={COLORS.black}/></View><View style={styles.flex}><Text style={styles.v40WhereSuggestionName}>{place.title}</Text><Text style={styles.v40WhereSuggestionAddress}>{place.subtitle}</Text></View><Feather name="chevron-right" size={20} color={COLORS.black}/></Pressable>)}
         </ScrollView>
         {canContinue ? <Pressable onPress={()=>actions.go('chooseRide')} style={styles.v40WhereContinue}><Text style={styles.v40WhereContinueText}>See ride options</Text><Feather name="arrow-right" size={18} color={COLORS.white}/></Pressable> : null}
@@ -2995,7 +2797,7 @@ function DemoDirectionsCard({ data, compact = false }: { data: AppData; compact?
   );
 }
 
-function RideOption({ item, country, selected, onPress }: { item: typeof rideData[number]; country: string; selected: boolean; onPress: () => void }) {
+function RideOption({ item, country, selected, onPress }: { item: RideOptionData; country: string; selected: boolean; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.rideOption, selected && styles.rideOptionSelected, pressed && styles.pressed]}>
       <Image source={item.icon} style={styles.rideIcon} resizeMode="contain" />
@@ -3007,15 +2809,15 @@ function RideOption({ item, country, selected, onPress }: { item: typeof rideDat
 }
 
 function RideVehicleVisual({ rideId }: { rideId: RideId }) {
-  if (rideId === 'boda') return <Image source={assets.service.boda} style={styles.v40RideImage} resizeMode="contain"/>;
   if (rideId === 'delivery') return <Image source={assets.service.send} style={[styles.v40RideImage, styles.v40DeliveryImage]} resizeMode="contain"/>;
-  const icon = rideId === 'economy' ? 'car-hatchback' : rideId === 'comfort' ? 'car-sports' : 'car-estate';
-  return <View style={[styles.v40RideNativeVehicle, rideId === 'comfort' && styles.v40RideNativeVehicleComfort, rideId === 'xl' && styles.v40RideNativeVehicleXL]}><MaterialCommunityIcons name={icon as any} size={rideId === 'xl' ? 67 : 62} color={COLORS.black}/></View>;
+  const visual=mobilityVisual(rideId);
+  return <View accessibilityLabel={visual.label} style={styles.v40RideNativeVehicle}>{visual.image?<Image source={visual.image} style={[styles.v40RideImage,{transform:[{translateX:visual.offsetX??0},{translateY:visual.offsetY??0},{scale:visual.scale}]}]} resizeMode="contain"/>:<MaterialCommunityIcons name={visual.fallback} size={rideId==='xl'?67:62} color={COLORS.black}/>}</View>;
 }
 
 export function ChooseRideScreen({ data, actions }: { data: AppData; actions: AppActions }) {
   useRegisterBackControl(true);
-  const selected = rideData.find((ride) => ride.id === data.selectedRide) ?? rideData[0];
+  const products = rideDataFor(data.country, data.selectedVehicleMode);
+  const selected = selectedRideData(data);
   const routeState = useRouteEstimate(pickupCoordinate(data), destinationCoordinate(data), data.selectedVehicleMode);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -3027,24 +2829,25 @@ export function ChooseRideScreen({ data, actions }: { data: AppData; actions: Ap
     xl: 'More room · up to 6 riders',
     delivery: 'Small parcel or item delivery',
   };
-  const selectRide = (ride: typeof rideData[number]) => {
+  const selectRide = (ride: RideOptionData) => {
     actions.setSelectedRide(ride.id);
-    actions.setSelectedVehicleMode(vehicleModeForRide(ride.id));
   };
   return (
     <ScreenShell>
       <View style={styles.v40RideHeader}><Pressable onPress={()=>actions.go('whereTo')} style={styles.v40CircleBack}><Feather name="arrow-left" size={23} color={COLORS.black}/></Pressable><View style={styles.flex}><Text style={styles.v40RideHeaderTitle}>Choose ride</Text><Text style={styles.v40RideHeaderSub}>{routeState.loading?'Calculating route…':routeState.route?`${formatRouteDistance(routeState.route.distanceMeters)} · ${formatRouteDuration(routeState.route.durationSeconds)}`:`${pickupLabel(data)} → ${destinationLabel(data)}`}</Text></View><View style={styles.v40CircleBackPlaceholder}/></View>
       <ScrollView style={styles.flex} contentContainerStyle={styles.v40RideScroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.v40RideMapPreview}><InteractiveKareebuMap mode="route" marketCountry={data.country} vehicleMode={data.selectedVehicleMode} originCoordinate={pickupCoordinate(data)} destinationCoordinate={destinationCoordinate(data)} routePath={routeState.route?.coordinates} destinationLabel={destinationLabel(data)}/></View>
+        <Text style={styles.v40WhereSuggestedTitle}>{data.selectedVehicleMode==='BODA'?'Your Boda quote':'Choose a ride'}</Text>
         <View style={styles.v40RideList}>
-          {rideData.map((ride)=>{const active=data.selectedRide===ride.id;const mode=vehicleModeForRide(ride.id);const preview=rideFareBreakdown({baseFare:ride.baseFare,rideProduct:data.scheduledTrip?'scheduled':'instant',vehicleMode:mode,priority:false,member:true,promoCode:''});return <Pressable key={ride.id} onPress={()=>selectRide(ride)} style={({pressed})=>[styles.v40RideCard,active&&styles.v40RideCardActive,pressed&&styles.v26CardPressed]}><View style={styles.v40RideImageWrap}><RideVehicleVisual rideId={ride.id}/></View><View style={styles.flex}><Text style={styles.v40RideName}>{ride.name}</Text><Text style={styles.v40RideEta}>{ride.eta}</Text><Text numberOfLines={1} style={styles.v40RideDescription}>{descriptions[ride.id]}</Text><Text style={styles.v40RideDemand}>{preview.demandLabel} · {preview.demandMultiplier.toFixed(2)}×</Text></View><View style={styles.v40RidePriceWrap}><Text style={styles.v40RidePrice}>{formatMoney(data.country,preview.total)}</Text><View style={[styles.v40RideRadio,active&&styles.v40RideRadioActive]}>{active?<View style={styles.v40RideRadioDot}/>:null}</View></View></Pressable>})}
+          {products.map((ride)=>{const active=data.selectedRide===ride.id;const preview=rideFareBreakdown({baseFare:ride.baseFare,rideProduct:data.scheduledTrip?'scheduled':'instant',vehicleMode:data.selectedVehicleMode,priority:false,member:true,promoCode:'',country:data.country});return <Pressable key={ride.id} onPress={()=>selectRide(ride)} style={({pressed})=>[styles.v40RideCard,active&&styles.v40RideCardActive,pressed&&styles.v26CardPressed]}><View style={styles.v40RideImageWrap}><RideVehicleVisual rideId={ride.id}/></View><View style={styles.flex}><Text style={styles.v40RideName}>{ride.name}</Text><Text style={styles.v40RideEta}>{ride.eta}</Text><Text numberOfLines={1} style={styles.v40RideDescription}>{descriptions[ride.id]}</Text><Text style={styles.v40RideDemand}>{preview.demandLabel} · {preview.demandMultiplier.toFixed(2)}×</Text></View><View style={styles.v40RidePriceWrap}><Text style={styles.v40RidePrice}>{formatMoney(data.country,preview.total)}</Text><View style={[styles.v40RideRadio,active&&styles.v40RideRadioActive]}>{active?<View style={styles.v40RideRadioDot}/>:null}</View></View></Pressable>})}
         </View>
 
         <Pressable onPress={()=>setScheduleOpen(true)} style={({pressed})=>[styles.v40RideUtilityCard,pressed&&styles.v26CardPressed]}><View style={styles.v40RideUtilityIcon}><Ionicons name="calendar-outline" size={27} color={COLORS.red}/></View><View style={styles.flex}><Text style={styles.v40RideUtilityTitle}>Scheduled</Text><Text style={styles.v40RideUtilitySub}>{data.scheduledTrip ?? 'Book for later'}</Text></View>{data.scheduledTrip?<Pressable hitSlop={10} onPress={()=>actions.setScheduledTrip(null)}><Ionicons name="close-circle" size={22} color={COLORS.muted}/></Pressable>:<Feather name="chevron-right" size={22} color={COLORS.black}/>}</Pressable>
 
         <View style={styles.v40RidePayment}><LocalPaymentLogo id={data.selectedPayment} country={data.country}/><View style={styles.flex}><Text style={styles.v40RidePaymentTitle}>{paymentMethodTitle(data.selectedPayment,data.country)}</Text><Text style={styles.v40RidePaymentSub}>Selected payment method</Text></View><TextButton label="Change" onPress={()=>setPaymentOpen(true)} color={COLORS.red}/></View>
 
-        <Pressable onPress={()=>{if(selected.id==='delivery'){actions.go('parcel');return;}if(data.guest){actions.setAuthReturn('rideFareBids');actions.go('phone');}else actions.go('rideFareBids')}} style={({pressed})=>[styles.v40RideConfirm,pressed&&styles.v26CardPressed]}><Text style={styles.v40RideConfirmText}>{selected.id==='delivery'?'Continue to delivery':data.guest?`Sign in to book ${selected.name}`:`Confirm ${selected.name}`}</Text></Pressable>
-        <View style={styles.v40RideFareFooter}><Text style={styles.v40RideFareLabel}>Estimated fare</Text><Text style={styles.v40RideFareValue}>{formatMoney(data.country,rideFareBreakdown({baseFare:selected.baseFare,rideProduct:data.scheduledTrip?'scheduled':'instant',vehicleMode:data.selectedVehicleMode,priority:false,member:true,promoCode:''}).total)}</Text></View>
+        <Pressable onPress={()=>{actions.setSelectedRideBidId(null);if(data.guest){actions.setAuthReturn('confirmBooking');actions.go('phone');}else actions.go('confirmBooking')}} style={({pressed})=>[styles.v40RideConfirm,pressed&&styles.v26CardPressed]}><Text style={styles.v40RideConfirmText}>{data.guest?`Sign in to choose ${selected.name}`:data.selectedVehicleMode==='BODA'?'Review Boda quote':`Review ${selected.name}`}</Text></Pressable>
+        <View style={styles.v40RideFareFooter}><Text style={styles.v40RideFareLabel}>Estimated fixture fare</Text><Text style={styles.v40RideFareValue}>{formatMoney(data.country,rideFareBreakdown({baseFare:selected.baseFare,rideProduct:data.scheduledTrip?'scheduled':'instant',vehicleMode:data.selectedVehicleMode,priority:false,member:true,promoCode:'',country:data.country}).total)}</Text></View>
         <Text style={styles.v40RideFareNote}>Demand pricing updates with nearby requests and available Captains. Your confirmed quote is shown before dispatch.</Text>
       </ScrollView>
       <Modal visible={scheduleOpen} transparent animationType="fade" onRequestClose={()=>setScheduleOpen(false)}>
@@ -3094,12 +2897,12 @@ function PaymentChoice({ id, data, actions }: { id: 'mtn' | 'airtel' | 'visa'; d
 
 function selectedRideOffer(data: AppData) {
   if (!data.selectedRideBidId) return null;
-  const selected = rideData.find((ride) => ride.id === data.selectedRide) ?? rideData[0];
+  const selected = selectedRideData(data);
   return captainOffers(selected.baseFare, data.country, data.selectedVehicleMode).find((offer) => offer.id === data.selectedRideBidId) ?? null;
 }
 
 function currentRideFare(data: AppData): RideFareBreakdown {
-  const selected = rideData.find((ride) => ride.id === data.selectedRide) ?? rideData[0];
+  const selected = selectedRideData(data);
   const offer = selectedRideOffer(data);
   return rideFareBreakdown({
     baseFare: selected.baseFare,
@@ -3109,11 +2912,12 @@ function currentRideFare(data: AppData): RideFareBreakdown {
     priority: data.ridePriority,
     member: true,
     promoCode: data.ridePromoCode,
+    country: data.country,
   });
 }
 
 function currentRideReceipt(data: AppData): RideReceipt {
-  const selected = rideData.find((ride) => ride.id === data.selectedRide) ?? rideData[0];
+  const selected = selectedRideData(data);
   const offer = selectedRideOffer(data) ?? captainOffers(selected.baseFare, data.country, data.selectedVehicleMode)[0];
   return {
     id: `ride-${Date.now()}`,
@@ -3131,7 +2935,7 @@ function currentRideReceipt(data: AppData): RideReceipt {
 
 
 export function ConfirmBookingScreen({ data, actions }: { data: AppData; actions: AppActions }) {
-  const selected = rideData.find((ride) => ride.id === data.selectedRide) ?? rideData[0];
+  const selected = selectedRideData(data);
   const offer = selectedRideOffer(data);
   const fare = currentRideFare(data);
   const base = fare.baseFare;
@@ -3166,7 +2970,7 @@ export function ConfirmBookingScreen({ data, actions }: { data: AppData; actions
         {fare.membershipSaving ? <View style={styles.priceRow}><Text style={styles.priceLabel}>Kareebu Black saving</Text><Text style={[styles.priceValue,{color:COLORS.green}]}>-{formatMoney(data.country, fare.membershipSaving)}</Text></View> : null}
         {fare.promoDiscount ? <View style={styles.priceRow}><Text style={styles.priceLabel}>Promotion</Text><Text style={[styles.priceValue,{color:COLORS.green}]}>-{formatMoney(data.country, fare.promoDiscount)}</Text></View> : null}
         <View style={[styles.priceRow, styles.totalRow]}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>{formatMoney(data.country, total)}</Text></View>
-        <PrimaryButton label={offer ? `Continue with ${offer.captainName} · ${formatMoney(data.country, total)}` : `Continue · ${formatMoney(data.country, total)}`} onPress={() => actions.go('ridePayment')} />
+        <PrimaryButton label={`Confirm ${selected.name} · ${formatMoney(data.country, total)}`} onPress={() => { actions.setSelectedRideBidId(null); actions.setCaptainRideStatus('requested'); actions.go('driver'); }} />
         <Text style={styles.cancelPolicy}>You can cancel for free within 1 min.</Text>
       </ScrollView>
     </ScreenShell>
@@ -3179,7 +2983,7 @@ function DriverProfile({ name = 'Peter', rating = '4.8', actions, vehicleMode = 
   return (
     <RoundedCard style={styles.driverProfile}>
       <Image source={assets.avatars.driver} style={styles.driverAvatar} />
-      <View style={styles.flex}><Text style={styles.driverName}>{name}</Text><Text style={styles.driverRating}><Text style={styles.star}>★</Text> {rating}</Text><Text style={styles.driverMeta}>{vehicleMeta}</Text></View>
+      <View style={styles.flex}><Text style={styles.driverName}>{name}</Text><Text style={styles.driverRating}><Text style={styles.star}>★</Text> {rating}</Text><Text style={styles.driverMeta}>{vehicleMeta}</Text><Text style={styles.v40FixtureMeta}>Reference identity · replaced by live matching</Text></View>
       <Pressable onPress={()=>Alert.alert('Call driver','Calling is available once a live driver is matched.')} style={styles.circleAction}><Ionicons name="call" size={24} color={COLORS.black} /></Pressable>
       <Pressable onPress={()=>Alert.alert('Chat with driver','Secure trip chat is available once a live driver is matched.')} style={styles.circleAction}><Ionicons name="chatbubble-outline" size={24} color={COLORS.black} /></Pressable>
     </RoundedCard>
@@ -3199,6 +3003,10 @@ export function DriverScreen({ data, actions }: { data: AppData; actions: AppAct
   // events. Until Kareebu Captain is connected, local emulator QA simulates
   // those exact passenger-visible transitions.
   useEffect(() => {
+    if (status === 'requested') {
+      const timer = setTimeout(() => actions.setCaptainRideStatus('accepted'), 1600);
+      return () => clearTimeout(timer);
+    }
     if (status === 'accepted') {
       const timer = setTimeout(() => actions.setCaptainRideStatus('on_way'), 850);
       return () => clearTimeout(timer);
@@ -3220,7 +3028,7 @@ export function DriverScreen({ data, actions }: { data: AppData; actions: AppAct
         <View style={styles.liveChip}><View style={styles.liveDot} /><Text style={styles.liveChipText}>Live</Text></View>
       </View>
       <ScrollView style={styles.flex} contentContainerStyle={styles.driverScroll} showsVerticalScrollIndicator={false}>
-        <InteractiveKareebuMap mode="driver" vehicleMode={data.selectedVehicleMode} originCoordinate={origin} destinationCoordinate={destination} routePath={routeState.route?.coordinates} destinationLabel={destinationLabel(data)} />
+        <InteractiveKareebuMap mode="driver" marketCountry={data.country} vehicleMode={data.selectedVehicleMode} originCoordinate={origin} destinationCoordinate={destination} routePath={routeState.route?.coordinates} destinationLabel={destinationLabel(data)} />
         <DemoDirectionsCard data={data} compact />
         <CaptainLifecycleCard status={status} captainName={driverName} pickupCode="4821" />
         <DriverProfile name={driverName} rating={String(offer?.rating ?? 4.8)} actions={actions} vehicleMode={data.selectedVehicleMode} country={data.country} />
@@ -3268,14 +3076,14 @@ export function OnTripScreen({ data, actions }: { data: AppData; actions: AppAct
       <Header title="On trip" right={<TextButton label="Safety" onPress={() => actions.go('rideSafety')} color={COLORS.red} />} />
       <KareebuContextBar label="Live trip · Kareebu+ safety tools available" />
       <ScrollView style={styles.flex} contentContainerStyle={styles.tripScroll} showsVerticalScrollIndicator={false}>
-        <InteractiveKareebuMap mode="trip" vehicleMode={data.selectedVehicleMode} originCoordinate={origin} destinationCoordinate={destination} routePath={routeState.route?.coordinates} destinationLabel={destinationLabel(data)} />
+        <InteractiveKareebuMap mode="trip" marketCountry={data.country} vehicleMode={data.selectedVehicleMode} originCoordinate={origin} destinationCoordinate={destination} routePath={routeState.route?.coordinates} destinationLabel={destinationLabel(data)} />
         <DemoDirectionsCard data={data} />
         <CaptainLifecycleCard status={data.captainRideStatus} captainName={offer?.captainName ?? 'Peter'} />
         <RoundedCard style={styles.tripSummary}>
           <Text style={styles.tripLabel}>Ride to</Text><Text style={styles.tripDestination}>{destinationLabel(data)}</Text>
           <View style={styles.tripRule} />
           <View style={styles.tripStats}>
-            {[['Distance',distance],['Time',duration],['Fare', formatMoney(data.country, offer?.fare ?? (rideData.find((ride) => ride.id === data.selectedRide) ?? rideData[0]).baseFare)]].map(([label,value]) => <View key={label}><Text style={styles.tripStatLabel}>{label}</Text><Text style={styles.tripStatValue}>{value}</Text></View>)}
+            {[['Distance',distance],['Time',duration],['Fare', formatMoney(data.country, offer?.fare ?? selectedRideData(data).baseFare)]].map(([label,value]) => <View key={label}><Text style={styles.tripStatLabel}>{label}</Text><Text style={styles.tripStatValue}>{value}</Text></View>)}
           </View>
           <View style={styles.tripButtons}><Pressable onPress={()=>void shareTrip(data)} style={styles.tripSecondary}><Feather name="share" size={21} /><Text style={styles.tripSecondaryText}>Share trip</Text></Pressable><Pressable onPress={()=>actions.go('rideSafety')} style={styles.tripSecondary}><MaterialCommunityIcons name="shield-check-outline" size={23} /><Text style={styles.tripSecondaryText}>Safety toolkit</Text></Pressable></View>
           <PrimaryButton label="I’ve arrived" onPress={() => { actions.setCaptainRideStatus('complete'); actions.setLastRideReceipt(currentRideReceipt(data)); actions.go('tripComplete'); }} />
@@ -3288,7 +3096,7 @@ export function OnTripScreen({ data, actions }: { data: AppData; actions: AppAct
 }
 
 export function TripCompleteScreen({ data, actions }: { data: AppData; actions: AppActions }) {
-  const selected = rideData.find((ride) => ride.id === data.selectedRide) ?? rideData[0];
+  const selected = selectedRideData(data);
   const offer = selectedRideOffer(data);
   const fare = currentRideFare(data);
   const base = fare.baseFare;
@@ -3457,10 +3265,10 @@ function PharmacyBrandTile({ name, eta, index }: { name: string; eta: string; in
 
 function V40FoodPromoCard({ kind }: { kind: 'exclusive'|'discount'|'delivery' }) {
   const config = kind === 'exclusive'
-    ? { bg:'#FFF0EC', eyebrow:'Only on', title:'Kareebu+', body:'Great food. Only here.', icon:'bag-handle' as const, accent:COLORS.red }
+    ? { bg:'#FFF0EC', eyebrow:'Kareebu+', title:'food discovery', body:'Explore restaurants and current menu options.', icon:'bag-handle' as const, accent:COLORS.red }
     : kind === 'discount'
-      ? { bg:'#FFF6DE', eyebrow:'30% off', title:'full menu', body:'Big savings on your favourites.', icon:'pricetag' as const, accent:COLORS.red }
-      : { bg:'#EEF8EF', eyebrow:'Lower', title:'delivery fee', body:'More value. Delivered fast.', icon:'bicycle' as const, accent:'#168342' };
+      ? { bg:'#FFF6DE', eyebrow:'Discover', title:'menu picks', body:'Browse favourites without assuming a live discount.', icon:'restaurant' as const, accent:COLORS.red }
+      : { bg:'#EEF8EF', eyebrow:'Delivery', title:'check at checkout', body:'Current delivery terms appear before you order.', icon:'bicycle' as const, accent:'#168342' };
   return <View style={[styles.v40FoodPromoCard,{backgroundColor:config.bg}]}><View style={styles.flex}><Text style={[styles.v40FoodPromoEyebrow,{color:config.accent}]}>{config.eyebrow}</Text><Text style={styles.v40FoodPromoTitle}>{config.title}</Text><Text style={styles.v40FoodPromoBody}>{config.body}</Text></View><View style={styles.v40FoodPromoIcon}><Ionicons name={config.icon} size={32} color={config.accent}/></View></View>;
 }
 
@@ -3559,6 +3367,17 @@ function KareebuDomainDiscoveryRoute({
     actions.selectCommerceProduct(item.id);
     actions.go('commerceProduct');
   };
+  const openVertical = (_id:string,title:string) => {
+    const key=title.toLowerCase();
+    if(domainId==='home-care'||domainId==='fix'){
+      const serviceId=/plumb|tap|pipe|drain|toilet|sink/.test(key)?'plumbing':/electrical|power|socket|switch|light|wiring/.test(key)?'electrical':/ac|air.condition|cooling/.test(key)?'ac':/salon|spa|beauty/.test(key)?'beauty-home':/packer|mover|moving/.test(key)?'moving-help':/clean/.test(key)?'cleaning':null;
+      if(serviceId){actions.selectService(serviceId);actions.go('serviceProviders');}
+      else actions.go('serviceMarketplace');
+      return;
+    }
+    const destination:Screen = /pharm|health/.test(key)?'pharmacyHome':/pet/.test(key)?'petStoresHome':/gift|flower/.test(key)?'giftsFlowersHome':/electronic|tech/.test(key)?'electronicsHome':/beauty|personal care/.test(key)?'beautyHome':/fashion/.test(key)?'fashionHome':/grocer/.test(key)?'groceries':/home/.test(key)?'homeShoppingHome':'shops';
+    actions.go(destination);
+  };
 
   return (
     <KareebuCareemDiscoveryScreen
@@ -3568,8 +3387,90 @@ function KareebuDomainDiscoveryRoute({
       initialVerticalTitle={initialVerticalTitle}
       onOpenItem={openItem}
       onOpenMembership={() => actions.go('membership')}
+      onOpenPromotion={(campaign) => actions.go(campaign.ctaScreen)}
+      onOpenVertical={openVertical}
     />
   );
+}
+
+function verticalStoreCategoryMatcher(verticalId:VerticalId){
+  if(verticalId==='pharmacy')return /pharm|health|nutrition|eye care/i;
+  if(verticalId==='groceries')return /grocer|supermarket|convenience/i;
+  if(verticalId==='electronics')return /elect|marketplace/i;
+  if(verticalId==='pets')return /pet/i;
+  if(verticalId==='beauty')return /beauty|personal care|pharm/i;
+  if(verticalId==='fashion')return /fashion|marketplace/i;
+  if(verticalId==='butchery')return /butcher|meat|seafood|grocer/i;
+  if(verticalId==='gifts')return /gift|flower|grocer/i;
+  if(verticalId==='home')return /home|marketplace|grocer/i;
+  return /.*/i;
+}
+
+function actualVerticalSellers(verticalId:VerticalId,data:AppData):VerticalSeller[]{
+  const matcher=verticalStoreCategoryMatcher(verticalId);
+  return localeStores(data.country,data.city).filter(store=>matcher.test(store.category)).slice(0,10).map(store=>({
+    id:store.id,
+    name:localisedStoreName(store,data.country),
+    vertical:verticalId,
+    market:data.country,
+    referenceFixture:true,
+    partnerStatus:'unknown',
+    liveAvailability:false,
+    livePrice:false,
+    source:store.contentTrust?.source??'Kareebu merchant reference fixture',
+    lastVerifiedAt:store.contentTrust?.lastVerifiedAt,
+    availabilityStatus:'unknown',
+    rating:store.contentTrust?.liveAvailability?store.rating:undefined,
+    deliveryEstimate:store.contentTrust?.liveAvailability?store.eta:undefined,
+  }));
+}
+
+function KareebuVerticalLandingRoute({verticalId,data,actions}:{verticalId:VerticalId;data:AppData;actions:AppActions}){
+  const candidates=localeStores(data.country,data.city);
+  const matcher=verticalStoreCategoryMatcher(verticalId);
+  const relevantStores=candidates.filter(item=>matcher.test(item.category));
+  const actualSellers=actualVerticalSellers(verticalId,data);
+  return <VerticalLandingScreen verticalId={verticalId} country={data.country} city={data.city} go={actions.go} onBack={actions.back} sellers={actualSellers} onCategory={(categoryId,label)=>{
+    const nodeId=normaliseTaxonomyId(verticalId as TaxonomyDomain,`${verticalId}.${categoryId}`);
+    const path=taxonomyPath(nodeId);
+    actions.updateCommerceContext({domainId:verticalId,verticalId,categoryId:nodeId,categoryLabel:label,subcategoryId:undefined,taxonomyNodeId:nodeId,taxonomyPath:path?[...path.ancestors.map(item=>item.title),path.node.title]:[VERTICAL_CONFIGS[verticalId].title,label],sellerId:undefined,productId:undefined,entrySource:'category'});
+    actions.setSelectedVerticalCategory(label);
+    actions.setShopCategoryPreset(VERTICAL_CONFIGS[verticalId].title);
+    actions.go('verticalCategory');
+  }} onSeller={(sellerId)=>{
+    const store=relevantStores.find(item=>item.id===sellerId)??relevantStores[0];
+    if(store){actions.updateCommerceContext({domainId:verticalId,verticalId,sellerId:store.id,categoryId:undefined,categoryLabel:undefined,taxonomyNodeId:verticalId,taxonomyPath:[VERTICAL_CONFIGS[verticalId].title],productId:undefined,entrySource:'seller'});actions.setSelectedVerticalCategory('');actions.setShopCategoryPreset(VERTICAL_CONFIGS[verticalId].title);actions.selectShop(store.id);actions.go('shop')}else actions.go('allStores');
+  }} onProduct={(id)=>{const store=relevantStores[0]??candidates[0];if(!store)return;actions.updateCommerceContext({domainId:verticalId,verticalId,sellerId:store.id,productId:id,entrySource:'home-recommendation'});actions.selectShop(store.id);actions.selectCommerceProduct(id);actions.go('commerceProduct')}}/>;
+}
+
+function KareebuVerticalCategoryRoute({data,actions}:{data:AppData;actions:AppActions}){
+  const verticalByTitle:Record<string,VerticalId>={'Pharmacy':'pharmacy','Pharmacy & Wellness':'pharmacy','Butchery & Seafood':'butchery','Pet Stores':'pets','Gifts & Flowers':'gifts','Electronics':'electronics','Beauty':'beauty','Fashion':'fashion','Home':'home','Home & Kitchen':'home','Groceries':'groceries'};
+  const verticalId=verticalByTitle[data.shopCategoryPreset]??(data.commerceContext.verticalId as VerticalId|undefined)??'groceries';
+  const fallbackId=data.commerceContext.categoryId??`${verticalId}.${(data.selectedVerticalCategory||data.commerceContext.categoryLabel||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-')}`;
+  const nodeId=data.commerceContext.taxonomyNodeId??normaliseTaxonomyId(verticalId as TaxonomyDomain,fallbackId);
+  const path=taxonomyPath(nodeId)??taxonomyPath(verticalId);
+  if(!path){actions.back();return null;}
+  const node=path.node;
+  const stores=localeStores(data.country,data.city);
+  const matcher=verticalStoreCategoryMatcher(verticalId);
+  const relevantStores=stores.filter(store=>matcher.test(store.category));
+  const selectedStore=relevantStores.find(store=>store.id===data.commerceContext.sellerId||store.id===data.selectedShopId);
+  const catalogueStores=selectedStore?[selectedStore]:relevantStores.slice(0,Math.max(1,Math.min(4,relevantStores.length)));
+  const productTerms=taxonomyProductTerms(node.id).map(term=>term.toLowerCase());
+  const catalogue=catalogueStores.flatMap(store=>commerceProductsForTaxonomy(store,{domainId:verticalId,categoryId:node.id,categoryLabel:node.title}));
+  const uniqueCatalogue=[...new Map(catalogue.map(item=>[`${item.id}-${item.name}`,item])).values()];
+  const matching=node.id===verticalId?uniqueCatalogue:uniqueCatalogue.filter(item=>{const hay=`${item.name} ${item.category} ${item.subcategory} ${item.brand??''}`.toLowerCase();return productTerms.some(term=>hay.includes(term));});
+  const categoryProducts=(node.id===verticalId?uniqueCatalogue:matching).slice(0,path.isLeaf?72:24);
+  const sellers:CategorySeller[]=relevantStores.slice(0,10).map(store=>({id:store.id,name:localisedStoreName(store,data.country),subtitle:store.category,referenceFixture:!store.contentTrust?.liveAvailability,liveAvailability:Boolean(store.contentTrust?.liveAvailability),rating:store.contentTrust?.liveAvailability?store.rating:undefined,eta:store.contentTrust?.liveAvailability?store.eta:undefined}));
+  const currency=localeProfile(data.country).currency;
+  const products:CategoryProduct[]=categoryProducts.map(item=>({id:item.id,title:item.name,brand:item.brand,pack:item.detail,visualKey:node.visualKey,referencePrice:item.basePrice,currency,isLivePrice:false,isLiveStock:false}));
+  const primaryStore=selectedStore??relevantStores[0]??stores[0];
+  return <UniversalTaxonomyLandingScreen node={node} ancestors={path.ancestors} children={path.children} sellers={sellers} products={products} country={data.country} city={data.city} sellerId={selectedStore?.id} onBack={actions.back} onOpenChild={(child:TaxonomyNode)=>{
+    const childPath=taxonomyPath(child.id);
+    actions.updateCommerceContext({domainId:verticalId,verticalId,categoryId:child.id,categoryLabel:child.title,subcategoryId:child.parentId,taxonomyNodeId:child.id,taxonomyPath:childPath?[...childPath.ancestors.map(item=>item.title),child.title]:[child.title],sellerId:selectedStore?.id,productId:undefined,entrySource:'category'});
+    actions.setSelectedVerticalCategory(child.title);
+    actions.go('verticalCategory');
+  }} onOpenSeller={(id)=>{actions.updateCommerceContext({domainId:verticalId,verticalId,categoryId:node.id,categoryLabel:node.title,subcategoryId:node.parentId,taxonomyNodeId:node.id,taxonomyPath:[...path.ancestors.map(item=>item.title),node.title],sellerId:id,entrySource:'category'});actions.selectShop(id);actions.go('shop')}} onOpenProduct={(id)=>{if(!primaryStore)return;actions.updateCommerceContext({domainId:verticalId,verticalId,categoryId:node.id,categoryLabel:node.title,subcategoryId:node.parentId,taxonomyNodeId:node.id,taxonomyPath:[...path.ancestors.map(item=>item.title),node.title],sellerId:primaryStore.id,productId:id,entrySource:'category'});actions.selectShop(primaryStore.id);actions.selectCommerceProduct(id);actions.go('commerceProduct')}} onOpenPromotion={(campaign)=>actions.go(campaign.ctaScreen)}/>;
 }
 
 export function FoodScreen({
@@ -3581,47 +3482,7 @@ export function FoodScreen({
   actions: AppActions;
   initialSurface?: string;
 }) {
-  const restaurants = DEMO_RESTAURANTS.map((restaurant) => ({
-    id: restaurant.id,
-    name: localisedRestaurantName(
-      restaurant,
-      data.country,
-      data.city,
-    ),
-    cuisine: restaurant.cuisine,
-    categories: restaurant.categories,
-    rating: restaurant.rating,
-    reviews: restaurant.reviews,
-    eta: restaurant.eta,
-    distance: restaurant.distance,
-    ...(restaurant.neighborhood ? { neighborhood: restaurant.neighborhood } : {}),
-    ...(restaurant.priceLevel ? { priceLevel: restaurant.priceLevel } : {}),
-    ...(restaurant.featuredDish ? { featuredDish: restaurant.featuredDish } : {}),
-    deliveryLabel:
-      restaurant.deliveryFee === 0
-        ? 'Free delivery'
-        : `${formatMoney(
-            data.country,
-            demandAdjustedDeliveryFee(
-              restaurant.deliveryFee,
-              'food-delivery',
-            ),
-          )} delivery`,
-    offer: restaurant.offer ? String(restaurant.offer) : null,
-    plus: restaurant.plus === true,
-    image: restaurant.photoUrl ? { uri: restaurant.photoUrl } : assets.food[restaurant.image],
-    fallbackImage: assets.food[restaurant.image],
-    menu: restaurant.menu.map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      category: item.category,
-      price: item.price,
-      image: assets.food[item.image],
-      ...(item.popular === undefined ? {} : { popular: item.popular }),
-      ...(item.badge === undefined ? {} : { badge: item.badge }),
-    })),
-  }));
+  const restaurants = foodHomeRestaurants(data);
 
   return (
     <ScreenShell>
@@ -3632,18 +3493,23 @@ export function FoodScreen({
           restaurants={restaurants}
           favouriteIds={data.favoriteRestaurantIds}
           initialSurface={initialSurface === 'search' ? 'search' : 'home'}
+          onOpenPromotion={(campaign)=>actions.go(campaign.ctaScreen)}
           actions={{
             openRestaurant: (restaurantId) => {
+              actions.setSelectedFoodCategory('');
               actions.selectRestaurant(restaurantId);
               actions.go('restaurant');
             },
             openFoodItem: (restaurantId, itemId) => {
+              actions.setSelectedFoodCategory('');
               actions.selectRestaurant(restaurantId);
               actions.selectFoodItem(itemId);
               actions.go('foodItem');
             },
             openSearch: () => actions.go('foodSearch'),
             openFoodHome: () => actions.go('food'),
+            openCategoryLanding: (category) => { actions.setSelectedFoodCategory(category); actions.go('foodCategory'); },
+            exitFood: () => actions.go('home'),
             openOffers: () => actions.go('offers'),
             openMembership: () => actions.go('membership'),
             toggleFavourite: actions.toggleFavoriteRestaurant,
@@ -3656,17 +3522,96 @@ export function FoodScreen({
   );
 }
 
+function foodHomeRestaurants(data: AppData) {
+  return DEMO_RESTAURANTS.map((restaurant) => {
+    const restaurantIdentity =
+      data.country === 'Uganda' && restaurant.logo
+        ? assets.restaurants[restaurant.logo]
+        : undefined;
+
+    return {
+      id: restaurant.id,
+      name: localisedRestaurantName(
+        restaurant,
+        data.country,
+        data.city,
+      ),
+      cuisine: restaurant.cuisine,
+      categories: restaurant.categories,
+      rating: restaurant.rating,
+      reviews: restaurant.reviews,
+      eta: restaurant.eta,
+      distance: restaurant.distance,
+      ...(restaurant.neighborhood ? { neighborhood: restaurant.neighborhood } : {}),
+      ...(restaurant.priceLevel ? { priceLevel: restaurant.priceLevel } : {}),
+      ...(restaurant.featuredDish ? { featuredDish: restaurant.featuredDish } : {}),
+      deliveryLabel:
+        !restaurant.contentTrust?.liveAvailability
+          ? 'Availability at checkout'
+          : restaurant.deliveryFee === 0
+          ? 'Free delivery'
+          : `${formatMoney(
+              data.country,
+              demandAdjustedDeliveryFee(
+                restaurant.deliveryFee,
+                'food-delivery',
+              ),
+            )} delivery`,
+      availabilityLabel: restaurant.contentTrust?.liveAvailability ? restaurant.eta : 'Reference listing',
+      liveAvailability: Boolean(restaurant.contentTrust?.liveAvailability),
+      offer: restaurant.contentTrust?.liveAvailability && restaurant.offer ? String(restaurant.offer) : null,
+      plus: restaurant.plus === true,
+      image: restaurant.photoUrl ? { uri: restaurant.photoUrl } : assets.food[restaurant.image],
+      fallbackImage: assets.food[restaurant.image],
+      ...(restaurantIdentity
+        ? {
+            logo: restaurantIdentity.logo,
+            logoBackgroundColor: restaurantIdentity.logoBackgroundColor,
+          }
+        : {}),
+      isPopularRestaurant:
+        data.country === 'Uganda' && restaurant.isPopularRestaurant === true,
+      menu: restaurant.menu.map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        category: item.category,
+        price: item.price,
+        image: assets.food[item.image],
+        ...(item.popular === undefined ? {} : { popular: item.popular }),
+        ...(data.country === 'Uganda' && item.isBestSeller === true
+          ? { isBestSeller: true as const }
+          : {}),
+        ...(data.country === 'Uganda' && item.imageSource
+          ? { imageSource: item.imageSource }
+          : {}),
+        ...(restaurant.contentTrust?.liveAvailability && item.badge !== undefined ? { badge: item.badge } : {}),
+      })),
+    };
+  });
+}
+
+export function FoodCategoryScreen({data,actions}:{data:AppData;actions:AppActions}){
+  useRegisterBackControl(true);
+  const restaurants=foodHomeRestaurants(data);
+  return <FoodCategoryLandingScreen category={data.selectedFoodCategory||'Pizza'} country={data.country} city={data.city} restaurants={restaurants} favouriteIds={data.favoriteRestaurantIds} onBack={()=>actions.go('food')} onOpenRestaurant={(id)=>{actions.selectRestaurant(id);actions.go('restaurant')}} onToggleFavourite={actions.toggleFavoriteRestaurant}/>;
+}
+
 function FoodBottomNav({ go, active }: { go: (screen: Screen) => void; active: 'home'|'food'|'shops'|'orders'|'cart' }) {
   // Food and Shops remain commerce sub-flows while sharing the same global navigation pattern.
   return <BottomNav active={active === 'orders' ? 'activity' : 'home'} go={go} />;
+}
+
+function RestaurantMenuTabs({tabs,active,onSelect,sticky=false}:{tabs:string[];active:string;onSelect:(tab:string)=>void;sticky?:boolean}){
+  return <View style={sticky?styles.v615StickyTabs:undefined}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v615TabRail}>{tabs.map(category=><Pressable key={category} accessibilityRole="tab" accessibilityState={{selected:active===category}} onPress={()=>onSelect(category)} style={[styles.v615Tab,active===category&&styles.v615TabActive]}><Text style={[styles.v615TabText,active===category&&styles.v615TabTextActive]}>{category}</Text></Pressable>)}</ScrollView></View>;
 }
 
 export function RestaurantScreen({ data, actions }: { data: AppData; actions: AppActions }) {
   useRegisterBackControl(true);
   const restaurant = DEMO_RESTAURANTS.find((item) => item.id === data.selectedRestaurantId) ?? DEMO_RESTAURANTS[0]!;
   const favorite = data.favoriteRestaurantIds.includes(restaurant.id);
-  const categories = Array.from(new Set(restaurant.menu.map((item) => item.category)));
-  const [activeMenuCategory, setActiveMenuCategory] = useState('All');
+  const categories = useMemo(()=>Array.from(new Set(restaurant.menu.map((item) => item.category))),[restaurant.menu]);
+  const [activeMenuCategory, setActiveMenuCategory] = useState('Bestsellers 🔥');
   const [menuQuery, setMenuQuery] = useState('');
   const [deliverySlot,setDeliverySlot]=useState('Now');
   const restaurantLines = data.foodCartLines.filter((line) => line.restaurantId === restaurant.id);
@@ -3675,15 +3620,22 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
   const itemQuantity = (itemId: string) => restaurantLines.filter((line) => line.itemId === itemId).reduce((sum, line) => sum + line.quantity, 0);
   const openItem = (item: DemoMenuItem) => { actions.selectFoodItem(item.id); actions.go('foodItem'); };
   const query = menuQuery.trim().toLowerCase();
-  const visibleMenu = restaurant.menu.filter((item) => {
-    const categoryMatches = activeMenuCategory === 'All' || item.category === activeMenuCategory;
-    const searchMatches = !query || `${item.name} ${item.description} ${item.category}`.toLowerCase().includes(query);
-    return categoryMatches && searchMatches;
-  });
+  const searchMenu = useMemo(()=>restaurant.menu.filter((item) => !query || `${item.name} ${item.description} ${item.category}`.toLowerCase().includes(query)),[query,restaurant.menu]);
+  const menuSections=useMemo(()=>{
+    const sections:Array<{title:string;items:DemoMenuItem[]}>=[];
+    const popular=searchMenu.filter(item=>item.popular);
+    if(popular.length)sections.push({title:'Bestsellers 🔥',items:popular});
+    categories.forEach(category=>{const items=searchMenu.filter(item=>item.category===category);if(items.length)sections.push({title:category,items});});
+    return sections;
+  },[categories,searchMenu]);
+  const menuTabs=useMemo(()=>menuSections.map(section=>section.title),[menuSections]);
   const insets=useSafeAreaInsets();
   const { height }=useWindowDimensions();
   const heroHeight=Math.max(330,Math.min(420,height*0.38));
   const menuSearchRef=useRef<TextInput>(null);
+  const scrollRef=useRef<ScrollView>(null);
+  const sectionOffsets=useRef<Record<string,number>>({});
+  const [stickyMenuVisible,setStickyMenuVisible]=useState(false);
   const restaurantName=localisedRestaurantName(restaurant,data.country,data.city);
   const deliveryFee=demandAdjustedDeliveryFee(restaurant.deliveryFee,'food-delivery');
   const typicalSpend=restaurant.menu.find((item)=>item.popular)?.price ?? restaurant.menu[0]?.price ?? 0;
@@ -3699,32 +3651,33 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
     ],
   );
   const groupOrder=()=>void Share.share({message:`Join my Kareebu+ group order from ${restaurantName}.`});
+  const scrollToMenuCategory=(category:string)=>{setActiveMenuCategory(category);const offset=sectionOffsets.current[category];if(offset!==undefined)scrollRef.current?.scrollTo({y:Math.max(0,heroHeight+offset-insets.top-68),animated:true});};
 
   return (
     <View style={styles.v615MerchantScreen}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content"/>
       <ScrollView
+        ref={scrollRef}
         style={styles.flex}
         contentContainerStyle={{paddingBottom:cartCount>0?128+insets.bottom:36+insets.bottom}}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={32}
+        onScroll={(event)=>{const y=event.nativeEvent.contentOffset.y;const sticky=y>heroHeight+390;if(sticky!==stickyMenuVisible)setStickyMenuVisible(sticky);let current=menuTabs[0];for(const tab of menuTabs){const offset=sectionOffsets.current[tab];if(offset!==undefined&&y>=heroHeight+offset-insets.top-100)current=tab;}if(current&&current!==activeMenuCategory)setActiveMenuCategory(current);}}
       >
         <View style={[styles.v615Hero,{height:heroHeight}]}>
           <RestaurantPhoto restaurant={restaurant} style={styles.v615HeroPhoto}/>
           <View pointerEvents="none" style={styles.v615HeroShade}/>
           <View style={[styles.v615TopBar,{top:Math.max(insets.top,18)+14}]}>
-            <Pressable onPress={()=>actions.go('food')} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Back">
+            <Pressable onPress={()=>actions.go(data.selectedFoodCategory?'foodCategory':'food')} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityRole="button" accessibilityLabel={data.selectedFoodCategory?`Back to ${data.selectedFoodCategory}`:'Back to Food'}>
               <Feather name="arrow-left" size={28} color={COLORS.black}/>
             </Pressable>
             <View style={styles.v615TopButtonGroup}>
               <Pressable onPress={()=>Share.share({message:`${restaurantName} on Kareebu+ · ${restaurant.cuisine}`})} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Share restaurant">
                 <Feather name="share-2" size={22} color={COLORS.black}/>
               </Pressable>
-              <Pressable onPress={()=>actions.toggleFavoriteRestaurant(restaurant.id)} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Favourite restaurant">
+              <Pressable onPress={()=>actions.toggleFavoriteRestaurant(restaurant.id)} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityRole="button" accessibilityLabel={favorite?'Remove restaurant from favourites':'Add restaurant to favourites'} accessibilityState={{selected:favorite}}>
                 <Ionicons name={favorite?'heart':'heart-outline'} size={27} color={favorite?COLORS.red:COLORS.black}/>
-              </Pressable>
-              <Pressable onPress={()=>menuSearchRef.current?.focus()} style={({pressed})=>[styles.v615TopButton,pressed&&styles.v615TopButtonPressed]} accessibilityLabel="Search menu">
-                <Feather name="search" size={25} color={COLORS.black}/>
               </Pressable>
             </View>
           </View>
@@ -3745,9 +3698,9 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
                 <View style={styles.v615PartnerBadge}><Text style={styles.v615PartnerBadgeText}>K+</Text></View>
                 <Text numberOfLines={2} style={styles.v615CategoryText}>{restaurant.cuisine}</Text>
               </View>
-              <Text style={styles.v615LocationText}>{restaurant.neighborhood ?? data.city} ({restaurant.distance})</Text>
+              <Text style={styles.v615LocationText}>{restaurant.neighborhood ?? data.city}{restaurant.contentTrust?.liveAvailability?` (${restaurant.distance})`:''}</Text>
             </View>
-            <MerchantRatingPanel rating={restaurant.rating} reviews={restaurant.reviews}/>
+            <View>{restaurant.contentTrust?.liveAvailability?<MerchantRatingPanel rating={restaurant.rating} reviews={restaurant.reviews}/>:<Text style={styles.v615ReferenceLabel}>Reference listing · live rating not connected</Text>}</View>
           </View>
 
           <View style={styles.v615ActionRow}>
@@ -3765,21 +3718,21 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
           <View style={styles.v615StatsPanel}>
             <View style={styles.v615StatCell}>
               <Text style={styles.v615StatLabel}>{deliverySlot==='Now'?'Deliver Now':deliverySlot}</Text>
-              <Text style={styles.v615StatValueAccent}>{restaurant.eta}</Text>
+              <Text style={styles.v615StatValueAccent}>{restaurant.contentTrust?.liveAvailability?restaurant.eta:'At checkout'}</Text>
             </View>
             <View style={styles.v615StatDivider}/>
             <View style={styles.v615StatCell}>
-              <Text style={styles.v615StatLabel}>Price For One</Text>
-              <Text style={styles.v615StatValue}>{formatMoney(data.country,typicalSpend)}</Text>
+              <Text style={styles.v615StatLabel}>{restaurant.contentTrust?.liveAvailability?'Price For One':'Menu pricing'}</Text>
+              <Text style={styles.v615StatValue}>{restaurant.contentTrust?.liveAvailability?formatMoney(data.country,typicalSpend):'See menu'}</Text>
             </View>
             <View style={styles.v615StatDivider}/>
             <View style={styles.v615StatCell}>
-              <Text style={styles.v615StatLabel}>Delivery Fee</Text>
-              <Text style={styles.v615StatValue}>{restaurant.deliveryFee===0?'Free':formatMoney(data.country,deliveryFee)}</Text>
+              <Text style={styles.v615StatLabel}>{restaurant.contentTrust?.liveAvailability?'Delivery Fee':'Delivery'}</Text>
+              <Text style={styles.v615StatValue}>{restaurant.contentTrust?.liveAvailability?(restaurant.deliveryFee===0?'Free':formatMoney(data.country,deliveryFee)):'At checkout'}</Text>
             </View>
           </View>
 
-          {restaurant.offer?(
+          {restaurant.contentTrust?.liveAvailability&&restaurant.offer?(
             <Pressable onPress={()=>Alert.alert('Offers',restaurant.offer ?? '')} style={({pressed})=>[styles.v615OfferStrip,pressed&&styles.v615Pressed]}>
               <Ionicons name="pricetag-outline" size={23} color={COLORS.black}/>
               <Text numberOfLines={2} style={styles.v615OfferText}><Text style={styles.v615OfferStrong}>Offers</Text> — {restaurant.offer}</Text>
@@ -3787,33 +3740,11 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
             </Pressable>
           ):null}
 
-          <View style={styles.v615SearchBox}>
-            <Feather name="search" size={22} color={COLORS.black}/>
-            <TextInput
-              ref={menuSearchRef}
-              value={menuQuery}
-              onChangeText={setMenuQuery}
-              placeholder={`Search ${restaurant.name}`}
-              placeholderTextColor={COLORS.muted}
-              style={styles.v615SearchInput}
-            />
-            {menuQuery?<Pressable onPress={()=>setMenuQuery('')} hitSlop={8}><Feather name="x-circle" size={19} color={COLORS.muted}/></Pressable>:null}
-          </View>
+          <KareebuSearchField context={restaurantSearchContext(restaurant.id,{market:data.country,city:data.city})} value={menuQuery} onChangeText={setMenuQuery} inputRef={menuSearchRef} elevated={false}/>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v615TabRail}>
-            {['All', ...categories].map((category)=>(
-              <Pressable key={category} onPress={()=>setActiveMenuCategory(category)} style={[styles.v615Tab,activeMenuCategory===category&&styles.v615TabActive]}>
-                <Text style={[styles.v615TabText,activeMenuCategory===category&&styles.v615TabTextActive]}>{category}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+          <RestaurantMenuTabs tabs={menuTabs} active={activeMenuCategory} onSelect={scrollToMenuCategory}/>
 
-          <View style={styles.v615SectionHeader}>
-            <Text style={styles.v615SectionTitle}>Menu</Text>
-            <Text style={styles.v615SectionCount}>{visibleMenu.length} items</Text>
-          </View>
-
-          {visibleMenu.length===0?(
+          {searchMenu.length===0?(
             <View style={styles.v615EmptyState}>
               <Feather name="search" size={28} color={COLORS.muted}/>
               <Text style={styles.v615EmptyTitle}>No matching dishes</Text>
@@ -3821,7 +3752,7 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
             </View>
           ):(
             <View style={styles.v615MenuList}>
-              {visibleMenu.map((item)=>{
+              {menuSections.map(section=><View key={section.title} onLayout={(event)=>{sectionOffsets.current[section.title]=event.nativeEvent.layout.y;}}><View style={styles.v615SectionHeader}><Text style={styles.v615SectionTitle}>{section.title}</Text><Text style={styles.v615SectionCount}>{section.items.length} items</Text></View>{section.items.map((item)=>{
                 const quantity=itemQuantity(item.id);
                 return (
                   <Pressable key={item.id} onPress={()=>openItem(item)} style={({pressed})=>[styles.v615MenuRow,pressed&&styles.v615Pressed]}>
@@ -3837,16 +3768,19 @@ export function RestaurantScreen({ data, actions }: { data: AppData; actions: Ap
                     <View style={styles.v615MenuVisual}>
                       <V615RestaurantDishPhoto item={item} restaurant={restaurant}/>
                       <View style={[styles.v615AddButton,quantity>0&&styles.v615AddButtonActive]}>
-                        <Text style={[styles.v615AddButtonText,quantity>0&&styles.v615AddButtonTextActive]}>{quantity>0?quantity:'+'}</Text>
+                        <Text style={[styles.v615AddButtonText,quantity>0&&styles.v615AddButtonTextActive]}>{quantity>0?`${quantity} added`:'Add'}</Text>
                       </View>
+                      <Text style={styles.v615Customisable}>Customisable</Text>
                     </View>
                   </Pressable>
                 );
-              })}
+              })}</View>)}
             </View>
           )}
         </View>
       </ScrollView>
+
+      {stickyMenuVisible&&menuTabs.length?<View style={{position:'absolute',top:insets.top,left:0,right:0,zIndex:30}}><RestaurantMenuTabs tabs={menuTabs} active={activeMenuCategory} onSelect={scrollToMenuCategory} sticky/></View>:null}
 
       {cartCount>0?(
         <Pressable onPress={()=>actions.go('cart')} style={[styles.v615BasketBar,{bottom:Math.max(8,insets.bottom+6)}]}>
@@ -3876,7 +3810,7 @@ export function CartScreen({ data, actions }: { data: AppData; actions: AppActio
     <ScreenShell>
       <Header title="Your cart" onBack={() => actions.go('restaurant')} />
       <ScrollView style={styles.flex} contentContainerStyle={styles.cartScroll} keyboardShouldPersistTaps="handled">
-        <View style={styles.v30CartRestaurantRow}><View><Text style={styles.cartRestaurant}>{restaurant.name}</Text><Text style={styles.v30CartRestaurantMeta}>{restaurant.eta} · {restaurant.distance}</Text></View><Pressable onPress={()=>actions.go('restaurant')}><Text style={styles.v30AddMore}>Add more</Text></Pressable></View>
+        <View style={styles.v30CartRestaurantRow}><View><Text style={styles.cartRestaurant}>{restaurant.name}</Text><Text style={styles.v30CartRestaurantMeta}>{restaurant.contentTrust?.liveAvailability?`${restaurant.eta} · ${restaurant.distance}`:'Reference listing · availability at checkout'}</Text></View><Pressable onPress={()=>actions.go('restaurant')}><Text style={styles.v30AddMore}>Add more</Text></Pressable></View>
         {lines.length ? lines.map((line)=>{
           const item=restaurant.menu.find((row)=>row.id===line.itemId);
           if(!item)return null;
@@ -3910,9 +3844,9 @@ export function OrderTrackingScreen({ data, actions }: { data: AppData; actions:
         <View style={styles.v30TrackingBrand}><Image source={assets.wordmark} style={styles.v30TrackingWordmark} resizeMode="contain"/><View style={styles.liveChip}><View style={styles.liveDot}/><Text style={styles.liveChipText}>Live</Text></View></View>
         <Text style={styles.orderId}>Order #{data.lastFoodOrder?.id ?? 'ORD-984512'}</Text><Text style={styles.orderEta}>{data.lastFoodOrder?.schedule && data.lastFoodOrder.schedule !== 'Now' ? `Scheduled · ${data.lastFoodOrder.schedule}` : `Arriving in ${data.lastFoodOrder?.etaMinutes ?? 22} min`}</Text><Text style={styles.orderRestaurant}>{localisedRestaurantName(restaurant,data.country,data.city)}</Text>
         <View style={styles.v30OrderProgress}>{['Confirmed','Preparing','Picked up','Delivered'].map((label,index)=><View key={label} style={styles.v30OrderProgressItem}><View style={[styles.v30OrderProgressDot,index<2&&styles.v30OrderProgressDotActive]}>{index<2?<Feather name="check" size={11} color={COLORS.black}/>:null}</View><Text style={[styles.v30OrderProgressLabel,index<2&&styles.v30OrderProgressLabelActive]}>{label}</Text></View>)}</View>
-        <InteractiveKareebuMap mode="driver" originCoordinate={{latitude:(CITY_REGIONS[data.city]??KAMPALA_REGION).latitude+0.012,longitude:(CITY_REGIONS[data.city]??KAMPALA_REGION).longitude-0.008}} destinationCoordinate={pickupCoordinate(data)} destinationLabel={pickupLabel(data)} />
+        <InteractiveKareebuMap mode="driver" marketCountry={data.country} originCoordinate={{latitude:(CITY_REGIONS[data.city]??marketConfig(data.country).map.primaryCityRegion).latitude+0.012,longitude:(CITY_REGIONS[data.city]??marketConfig(data.country).map.primaryCityRegion).longitude-0.008}} destinationCoordinate={pickupCoordinate(data)} destinationLabel={pickupLabel(data)} />
         <DriverProfile actions={actions} country={data.country}/>
-        <Pressable onPress={()=>void shareReferral(data)}><RoundedCard style={styles.referralCard}><Ionicons name="gift-outline" size={26} color={COLORS.black}/><View style={styles.flex}><Text style={styles.referralTitle}>Invite friends, get {formatMoney(data.country,5000)}</Text><Text style={styles.referralBody}>Share Kareebu+ and earn rewards.</Text></View><Feather name="chevron-right" size={24}/></RoundedCard></Pressable>
+        <Pressable onPress={()=>void shareReferral(data)}><RoundedCard style={styles.referralCard}><Ionicons name="gift-outline" size={26} color={COLORS.black}/><View style={styles.flex}><Text style={styles.referralTitle}>Invite friends to Kareebu+</Text><Text style={styles.referralBody}>Share Kareebu+. Any referral reward will appear only when a configured programme is active.</Text></View><Feather name="chevron-right" size={24}/></RoundedCard></Pressable>
       </ScrollView>
     </ScreenShell>
   );
@@ -3921,21 +3855,21 @@ export function OrderTrackingScreen({ data, actions }: { data: AppData; actions:
 
 function V40ShopHeroBanner({ category, country }: { category: string; country: string }) {
   const config = category === 'Pharmacy'
-    ? { title:'Weekend', accent:'Wellness Drop', offer:'UP TO 70% OFF', body:'Top care. Lower prices. Delivered to you.', bg:COLORS.yellowSoft, image:assets.shops.pharmacy }
+    ? { title:'Health &', accent:'Wellness', label:'PHARMACY DISCOVERY', body:'Browse wellness and personal-care reference listings.', bg:COLORS.yellowSoft, image:assets.shops.pharmacy }
     : category === 'Groceries'
-      ? { title:'Fresh', accent:'Basket Deals', offer:'UP TO 30% OFF', body:'Groceries, pantry and home essentials.', bg:COLORS.yellowWash, image:assets.service.groceries }
+      ? { title:'Fresh', accent:'Basket', label:'GROCERY DISCOVERY', body:'Groceries, pantry and home essentials.', bg:COLORS.yellowWash, image:assets.service.groceries }
       : category === 'Beauty'
-        ? { title:'Glowing', accent:'Summer', offer:'UP TO 70% OFF', body:'Beauty, skincare and personal care picks.', bg:COLORS.orangeSoft, image:assets.service.shops }
+        ? { title:'Beauty', accent:'Finds', label:'BEAUTY DISCOVERY', body:'Beauty, skincare and personal-care picks.', bg:COLORS.orangeSoft, image:assets.service.shops }
         : category === 'Nutrition'
-          ? { title:'Everyday', accent:'Wellness', offer:'SAVE ON BUNDLES', body:'Nutrition and wellness essentials.', bg:COLORS.yellowSoft, image:assets.shops.pharmacy }
-          : { title:'Kareebu+', accent:'Store Deals', offer:'LOCAL SAVINGS', body:`Shop top picks available in ${country}.`, bg:COLORS.surface, image:assets.service.shops };
+          ? { title:'Everyday', accent:'Wellness', label:'NUTRITION DISCOVERY', body:'Nutrition and wellness essentials.', bg:COLORS.yellowSoft, image:assets.shops.pharmacy }
+          : { title:'Kareebu+', accent:'Stores', label:'STORE DISCOVERY', body:`Explore named stores available in ${country}.`, bg:COLORS.surface, image:assets.service.shops };
   return <View style={[styles.v40ShopHero,{backgroundColor:config.bg}]}><View style={styles.v40ShopHeroCopy}><Text style={styles.v40ShopHeroTitle}>{config.title}{`
-`}<Text style={styles.v40ShopHeroAccent}>{config.accent}</Text></Text><Text style={styles.v40ShopHeroOffer}>{config.offer}</Text><Text style={styles.v40ShopHeroBody}>{config.body}</Text></View><Image source={config.image} style={styles.v40ShopHeroImage} resizeMode="contain"/><View style={styles.v40ShopHeroFree}><Ionicons name="bicycle-outline" size={13} color={COLORS.red}/><Text style={styles.v40ShopHeroFreeText}>FREE DELIVERY</Text></View></View>;
+`}<Text style={styles.v40ShopHeroAccent}>{config.accent}</Text></Text><Text style={styles.v40ShopHeroOffer}>{config.label}</Text><Text style={styles.v40ShopHeroBody}>{config.body}</Text></View><Image source={config.image} style={styles.v40ShopHeroImage} resizeMode="contain"/><View style={styles.v40ShopHeroFree}><Ionicons name="storefront-outline" size={13} color={COLORS.red}/><Text style={styles.v40ShopHeroFreeText}>CHECK LIVE DETAILS</Text></View></View>;
 }
 
 export function ShopsScreen({ data, actions }: { data: AppData; actions: AppActions }) {
   const [activeCategory, setActiveCategory] = useState(data.shopCategoryPreset || 'All');
-  const [activeFilter, setActiveFilter] = useState('Offers');
+  const [activeFilter, setActiveFilter] = useState('All stores');
   const [query,setQuery]=useState('');
   const countryStores = useMemo(() => localeStores(data.country, data.city), [data.country, data.city]);
   const availableCategories = useMemo(() => Array.from(new Set(countryStores.map((shop) => shop.category))), [countryStores]);
@@ -3946,7 +3880,8 @@ export function ShopsScreen({ data, actions }: { data: AppData; actions: AppActi
     return countryStores.filter((shop)=>{
       const q=!term||`${localisedStoreName(shop,data.country)} ${shop.category} ${shop.deal}`.toLowerCase().includes(term);
       const c=activeCategory==='All'||shop.category===activeCategory;
-      const f=activeFilter==='Offers'?Boolean(shop.deal):activeFilter==='Free delivery'?shop.deliveryFee===0:activeFilter==='Under 30 mins'?Number(shop.eta.split('–')[0])<30:activeFilter==='Rating 4.7+'?shop.rating>=4.7:true;
+      const live=Boolean(shop.contentTrust?.liveAvailability);
+      const f=activeFilter==='Live offers'?live&&Boolean(shop.deal):activeFilter==='Free delivery'?live&&shop.deliveryFee===0:activeFilter==='Under 30 mins'?live&&Number(shop.eta.split('–')[0])<30:activeFilter==='Rating 4.7+'?live&&shop.rating>=4.7:true;
       return q&&c&&f;
     });
   },[query,activeCategory,activeFilter,countryStores,data.country]);
@@ -3955,7 +3890,7 @@ export function ShopsScreen({ data, actions }: { data: AppData; actions: AppActi
   const recommended=topStores.slice(0,6).map((shop)=>({
     id:shop.id,
     name:localisedStoreName(shop,data.country),
-    meta:`${shop.rating.toFixed(1)} ★ · ${shop.eta}`,
+    meta:shop.contentTrust?.liveAvailability?`${shop.rating.toFixed(1)} ★ · ${shop.eta}`:'Reference listing',
     semantic:marketplaceSemanticForCategory(shop.category),
   }));
   const currentPromoCategory=activeCategory==='All'?'Shops':activeCategory;
@@ -3965,7 +3900,8 @@ export function ShopsScreen({ data, actions }: { data: AppData; actions: AppActi
       <ScrollView style={styles.flex} contentContainerStyle={{paddingBottom:34}} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <MarketplaceCategoryHeader
           location={data.deliveryPlace?.name || `${data.city}, ${data.country}`}
-          searchPlaceholder={activeCategory==='Pharmacy'?'Search medicines, pharmacies or wellness':'Type to search...'}
+          searchPlaceholder={activeCategory==='Pharmacy'?'Search medicines & wellness':'Search shops, products and brands'}
+          searchContext={activeCategory==='Pharmacy'?searchContext('pharmacy',{market:data.country,city:data.city}):searchContext('shops',{market:data.country,city:data.city})}
           searchValue={query}
           onSearchChange={setQuery}
           onBack={()=>actions.go('home')}
@@ -3974,7 +3910,7 @@ export function ShopsScreen({ data, actions }: { data: AppData; actions: AppActi
         />
 
         <View style={{paddingHorizontal:14,paddingTop:2}}>
-          <MarketplacePromoBanner category={currentPromoCategory} onPress={()=>setActiveFilter('Offers')}/>
+          <MarketplacePromoBanner category={currentPromoCategory} onPress={()=>setActiveFilter('All stores')}/>
 
           <MarketplaceRecommendedRail
             title={activeCategory==='All'?'Recommended Shops':`Recommended ${activeCategory}`}
@@ -3985,10 +3921,10 @@ export function ShopsScreen({ data, actions }: { data: AppData; actions: AppActi
           <MarketplaceCategoryGrid
             tiles={tiles}
             selectedId={activeCategory}
-            onPress={(id)=>{setActiveCategory(id);setActiveFilter('Offers')}}
+            onPress={(id)=>{setActiveCategory(id);setActiveFilter('All stores')}}
           />
 
-          <MarketplacePromoGrid category={currentPromoCategory} onPress={()=>setActiveFilter('Offers')}/>
+          <MarketplacePromoGrid category={currentPromoCategory} onPress={()=>setActiveFilter('All stores')}/>
 
           <View style={styles.v40SectionHeader}>
             <Text style={styles.v40SectionTitle}>{activeCategory==='All'?'Browse stores':`Browse ${activeCategory.toLowerCase()}`}</Text>
@@ -3996,7 +3932,7 @@ export function ShopsScreen({ data, actions }: { data: AppData; actions: AppActi
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.v40FilterRow}>
-            {['Offers','Free delivery','Under 30 mins','Rating 4.7+'].map((filter)=><FilterChip key={filter} label={filter} active={activeFilter===filter} onPress={()=>setActiveFilter(activeFilter===filter?'All stores':filter)}/>)}
+            {['All stores','Live offers','Free delivery','Under 30 mins','Rating 4.7+'].map((filter)=><FilterChip key={filter} label={filter} active={activeFilter===filter} onPress={()=>setActiveFilter(activeFilter===filter?'All stores':filter)}/>)}
           </ScrollView>
 
           <View style={styles.v40ShopList}>
@@ -4005,9 +3941,9 @@ export function ShopsScreen({ data, actions }: { data: AppData; actions: AppActi
               return <Pressable key={shop.id} onPress={()=>{actions.selectShop(shop.id);actions.go('shop')}} style={({pressed})=>[styles.v40ShopRow,pressed&&styles.v26CardPressed]}>
                 <View style={styles.v40ShopRowLogo}><PopularStoreLogo store={shop}/></View>
                 <View style={styles.flex}>
-                  <View style={styles.v40ShopNameRow}><Text numberOfLines={1} style={styles.v40ShopName}>{localisedStoreName(shop,data.country)}</Text><Text style={styles.v40ShopRating}>{shop.rating.toFixed(1)} <Text style={styles.star}>★</Text></Text></View>
-                  <Text style={styles.v40ShopMeta}>{shop.eta} · Minimum order {formatMoney(data.country,shop.minOrder)}</Text>
-                  <View style={styles.v40ShopBadges}><View style={styles.v40ShopDeal}><Ionicons name="pricetag-outline" size={12} color={COLORS.black}/><Text numberOfLines={1} style={styles.v40ShopDealText}>{shop.deal}</Text></View>{shop.deliveryFee===0?<View style={styles.v40ShopFree}><Ionicons name="bicycle-outline" size={12} color={COLORS.green}/><Text style={styles.v40ShopFreeText}>FREE DELIVERY</Text></View>:null}</View>
+                  <View style={styles.v40ShopNameRow}><Text numberOfLines={1} style={styles.v40ShopName}>{localisedStoreName(shop,data.country)}</Text>{shop.contentTrust?.liveAvailability?<Text style={styles.v40ShopRating}>{shop.rating.toFixed(1)} <Text style={styles.star}>★</Text></Text>:<Text style={styles.v40ShopRating}>Reference</Text>}</View>
+                  <Text style={styles.v40ShopMeta}>{shop.contentTrust?.liveAvailability?`${shop.eta} · Minimum order ${formatMoney(data.country,shop.minOrder)}`:`${shop.category} · Check current availability`}</Text>
+                  <View style={styles.v40ShopBadges}>{shop.contentTrust?.liveAvailability?<><View style={styles.v40ShopDeal}><Ionicons name="pricetag-outline" size={12} color={COLORS.black}/><Text numberOfLines={1} style={styles.v40ShopDealText}>{shop.deal}</Text></View>{shop.deliveryFee===0?<View style={styles.v40ShopFree}><Ionicons name="bicycle-outline" size={12} color={COLORS.green}/><Text style={styles.v40ShopFreeText}>CONFIGURED FREE DELIVERY</Text></View>:null}</>:<View style={styles.v40ShopDeal}><Ionicons name="storefront-outline" size={12} color={COLORS.black}/><Text numberOfLines={1} style={styles.v40ShopDealText}>{shop.inventoryHint ?? 'Reference storefront'}</Text></View>}</View>
                 </View>
                 <Pressable onPress={()=>actions.toggleFavoriteShop(shop.id)} style={styles.v40ShopHeart}><Ionicons name={favorite?'heart':'heart-outline'} size={21} color={favorite?COLORS.red:COLORS.muted}/></Pressable>
               </Pressable>
@@ -4059,35 +3995,37 @@ function WalletPayment({ id, data, actions }: { id:'mtn'|'airtel'|'visa'; data:A
 }
 
 export function WalletScreen({ data, actions }: { data: AppData; actions: AppActions }) {
+  const payPromotion=promotionsFor({service:'pay',country:data.country,city:data.city},'hero')[0];
   const payActions: Array<{label:string;icon:keyof typeof Ionicons.glyphMap;screen:Screen}> = [
-    {label:'Send',icon:'arrow-up-circle-outline',screen:'paySend'},
-    {label:'Request',icon:'arrow-down-circle-outline',screen:'payRequest'},
-    {label:'Top up',icon:'add-circle-outline',screen:'payTopUp'},
+    {label:'Pay QR',icon:'qr-code-outline',screen:'qr'},
+    {label:'Methods',icon:'card-outline',screen:'paymentMethods'},
     {label:'Bills',icon:'receipt-outline',screen:'payBills'},
     {label:'Recharge',icon:'phone-portrait-outline',screen:'payRecharge'},
     {label:'Gift cards',icon:'gift-outline',screen:'payGiftCards'},
-    {label:'Send abroad',icon:'globe-outline',screen:'payRemittance'},
     {label:'History',icon:'time-outline',screen:'payTransactions'},
+    {label:'Security',icon:'shield-checkmark-outline',screen:'securityCenter'},
+    {label:'Receipts',icon:'document-text-outline',screen:'receiptsDocuments'},
   ];
   return (
     <ScreenShell>
-      <Header title="Pay" onBack={()=>actions.go('home')} right={<Pressable onPress={()=>actions.go('payTransactions')} style={styles.uxHeaderAction}><Ionicons name="receipt-outline" size={20} color={COLORS.black}/></Pressable>} />
+      <KareebuPageHeader title="Pay" country={data.country} city={data.city} variant="root" backEnabled={false} rootIcon="wallet-outline" rightIcon="receipt-outline" rightLabel="Transaction history" onRightAction={()=>actions.go('payTransactions')} />
       <ScrollView style={styles.flex} contentContainerStyle={styles.payHubScroll} showsVerticalScrollIndicator={false}>
+        {payPromotion?<CompactPromotion campaign={payPromotion} onPress={(campaign)=>actions.go(campaign.ctaScreen)}/>:null}
         <View style={styles.payHubBalanceCard}>
-          <View style={styles.payHubBalanceTop}><View><Text style={styles.payHubLabel}>Kareebu Pay</Text><Text style={styles.payHubBalance}>{formatMoney(data.country,data.walletBalance)}</Text><Text style={styles.payHubMeta}>Available balance</Text></View><Image source={assets.mark} style={styles.payHubMark}/></View>
-          <Pressable onPress={()=>actions.go('payTopUp')} style={styles.payHubAdd}><Feather name="plus" size={16} color={COLORS.black}/><Text style={styles.payHubAddText}>Add money</Text></Pressable>
+          <View style={styles.payHubBalanceTop}><View style={styles.flex}><Text style={styles.payHubLabel}>Kareebu Pay</Text><Text style={styles.payHubBalance}>{paymentMethodTitle(data.selectedPayment,data.country)}</Text><Text style={styles.payHubMeta}>Preferred payment method · routed through configured payment providers</Text></View><Image source={assets.mark} style={styles.payHubMark}/></View>
+          <Pressable onPress={()=>actions.go('paymentMethods')} style={styles.payHubAdd}><Feather name="credit-card" size={16} color={COLORS.black}/><Text style={styles.payHubAddText}>Manage payment methods</Text></Pressable>
         </View>
 
         <View style={styles.payHubGrid}>{payActions.map(item=><Pressable key={item.label} onPress={()=>actions.go(item.screen)} style={({pressed})=>[styles.payHubAction,pressed&&styles.v26CardPressed]}><BrandIcon icon={item.icon} size={34} tile/><Text style={styles.payHubActionLabel}>{item.label}</Text></Pressable>)}</View>
 
-        <View style={styles.payHubSectionHeader}><Text style={styles.payHubSectionTitle}>Money & accounts</Text><TextButton label="Manage" onPress={()=>actions.go('payManageAccounts')} color={COLORS.red}/></View>
-        <RoundedCard style={styles.payHubMenu}><MenuRow icon="card-outline" label="Payment methods" detail={paymentMethodTitle(data.selectedPayment,data.country)} onPress={()=>actions.go('paymentMethods')}/><MenuRow icon="business-outline" label="Accounts & cash out" onPress={()=>actions.go('payManageAccounts')}/><MenuRow icon="shield-checkmark-outline" label="Identity verification" detail="Payment limits" onPress={()=>actions.go('payKyc')}/><MenuRow icon="document-text-outline" label="Wallet statement" onPress={()=>actions.go('payTransactions')}/></RoundedCard>
+        <View style={styles.payHubSectionHeader}><Text style={styles.payHubSectionTitle}>Payments & protection</Text><TextButton label="Security" onPress={()=>actions.go('securityCenter')} color={COLORS.red}/></View>
+        <RoundedCard style={styles.payHubMenu}><MenuRow icon="card-outline" label="Payment methods" detail={paymentMethodTitle(data.selectedPayment,data.country)} onPress={()=>actions.go('paymentMethods')}/><MenuRow icon="shield-checkmark-outline" label="Payment protection" detail="Devices, verification & fraud controls" onPress={()=>actions.go('securityCenter')}/><MenuRow icon="person-circle-outline" label="Identity verification" detail="Used only when risk or regulation requires it" onPress={()=>actions.go('payKyc')}/><MenuRow icon="document-text-outline" label="Payment history & receipts" onPress={()=>actions.go('receiptsDocuments')}/></RoundedCard>
 
         <View style={styles.payHubSectionHeader}><Text style={styles.payHubSectionTitle}>Rewards & savings</Text><TextButton label="See all" onPress={()=>actions.go('rewards')} color={COLORS.red}/></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.payHubPromoRail}>
           <Pressable onPress={()=>actions.go('rewards')} style={[styles.payHubPromo,{backgroundColor:'#FFF3CE'}]}><Ionicons name="gift-outline" size={25}/><Text style={styles.payHubPromoTitle}>{data.rewardPoints.toLocaleString()} points</Text><Text style={styles.payHubPromoBody}>Redeem across Kareebu+</Text></Pressable>
           <Pressable onPress={()=>actions.go('plusSavings')} style={[styles.payHubPromo,{backgroundColor:'#ECECEC'}]}><Ionicons name="diamond-outline" size={25}/><Text style={styles.payHubPromoTitle}>Kareebu+ savings</Text><Text style={styles.payHubPromoBody}>See your member value</Text></Pressable>
-          <Pressable onPress={()=>actions.go('referral')} style={[styles.payHubPromo,{backgroundColor:'#FFE9E6'}]}><Ionicons name="people-outline" size={25}/><Text style={styles.payHubPromoTitle}>Refer & earn</Text><Text style={styles.payHubPromoBody}>Invite friends</Text></Pressable>
+          <Pressable onPress={()=>actions.go('referral')} style={[styles.payHubPromo,{backgroundColor:'#FFE9E6'}]}><Ionicons name="people-outline" size={25}/><Text style={styles.payHubPromoTitle}>Invite friends</Text><Text style={styles.payHubPromoBody}>Invite friends</Text></Pressable>
         </ScrollView>
       </ScrollView>
       <BottomNav active="wallet" go={actions.go}/>
@@ -4098,14 +4036,7 @@ export function WalletScreen({ data, actions }: { data: AppData; actions: AppAct
 export function AccountScreen({ data, actions }: { data: AppData; actions: AppActions }) {
   return (
     <ScreenShell>
-      <Header
-        title="Account"
-        right={
-          <Pressable onPress={() => actions.go('settings')}>
-            <Ionicons name="settings-outline" size={28} color={COLORS.black} />
-          </Pressable>
-        }
-      />
+      <KareebuPageHeader title="Account" country={data.country} city={data.city} variant="root" backEnabled={false} rootIcon="person-outline" rightIcon="settings-outline" rightLabel="Settings" onRightAction={()=>actions.go('settings')} />
 
       <KareebuContextBar label="Your Kareebu+ profile, rewards and preferences" />
 
@@ -4161,14 +4092,17 @@ export function AccountScreen({ data, actions }: { data: AppData; actions: AppAc
           <MenuRow icon="heart-outline" label="Favourites" onPress={() => actions.go('favourites')} />
           <MenuRow icon="notifications-outline" label="Notifications" onPress={() => actions.go('notifications')} />
           <MenuRow icon="chatbubbles-outline" label="Messages" onPress={() => actions.go('messages')} />
+          <MenuRow icon="document-text-outline" label="Receipts & documents" onPress={() => actions.go('receiptsDocuments')} />
         </RoundedCard>
 
         <Text style={styles.uxGroupLabel}>Payments & rewards</Text>
         <RoundedCard style={styles.accountMenu}>
           <MenuRow icon="card-outline" label="Payment methods" onPress={() => actions.go('paymentMethods')} />
           <MenuRow icon="pricetag-outline" label="Coupons" onPress={() => actions.go('coupons')} />
-          <MenuRow icon="people-outline" label="Refer & earn" onPress={() => actions.go('referral')} />
+          <MenuRow icon="people-outline" label="Invite friends" onPress={() => actions.go('referral')} />
           <MenuRow icon="qr-code-outline" label="Kareebu QR" onPress={() => actions.go('qr')} />
+          <MenuRow icon="shield-checkmark-outline" label="Security & privacy" detail="Devices, identity & protection" onPress={() => actions.go('securityCenter')} />
+          <MenuRow icon="alert-circle-outline" label="Disputes & refunds" detail="Track payment and order issues" onPress={() => actions.go('disputeCenter')} />
         </RoundedCard>
 
         <Text style={styles.uxGroupLabel}>Preferences</Text>
@@ -4194,25 +4128,28 @@ export function AccountScreen({ data, actions }: { data: AppData; actions: AppAc
 }
 
 export function ActivityScreen({ data, actions }: { data: AppData; actions: AppActions }) {
-  const [filter,setFilter] = useState<'All'|'Orders'|'Rides'|'Deliveries'|'Services'>('All');
+  const [filter,setFilter] = useState<'All'|'Orders'|'Rides'|'Deliveries'|'Services'|'Global'>('All');
   const otherCity = (countryCities[data.country] ?? []).find((item)=>item!==data.city) ?? data.city;
   const restaurantName = localisedRestaurantName(DEMO_RESTAURANTS.find((r)=>r.id===data.lastFoodOrder?.restaurantId) ?? DEMO_RESTAURANTS[0]!, data.country, data.city);
   const commerceStore = DEMO_SHOPS.find((shop)=>shop.id===data.lastCommerceOrder?.storeId);
   const service = SERVICE_DEFS.find((item)=>item.id===data.lastServiceBooking?.serviceId);
-  const items: Array<{id:string;kind:'Orders'|'Rides'|'Deliveries'|'Services';icon:keyof typeof Ionicons.glyphMap;title:string;meta:string;amount:string;screen:Screen;status:string}> = [
-    {id:'food',kind:'Orders',icon:'restaurant-outline',title:data.lastFoodOrder?restaurantName:'Cafe Javas',meta:data.lastFoodOrder?'Food order':'Recent food order',amount:formatMoney(data.country,data.lastFoodOrder?.total ?? 37000),screen:data.lastFoodOrder?'orderTracking':'orders',status:data.lastFoodOrder?'Preparing':'Delivered'},
-    {id:'store',kind:'Orders',icon:'bag-handle-outline',title:commerceStore?localisedStoreName(commerceStore,data.country):'Local store',meta:'Shop order',amount:formatMoney(data.country,data.lastCommerceOrder?.total ?? 48500),screen:data.lastCommerceOrder?'commerceOrderSuccess':'orders',status:data.lastCommerceOrder?.status.replace('_',' ') ?? 'Delivered'},
-    {id:'parcel',kind:'Deliveries',icon:'cube-outline',title:`Parcel to ${data.lastParcelOrder?.receiverName || otherCity}`,meta:'Kareebu Collect',amount:formatMoney(data.country,data.lastParcelOrder?.fee ?? 12000),screen:data.lastParcelOrder?'parcelTracking':'parcel',status:data.lastParcelOrder?.status.replace('_',' ') ?? 'In transit'},
+  const items: Array<{id:string;kind:'Orders'|'Rides'|'Deliveries'|'Services'|'Global';icon:keyof typeof Ionicons.glyphMap;title:string;meta:string;amount:string;screen:Screen;status:string}> = [
+    ...(data.lastFoodOrder?[{id:'food',kind:'Orders' as const,icon:'restaurant-outline' as const,title:restaurantName,meta:'Food order',amount:formatMoney(data.country,data.lastFoodOrder.total),screen:'orderTracking' as Screen,status:'Preparing'}]:[]),
+    ...(data.lastCommerceOrder?[{id:'store',kind:'Orders' as const,icon:'bag-handle-outline' as const,title:commerceStore?localisedStoreName(commerceStore,data.country):'Shop order',meta:'Shop order',amount:formatMoney(data.country,data.lastCommerceOrder.total),screen:'commerceOrderSuccess' as Screen,status:data.lastCommerceOrder.status.replace('_',' ')}]:[]),
+    ...(data.lastParcelOrder?[{id:'parcel',kind:'Deliveries' as const,icon:'cube-outline' as const,title:`Parcel to ${data.lastParcelOrder.receiverName || otherCity}`,meta:'Kareebu Send',amount:formatMoney(data.country,data.lastParcelOrder.fee),screen:'parcelTracking' as Screen,status:data.lastParcelOrder.status.replace('_',' ')}]:[]),
     ...(data.lastRideReceipt?[{id:'ride',kind:'Rides' as const,icon:'car-outline' as const,title:`Ride to ${data.lastRideReceipt.destination}`,meta:`${data.lastRideReceipt.captainName} · ${data.lastRideReceipt.vehicle}`,amount:formatMoney(data.country,data.lastRideReceipt.fare.total),screen:'rideReceipt' as Screen,status:'Completed'}]:[]),
     ...(data.lastServiceBooking && service?[{id:'service',kind:'Services' as const,icon:'construct-outline' as const,title:service.name,meta:data.lastServiceBooking.providerName,amount:formatMoney(data.country,data.lastServiceBooking.total),screen:'serviceTracking' as Screen,status:data.lastServiceBooking.status.replace('_',' ')}]:[]),
+    ...(data.lastGlobalOrder?[{id:'global',kind:'Global' as const,icon:'globe-outline' as const,title:`${data.lastGlobalOrder.marketplace.toUpperCase()} Global order`,meta:'International fulfilment',amount:formatMoney(data.country,data.lastGlobalOrder.total),screen:'globalTracking' as Screen,status:data.lastGlobalOrder.status.replaceAll('_',' ')}]:[]),
   ];
   const visible = filter==='All'?items:items.filter((item)=>item.kind===filter);
+  const activityPromotion=promotionsFor({service:'activity',country:data.country,city:data.city},'contextual')[0];
   return <ScreenShell>
-    <Header title="Activity" right={<Pressable onPress={()=>actions.go('notifications')} style={styles.uxHeaderAction}><Ionicons name="notifications-outline" size={21} color={COLORS.black}/></Pressable>}/>
+    <KareebuPageHeader title="Activity" country={data.country} city={data.city} variant="root" backEnabled={false} rootIcon="time-outline" rightIcon="notifications-outline" rightLabel="Notifications" onRightAction={()=>actions.go('notifications')} />
     <ScrollView style={styles.flex} contentContainerStyle={styles.uxActivityScroll} showsVerticalScrollIndicator={false}>
       <View style={styles.uxActivityHero}><Text style={styles.uxActivityTitle}>Everything you’ve done with Kareebu+</Text><Text style={styles.uxActivityBody}>Orders, rides, deliveries and bookings in one place.</Text></View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.uxFilterRail}>{(['All','Orders','Rides','Deliveries','Services'] as const).map((item)=><Pressable key={item} onPress={()=>setFilter(item)} style={[styles.uxFilterChip,filter===item&&styles.uxFilterChipActive]}><Text style={[styles.uxFilterText,filter===item&&styles.uxFilterTextActive]}>{item}</Text></Pressable>)}</ScrollView>
-      <View style={styles.uxActivityList}>{visible.map((item)=><Pressable key={item.id} onPress={()=>actions.go(item.screen)} style={({pressed})=>[styles.uxActivityCard,pressed&&styles.v26CardPressed]}><BrandIcon icon={item.icon} size={34} tile/><View style={styles.flex}><View style={styles.uxActivityTop}><Text numberOfLines={1} style={styles.uxActivityCardTitle}>{item.title}</Text><Text style={styles.uxActivityAmount}>{item.amount}</Text></View><Text numberOfLines={1} style={styles.uxActivityMeta}>{item.meta}</Text><View style={styles.uxStatusRow}><View style={styles.uxStatusDot}/><Text style={styles.uxStatusText}>{item.status}</Text></View></View><Feather name="chevron-right" size={20} color={COLORS.muted}/></Pressable>)}</View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.uxFilterRail}>{(['All','Orders','Rides','Deliveries','Services','Global'] as const).map((item)=><Pressable key={item} onPress={()=>setFilter(item)} style={[styles.uxFilterChip,filter===item&&styles.uxFilterChipActive]}><Text style={[styles.uxFilterText,filter===item&&styles.uxFilterTextActive]}>{item}</Text></Pressable>)}</ScrollView>
+      {visible.length===0?<BrandedEmptyState art={assets.service.send} title={filter==='All'?'No activity yet':`No ${filter.toLowerCase()} yet`} body="Your completed and active Kareebu+ journeys will appear here." actionLabel="Explore Kareebu+" onAction={()=>actions.go('exploreHub')}/>:<View style={styles.uxActivityList}>{visible.map((item)=><Pressable key={item.id} onPress={()=>actions.go(item.screen)} style={({pressed})=>[styles.uxActivityCard,pressed&&styles.v26CardPressed]}><BrandIcon icon={item.icon} size={34} tile/><View style={styles.flex}><View style={styles.uxActivityTop}><Text numberOfLines={1} style={styles.uxActivityCardTitle}>{item.title}</Text><Text style={styles.uxActivityAmount}>{item.amount}</Text></View><Text numberOfLines={1} style={styles.uxActivityMeta}>{item.meta}</Text><View style={styles.uxStatusRow}><View style={styles.uxStatusDot}/><Text style={styles.uxStatusText}>{item.status}</Text></View></View><Feather name="chevron-right" size={20} color={COLORS.muted}/></Pressable>)}</View>}
+      {visible.length>0&&activityPromotion?<CompactPromotion campaign={activityPromotion} onPress={(campaign)=>actions.go(campaign.ctaScreen)}/>:null}
       <Pressable onPress={()=>actions.go('orders')} style={styles.uxSeeAllButton}><Text style={styles.uxSeeAllText}>Open orders & booking tools</Text><Feather name="arrow-right" size={18} color={COLORS.black}/></Pressable>
     </ScrollView>
     <BottomNav active="activity" go={actions.go}/>
@@ -4238,8 +4175,8 @@ export function OrdersScreen({ data, actions }: { data: AppData; actions: AppAct
 }
 
 export function renderScreen(screen: Screen, data: AppData, actions: AppActions) {
-  const commerceData = { country:data.country, city:data.city, selectedShopId:data.selectedShopId, selectedProductId:data.selectedCommerceProductId, cartLines:data.commerceCartLines, checkout:data.commerceCheckout, lastOrder:data.lastCommerceOrder, deliveryAddress:data.deliveryPlace?.name || data.city };
-  const commerceActions = { go:actions.go, selectProduct:actions.selectCommerceProduct, addLine:actions.addCommerceCartLine, setLineQuantity:actions.setCommerceCartLineQuantity, removeLine:actions.removeCommerceCartLine, updateCheckout:actions.updateCommerceCheckout, placeOrder:actions.placeCommerceOrder, changeAddress:()=>{actions.setLocationReturn('commerceCheckout');actions.go('locationPicker');} };
+  const commerceData = { country:data.country, city:data.city, selectedShopId:data.selectedShopId, selectedProductId:data.selectedCommerceProductId, cartLines:data.commerceCartLines, checkout:data.commerceCheckout, lastOrder:data.lastCommerceOrder, deliveryAddress:data.deliveryPlace?.name || data.city, context:data.commerceContext };
+  const commerceActions = { go:actions.go, back:actions.back, selectProduct:actions.selectCommerceProduct, addLine:actions.addCommerceCartLine, setLineQuantity:actions.setCommerceCartLineQuantity, removeLine:actions.removeCommerceCartLine, updateCheckout:actions.updateCommerceCheckout, placeOrder:actions.placeCommerceOrder, changeAddress:()=>{actions.setLocationReturn('commerceCheckout');actions.go('locationPicker');} };
   const parcelData = { country:data.country, city:data.city, draft:data.parcelDraft, lastOrder:data.lastParcelOrder };
   const parcelActions = { go:actions.go, updateDraft:actions.updateParcelDraft, placeOrder:actions.placeParcelOrder };
   const rentalData = { country:data.country, city:data.city, selectedVehicleId:data.selectedRentalVehicleId, booking:data.lastRentalBooking };
@@ -4248,10 +4185,10 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
   const serviceActions = { go:actions.go, selectService:actions.selectService, selectProvider:actions.selectServiceProvider, updateRequest:actions.updateServiceRequest, placeBooking:actions.placeServiceBooking };
   const engagementData = { country:data.country, city:data.city, fullName:data.fullName, email:data.email, notificationsAllowed:data.notificationsAllowed, rewardPoints:data.rewardPoints, favoriteRestaurantCount:data.favoriteRestaurantIds.length, favoriteShopCount:data.favoriteShopIds.length };
   const engagementActions = { go:actions.go, setFullName:actions.setFullName, setEmail:actions.setEmail, setNotificationsAllowed:actions.setNotificationsAllowed, setRewardPoints:actions.setRewardPoints };
-  const selectedRide = rideData.find((ride)=>ride.id===data.selectedRide) ?? rideData[0]!;
+  const selectedRide = selectedRideData(data);
   const rideParityData = { country:data.country, city:data.city, selectedRideName:selectedRide.name, baseFare:selectedRide.baseFare, pickup:pickupLabel(data), destination:destinationLabel(data), selectedBidId:data.selectedRideBidId, selectedVehicleMode:data.selectedVehicleMode };
   const mobilityData = { country:data.country, city:data.city, selectedVehicleMode:data.selectedVehicleMode, selectedRide:data.selectedRide, selectedRideBidId:data.selectedRideBidId, scheduledTrip:data.scheduledTrip, selectedPaymentLabel:paymentMethodTitle(data.selectedPayment,data.country), pickup:pickupLabel(data), destination:destinationLabel(data), rideProduct:data.rideProduct, ridePriority:data.ridePriority, ridePromoCode:data.ridePromoCode, ridePlan:data.ridePlan, lastRideReceipt:data.lastRideReceipt, member:true, baseFare:selectedRide.baseFare };
-  const mobilityActions = { go:actions.go, selectMode:(mode:VehicleMode)=>selectVehicleMode(actions,mode), selectRide:actions.setSelectedRide, setRideProduct:actions.setRideProduct, setRidePriority:actions.setRidePriority, setRidePromoCode:actions.setRidePromoCode, updateRidePlan:actions.updateRidePlan, setScheduledTrip:actions.setScheduledTrip };
+  const mobilityActions = { go:actions.go, selectMode:(mode:VehicleMode)=>selectVehicleMode(actions,mode), selectRide:actions.setSelectedRide, setRideProduct:actions.setRideProduct, setRidePriority:actions.setRidePriority, setRidePromoCode:actions.setRidePromoCode, updateRidePlan:actions.updateRidePlan, setScheduledTrip:actions.setScheduledTrip, prefillDestination:(place:import('./markets/config').MobilityPlaceConfig)=>{actions.setDestinationPlace({placeId:`mobility-${place.id}`,name:place.label,address:place.address,latitude:place.latitude,longitude:place.longitude,types:['point_of_interest'],provider:'manual'});actions.go('whereTo')} };
   const rideParityActions = { go:actions.go, selectBid:actions.setSelectedRideBidId };
   const frontendData = { country:data.country, city:data.city, fullName:data.fullName, email:data.email, walletBalance:data.walletBalance, rewardPoints:data.rewardPoints };
   const frontendActions = { go:actions.go };
@@ -4269,12 +4206,16 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
   };
   const customerParityActions: CustomerParityActions = {
     go: actions.go,
+    back: actions.back,
+    changeLocation: ()=>{actions.setLocationReturn('exploreHub');actions.go('locationPicker')},
     setWalletBalance: actions.setWalletBalance,
     setFullName: actions.setFullName,
     setEmail: actions.setEmail,
     recordWalletTransaction: actions.recordWalletTransaction,
     createSupportTicket: actions.createSupportTicket,
   };
+  const globalData = { country:data.country,city:data.city,query:data.globalSearchQuery,marketplace:data.selectedGlobalMarketplace,category:data.selectedGlobalCategory,selectedProductId:data.selectedGlobalProductId,cart:data.globalCartLines,order:data.lastGlobalOrder,deliveryAddress:data.deliveryPlace?.name||data.city,paymentMethod:paymentMethodTitle(data.selectedPayment,data.country) };
+  const globalActions = { go:actions.go,back:actions.back,setQuery:actions.setGlobalSearchQuery,setMarketplace:actions.setSelectedGlobalMarketplace,setCategory:actions.setSelectedGlobalCategory,selectProduct:actions.selectGlobalProduct,addLine:actions.addGlobalCartLine,setLineQuantity:actions.setGlobalCartLineQuantity,placeOrder:actions.placeGlobalOrder };
   switch (screen) {
     case 'splash': return <SplashScreen go={actions.go}/>;
     case 'welcome': return <WelcomeScreen go={actions.go} setGuest={actions.setGuest}/>;
@@ -4288,6 +4229,13 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
     case 'permissions': return <PermissionsScreen data={data} actions={actions}/>;
     case 'home': return <HomeScreen data={data} actions={actions}/>;
     case 'search': return <GlobalSearchScreen data={data} actions={actions}/>;
+    case 'globalHome': return <GlobalHomeScreen data={globalData} actions={globalActions}/>;
+    case 'globalCollection': return <GlobalCollectionScreen data={globalData} actions={globalActions}/>;
+    case 'globalProduct': return <GlobalProductScreen data={globalData} actions={globalActions}/>;
+    case 'globalBasket': return <GlobalBasketScreen data={globalData} actions={globalActions}/>;
+    case 'globalCheckout': return <GlobalCheckoutScreen data={globalData} actions={globalActions}/>;
+    case 'globalTracking': return <GlobalTrackingScreen data={globalData} actions={globalActions}/>;
+    case 'globalReturns': return <GlobalReturnsScreen actions={globalActions}/>;
     case 'assistant': return <KareebuAssistantScreen data={data} actions={actions}/>;
     case 'services': return <AllServicesScreen data={data} actions={actions}/>;
     case 'place': return <GlobalSearchScreen data={data} actions={actions}/>;
@@ -4302,30 +4250,45 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
     case 'captainProfile': return <CaptainProfileScreen data={mobilityData} actions={mobilityActions}/>;
     case 'rideHistory': return <RideHistoryScreen data={mobilityData} actions={mobilityActions}/>;
     case 'rideReceipt': return <RideReceiptScreen data={mobilityData} actions={mobilityActions}/>;
-    case 'whereTo': return <WhereToScreen data={data} actions={actions}/>;
-    case 'chooseRide': return <ChooseRideScreen data={data} actions={actions}/>;
+    case 'whereTo': return data.selectedVehicleMode==='RIDE'?<FocusedRideBookingScreen route="whereTo" data={data} actions={actions}/>:<WhereToScreen data={data} actions={actions}/>;
+    case 'chooseRide': return data.selectedVehicleMode==='RIDE'?<FocusedRideBookingScreen route="chooseRide" data={data} actions={actions}/>:<ChooseRideScreen data={data} actions={actions}/>;
     case 'rideFareBids': return <RideFareBidsScreen data={rideParityData} actions={rideParityActions}/>;
     case 'rideSafety': return <RideSafetyScreen data={rideParityData} actions={rideParityActions}/>;
-    case 'confirmBooking': return <ConfirmBookingScreen data={data} actions={actions}/>;
-    case 'driver': return <DriverScreen data={data} actions={actions}/>;
-    case 'onTrip': return <OnTripScreen data={data} actions={actions}/>;
+    case 'confirmBooking': return data.selectedVehicleMode==='RIDE'?<FocusedRideBookingScreen route="confirmBooking" data={data} actions={actions}/>:<ConfirmBookingScreen data={data} actions={actions}/>;
+    case 'driver': return data.selectedVehicleMode==='RIDE'?<FocusedRideBookingScreen route="driver" data={data} actions={actions}/>:<DriverScreen data={data} actions={actions}/>;
+    case 'onTrip': return data.selectedVehicleMode==='RIDE'?<FocusedRideBookingScreen route="onTrip" data={data} actions={actions}/>:<OnTripScreen data={data} actions={actions}/>;
     case 'tripComplete': return <TripCompleteScreen data={data} actions={actions}/>;
     case 'rateTrip': return <RateTripScreen data={data} actions={actions}/>;
     case 'food': return <FoodScreen data={data} actions={actions}/>;
     case 'foodSearch': return <FoodScreen data={data} actions={actions} initialSurface="search"/>;
+    case 'foodCategory': return <FoodCategoryScreen data={data} actions={actions}/>;
     case 'restaurant': return <RestaurantScreen data={data} actions={actions}/>;
     case 'foodItem': return <FoodItemScreen data={data} actions={actions}/>;
     case 'cart': return <CartScreen data={data} actions={actions}/>;
     case 'foodCheckout': return <FoodCheckoutScreen data={data} actions={actions}/>;
     case 'foodOrderSuccess': return <FoodOrderSuccessScreen data={data} actions={actions}/>;
     case 'orderTracking': return <OrderTrackingScreen data={data} actions={actions}/>;
-    case 'shops': return <KareebuDomainDiscoveryRoute domainId="shops" data={data} actions={actions} initialVerticalTitle={data.shopCategoryPreset === 'All' ? undefined : data.shopCategoryPreset}/>;
-    case 'groceries': return <KareebuDomainDiscoveryRoute domainId="groceries" data={data} actions={actions}/>;
+    case 'shops': return <ShopsLandingScreen country={data.country} city={data.city} shops={localeStores(data.country,data.city)} onGo={(destination)=>{const verticalEntry:Partial<Record<Screen,string>>={pharmacyHome:'Pharmacy',butcherySeafoodHome:'Butchery & Seafood',petStoresHome:'Pet Stores',giftsFlowersHome:'Gifts & Flowers',electronicsHome:'Electronics',beautyHome:'Beauty',fashionHome:'Fashion',homeShoppingHome:'Home',groceries:'Groceries'};if(verticalEntry[destination])actions.setShopCategoryPreset(verticalEntry[destination]!);actions.go(destination)}} onLocation={()=>{actions.setLocationReturn('shops');actions.go('locationPicker')}} onOpenShop={(id)=>{actions.setSelectedVerticalCategory('');actions.setShopCategoryPreset('All');actions.selectShop(id);actions.go('shop')}}/>;
+    case 'groceries': return <KareebuVerticalLandingRoute verticalId="groceries" data={data} actions={actions}/>;
     case 'electronics': return <KareebuDomainDiscoveryRoute domainId="electronics" data={data} actions={actions}/>;
-    case 'dineOut': return <KareebuDomainDiscoveryRoute domainId="dineout" data={data} actions={actions}/>;
+    case 'pharmacyHome': return <KareebuVerticalLandingRoute verticalId="pharmacy" data={data} actions={actions}/>;
+    case 'butcherySeafoodHome': return <KareebuVerticalLandingRoute verticalId="butchery" data={data} actions={actions}/>;
+    case 'petStoresHome': return <KareebuVerticalLandingRoute verticalId="pets" data={data} actions={actions}/>;
+    case 'giftsFlowersHome': return <KareebuVerticalLandingRoute verticalId="gifts" data={data} actions={actions}/>;
+    case 'electronicsHome': return <KareebuVerticalLandingRoute verticalId="electronics" data={data} actions={actions}/>;
+    case 'beautyHome': return <KareebuVerticalLandingRoute verticalId="beauty" data={data} actions={actions}/>;
+    case 'fashionHome': return <KareebuVerticalLandingRoute verticalId="fashion" data={data} actions={actions}/>;
+    case 'homeShoppingHome': return <KareebuVerticalLandingRoute verticalId="home" data={data} actions={actions}/>;
+    case 'verticalCategory': return <KareebuVerticalCategoryRoute data={data} actions={actions}/>;
+    case 'dineOut': return <DineOutHomeScreen country={data.country} city={data.city} locationAllowed={data.locationAllowed} favouriteIds={data.favoriteRestaurantIds} toggleFavourite={actions.toggleFavoriteRestaurant} go={actions.go} onLocation={()=>{actions.setLocationReturn('dineOut');actions.go('locationPicker')}}/>;
+    case 'dineOutCollection': return <DineOutCollectionScreen country={data.country} city={data.city} locationAllowed={data.locationAllowed} favouriteIds={data.favoriteRestaurantIds} toggleFavourite={actions.toggleFavoriteRestaurant} go={actions.go} onLocation={()=>{actions.setLocationReturn('dineOutCollection');actions.go('locationPicker')}}/>;
+    case 'dineOutRestaurant': return <DineOutRestaurantScreen country={data.country} city={data.city} locationAllowed={data.locationAllowed} favouriteIds={data.favoriteRestaurantIds} toggleFavourite={actions.toggleFavoriteRestaurant} go={actions.go} onLocation={()=>{actions.setLocationReturn('dineOutRestaurant');actions.go('locationPicker')}}/>;
+    case 'dineOutReservation': return <DineOutReservationScreen country={data.country} city={data.city} go={actions.go}/>;
+    case 'dineOutConfirmation': return <DineOutConfirmationScreen country={data.country} city={data.city} go={actions.go}/>;
     case 'homeCare': return <KareebuDomainDiscoveryRoute domainId="home-care" data={data} actions={actions}/>;
     case 'fix': return <KareebuDomainDiscoveryRoute domainId="fix" data={data} actions={actions}/>;
     case 'shop': return <StorefrontScreen data={data} actions={actions}/>;
+    case 'shopCategory': return <StorefrontScreen data={data} actions={actions} focusedCategory/>;
     case 'commerceProduct': return <CommerceProductScreen data={commerceData} actions={commerceActions}/>;
     case 'commerceCart': return <CommerceCartScreen data={commerceData} actions={commerceActions}/>;
     case 'commerceCheckout': return <CommerceCheckoutScreen data={commerceData} actions={commerceActions}/>;
@@ -4429,6 +4392,9 @@ export function renderScreen(screen: Screen, data: AppData, actions: AppActions)
     case 'donations': return <DonationsScreen data={customerParityData} actions={customerParityActions}/>;
     case 'orderAnything': return <OrderAnythingScreen data={customerParityData} actions={customerParityActions}/>;
     case 'accountPrivacy': return <AccountPrivacyScreen data={customerParityData} actions={customerParityActions}/>;
+    case 'securityCenter': return <SecurityCenterScreen country={data.country} city={data.city} actions={{go:actions.go,back:actions.back}}/>;
+    case 'disputeCenter': return <DisputeCenterScreen actions={{go:actions.go,back:actions.back}}/>;
+    case 'receiptsDocuments': return <ReceiptsDocumentsScreen country={data.country} actions={{go:actions.go,back:actions.back}} hasGlobalOrder={!!data.lastGlobalOrder}/>;
     case 'shopHelp': return <ShopHelpScreen data={customerParityData} actions={customerParityActions}/>;
   }
 }
@@ -5269,8 +5235,7 @@ const styles = StyleSheet.create({
   v38ServicesIntro:{fontFamily:FONT.regular,fontSize:13,lineHeight:19,color:COLORS.muted,marginBottom:16},
   v38ServicesGrid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:10},
   v38ServiceCard:{width:'48.5%',minHeight:156,borderRadius:20,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,padding:14,...SHADOW},
-  v38ServiceIconWrap:{width:52,height:52,borderRadius:17,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center',marginBottom:11},
-  v38ServiceImage:{width:42,height:42},
+  v38ServiceIconWrap:{width:72,height:70,alignItems:'center',justifyContent:'center',marginBottom:7,overflow:'visible'},
   v38ServiceTitle:{fontFamily:FONT.bold,fontSize:16,lineHeight:20,fontWeight:'900',color:COLORS.black},
   v38ServiceBody:{fontFamily:FONT.regular,fontSize:11.5,lineHeight:16,color:COLORS.muted,minHeight:34,marginTop:4,marginBottom:6},
   v38StorefrontScroll:{paddingHorizontal:14,paddingBottom:118,gap:15},
@@ -5409,6 +5374,27 @@ const styles = StyleSheet.create({
   v40CountryContinue:{height:58,borderRadius:17,backgroundColor:COLORS.black,alignItems:'center',justifyContent:'center',marginHorizontal:2,marginBottom:3},
 
   v40HomeScroll:{paddingHorizontal:14,paddingTop:2,paddingBottom:24,gap:12},
+  v40HomePromoBleed:{marginHorizontal:-14},
+  v42HomeFeed:{paddingHorizontal:14,paddingTop:2,paddingBottom:28},
+  homeQuickServices:{paddingHorizontal:14,paddingTop:8,paddingBottom:4},
+  v42HomeIntro:{gap:14},
+  homeCampaignDots:{height:18,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6},
+  homeCampaignDot:{width:6,height:6,borderRadius:3,backgroundColor:COLORS.line},
+  homeCampaignDotActive:{width:20,backgroundColor:COLORS.black},
+  homeMobilityStrip:{gap:10},
+  homeMobilityStripTitle:{...TYPE.sectionTitle,color:COLORS.black},
+  homeMobilityStripSubtitle:{...TYPE.small,color:COLORS.muted,marginTop:2},
+  homeMobilityStripRow:{flexDirection:'row',gap:10},
+  homeMobilityChoice:{flex:1,minHeight:78,borderRadius:18,backgroundColor:COLORS.white,borderWidth:1,borderColor:COLORS.line,padding:9,flexDirection:'row',alignItems:'center',gap:8,...SHADOW},
+  homeMobilityChoiceArt:{width:52,height:52,borderRadius:15,backgroundColor:'#EEF3F7',alignItems:'center',justifyContent:'center',overflow:'hidden'},
+  homeMobilityChoiceArtBoda:{backgroundColor:COLORS.yellowSoft},
+  homeMobilityChoiceImage:{width:'92%',height:'92%'},
+  homeMobilityChoiceTitle:{...TYPE.cardTitle,color:COLORS.black},
+  homeMobilityChoiceBody:{...TYPE.caption,color:COLORS.muted,marginTop:2},
+  v42HomeModule:{marginTop:28},
+  v34RecentActivityIcon:{width:54,height:54,borderRadius:18,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},
+  v42EndLinks:{flexDirection:'row',flexWrap:'wrap',justifyContent:'center',gap:18,marginTop:15},
+  v42EndLink:{...TYPE.action,color:COLORS.black},
   v40HomeSearch:{height:44,borderRadius:14,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:12,...SHADOW},
   v40HomeSearchText:{flex:1,fontFamily:FONT.regular,fontSize:12,lineHeight:15,color:COLORS.muted},
   v40AiStrip:{minHeight:50,borderRadius:14,backgroundColor:COLORS.black,flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:10,paddingVertical:7},
@@ -5464,22 +5450,22 @@ const styles = StyleSheet.create({
   v40HomeEndLogo:{width:120,height:34},
   v40HomeEndText:{fontFamily:FONT.regular,fontSize:10.5,color:COLORS.muted,marginTop:4},
 
-  v40WhereHeader:{height:58,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:14,borderBottomWidth:1,borderBottomColor:COLORS.line,backgroundColor:COLORS.white},
-  v40CircleBack:{width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center'},
-  v40CircleBackPlaceholder:{width:40,height:40},
+  v40WhereHeader:{height:52,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:14,borderBottomWidth:1,borderBottomColor:COLORS.line,backgroundColor:COLORS.white},
+  v40CircleBack:{width:46,height:46,borderRadius:15,alignItems:'center',justifyContent:'center'},
+  v40CircleBackPlaceholder:{width:46,height:46},
   v40WhereTitle:{fontFamily:FONT.bold,fontSize:20,fontWeight:'900',color:COLORS.black},
-  v40WhereRouteCard:{marginHorizontal:18,marginTop:10,borderRadius:22,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,paddingHorizontal:16,paddingVertical:11,...SHADOW},
-  v40WhereRouteRow:{minHeight:58,flexDirection:'row',alignItems:'center',gap:12},
+  v40WhereRouteCard:{marginHorizontal:16,marginTop:8,borderRadius:16,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,paddingHorizontal:14,paddingVertical:7,...SHADOW},
+  v40WhereRouteRow:{minHeight:48,flexDirection:'row',alignItems:'center',gap:10},
   v40WherePickupDot:{width:18,height:18,borderRadius:9,backgroundColor:'#16C465',borderWidth:5,borderColor:'#D9F8E7'},
   v40WhereDestinationDot:{width:18,height:18,borderRadius:9,backgroundColor:COLORS.red,borderWidth:5,borderColor:'#FFE1DE'},
-  v40WhereConnector:{position:'absolute',left:24,top:51,width:1,height:40,backgroundColor:COLORS.lineDark},
+  v40WhereConnector:{position:'absolute',left:22,top:44,width:1,height:30,backgroundColor:COLORS.lineDark},
   v40WhereRouteValue:{fontFamily:FONT.bold,fontSize:15.5,lineHeight:20,fontWeight:'900',color:COLORS.black},
   v40WhereRouteLabel:{fontFamily:FONT.regular,fontSize:11,lineHeight:15,color:COLORS.muted,marginTop:2},
   v40WhereChange:{height:34,borderRadius:17,borderWidth:1,borderColor:COLORS.line,paddingHorizontal:12,alignItems:'center',justifyContent:'center'},
   v40WhereChangeText:{fontFamily:FONT.bold,fontSize:11,fontWeight:'800',color:COLORS.black},
   v40WhereDestinationInput:{fontFamily:FONT.bold,fontSize:15.5,lineHeight:20,fontWeight:'900',color:COLORS.black,paddingVertical:2},
   v40WhereAdd:{width:38,height:38,borderRadius:19,borderWidth:1,borderColor:COLORS.line,alignItems:'center',justifyContent:'center'},
-  v40WhereMapWrap:{height:248,flexShrink:0,marginTop:10,position:'relative',overflow:'hidden'},
+  v40WhereMapWrap:{height:300,flexShrink:0,marginTop:8,position:'relative',overflow:'hidden'},
   v40WhereEtaBubble:{position:'absolute',left:'43%',top:'45%',backgroundColor:COLORS.yellow,borderRadius:15,paddingHorizontal:12,paddingVertical:7,...SHADOW},
   v40WhereEtaText:{fontFamily:FONT.bold,fontSize:12,fontWeight:'900',color:COLORS.black},
   v40WhereRouteMeta:{position:'absolute',left:14,bottom:14,backgroundColor:'rgba(255,255,255,.94)',borderRadius:12,flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:9,paddingVertical:6,maxWidth:'78%'},
@@ -5488,6 +5474,7 @@ const styles = StyleSheet.create({
   v40WhereHandle:{width:46,height:5,borderRadius:3,backgroundColor:COLORS.lineDark,alignSelf:'center',marginBottom:12},
   v40WhereSuggestedTitle:{fontFamily:FONT.bold,fontSize:18,fontWeight:'900',color:COLORS.black,marginBottom:5},
   v40WhereSuggestionScroll:{flex:1,minHeight:170},
+  v40WhereSearchHint:{minHeight:88,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12},
   v40WhereSuggestionRow:{minHeight:61,flexDirection:'row',alignItems:'center',gap:11,borderBottomWidth:1,borderBottomColor:COLORS.line},
   v40WhereSuggestionIcon:{width:38,height:38,borderRadius:19,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},
   v40WhereSuggestionName:{fontFamily:FONT.bold,fontSize:13,fontWeight:'800',color:COLORS.black},
@@ -5499,9 +5486,10 @@ const styles = StyleSheet.create({
   v40RideHeaderTitle:{fontFamily:FONT.bold,fontSize:20,fontWeight:'900',color:COLORS.black,textAlign:'center'},
   v40RideHeaderSub:{fontFamily:FONT.regular,fontSize:9.5,color:COLORS.muted,textAlign:'center',marginTop:2},
   v40RideScroll:{paddingHorizontal:16,paddingTop:14,paddingBottom:24,gap:11},
+  v40RideMapPreview:{height:250,marginHorizontal:-16,marginTop:-14,overflow:'hidden'},
   v40RideList:{gap:10},
   v40RideCard:{minHeight:98,borderRadius:18,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,paddingVertical:10},
-  v40RideCardActive:{borderColor:COLORS.red,borderWidth:1.6},
+  v40RideCardActive:{borderColor:COLORS.yellowDeep,borderWidth:2,backgroundColor:COLORS.yellowWash},
   v40RideImageWrap:{width:78,height:68,alignItems:'center',justifyContent:'center'},
   v40RideImage:{width:74,height:56},
   v40DeliveryImage:{width:58,height:58},
@@ -5514,21 +5502,22 @@ const styles = StyleSheet.create({
   v40RidePriceWrap:{alignItems:'flex-end',gap:10},
   v40RidePrice:{fontFamily:FONT.bold,fontSize:15.5,fontWeight:'900',color:COLORS.black},
   v40RideRadio:{width:25,height:25,borderRadius:13,borderWidth:1.5,borderColor:COLORS.lineDark,alignItems:'center',justifyContent:'center'},
-  v40RideRadioActive:{borderColor:COLORS.red,borderWidth:2},
+  v40RideRadioActive:{borderColor:COLORS.black,borderWidth:2},
   v40RideRadioDot:{width:13,height:13,borderRadius:7,backgroundColor:COLORS.red},
   v40RideUtilityCard:{minHeight:76,borderRadius:18,borderWidth:1,borderColor:COLORS.line,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:13},
-  v40RideUtilityIcon:{width:52,height:52,borderRadius:14,backgroundColor:'#FFF3F1',alignItems:'center',justifyContent:'center'},
+  v40RideUtilityIcon:{width:52,height:52,borderRadius:14,backgroundColor:COLORS.yellowWash,alignItems:'center',justifyContent:'center'},
   v40RideUtilityTitle:{fontFamily:FONT.bold,fontSize:15,fontWeight:'900',color:COLORS.black},
   v40RideUtilitySub:{fontFamily:FONT.regular,fontSize:11.5,color:COLORS.muted,marginTop:3},
   v40RidePayment:{minHeight:72,borderRadius:18,borderWidth:1,borderColor:COLORS.line,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12},
   v40RidePaymentTitle:{fontFamily:FONT.bold,fontSize:13.5,fontWeight:'800',color:COLORS.black},
   v40RidePaymentSub:{fontFamily:FONT.regular,fontSize:10.5,color:COLORS.muted,marginTop:2},
-  v40RideConfirm:{height:58,borderRadius:17,backgroundColor:COLORS.red,alignItems:'center',justifyContent:'center'},
-  v40RideConfirmText:{fontFamily:FONT.bold,fontSize:16,fontWeight:'900',color:COLORS.white},
+  v40RideConfirm:{height:58,borderRadius:17,backgroundColor:COLORS.yellow,alignItems:'center',justifyContent:'center'},
+  v40RideConfirmText:{fontFamily:FONT.bold,fontSize:16,fontWeight:'900',color:COLORS.black},
   v40RideFareFooter:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:5,paddingTop:2},
   v40RideFareLabel:{fontFamily:FONT.regular,fontSize:12,color:COLORS.muted},
   v40RideFareValue:{fontFamily:FONT.bold,fontSize:18,fontWeight:'900',color:COLORS.black},
   v40RideFareNote:{fontFamily:FONT.regular,fontSize:9.5,lineHeight:13,color:COLORS.muted,textAlign:'center'},
+  v40FixtureMeta:{fontFamily:FONT.regular,fontSize:9.5,lineHeight:13,color:COLORS.muted,marginTop:3},
 
   v40CommerceHeader:{paddingHorizontal:14,paddingTop:8,paddingBottom:7,backgroundColor:COLORS.white},
   v40CommerceTopRow:{height:42,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
@@ -5830,6 +5819,7 @@ const styles = StyleSheet.create({
   v615SearchBox:{height:52,borderRadius:12,borderWidth:1,borderColor:'#D7D9DB',backgroundColor:'#FAFAFA',flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:13},
   v615SearchInput:{flex:1,fontFamily:FONT.regular,fontSize:14.5,color:COLORS.black,paddingVertical:0},
   v615TabRail:{gap:8,paddingTop:14,paddingBottom:11,paddingRight:16},
+  v615StickyTabs:{backgroundColor:COLORS.white,borderBottomWidth:1,borderBottomColor:COLORS.line,paddingLeft:16,...SHADOW},
   v615Tab:{height:39,borderRadius:20,paddingHorizontal:15,backgroundColor:'#F3F3F3',alignItems:'center',justifyContent:'center'},
   v615TabActive:{backgroundColor:'#1F1F1F'},
   v615TabText:{fontFamily:FONT.medium,fontSize:12.5,fontWeight:'800',color:'#666'},
@@ -5851,15 +5841,17 @@ const styles = StyleSheet.create({
   v615ItemRating:{fontFamily:FONT.medium,fontSize:11.5,lineHeight:15,fontWeight:'700',color:'#797B7E',marginTop:5},
   v615MenuVisual:{width:124,height:106,borderRadius:12,overflow:'visible',alignSelf:'center',position:'relative'},
   v615MenuPhoto:{width:'100%',height:'100%',borderRadius:12,backgroundColor:'#EEE'},
-  v615ProductList:{marginTop:2},
-  v615ProductRow:{minHeight:140,flexDirection:'row',gap:13,paddingVertical:16,borderBottomWidth:1,borderBottomColor:'#EDEDED'},
+  v615ProductList:{marginTop:2,flexDirection:'row',flexWrap:'wrap',gap:12},
+  v615ProductRow:{width:'48%',minHeight:260,gap:9,padding:10,borderRadius:16,borderWidth:1,borderColor:'#EDEDED',backgroundColor:COLORS.white},
   v615ProductCopy:{flex:1,paddingRight:2,justifyContent:'center'},
-  v615ProductVisual:{width:124,height:110,borderRadius:12,overflow:'visible',alignSelf:'center',position:'relative'},
+  v615ProductVisual:{width:'100%',height:142,borderRadius:12,overflow:'visible',alignSelf:'center',position:'relative'},
   v615ProductPhoto:{width:'100%',height:'100%',borderRadius:12,backgroundColor:'#EEE'},
   v615AddButton:{position:'absolute',right:7,bottom:-10,minWidth:38,height:33,borderRadius:9,backgroundColor:COLORS.white,borderWidth:1,borderColor:'#D7D7D7',alignItems:'center',justifyContent:'center',paddingHorizontal:10,shadowColor:'#000',shadowOffset:{width:0,height:2},shadowOpacity:.11,shadowRadius:4,elevation:3},
   v615AddButtonActive:{backgroundColor:COLORS.black,borderColor:COLORS.black},
-  v615AddButtonText:{fontFamily:FONT.bold,fontSize:19,lineHeight:21,fontWeight:'900',color:COLORS.black},
+  v615AddButtonText:{fontFamily:FONT.bold,fontSize:13,lineHeight:17,fontWeight:'900',color:COLORS.black},
   v615AddButtonTextActive:{fontSize:13,color:COLORS.white},
+  v615Customisable:{position:'absolute',right:4,bottom:-28,fontSize:10,fontWeight:'700',color:COLORS.muted},
+  v615ReferenceLabel:{fontSize:9,lineHeight:12,fontWeight:'700',color:COLORS.muted,textAlign:'center',marginTop:3},
   v615Pressed:{opacity:.72},
   v615EmptyState:{minHeight:180,alignItems:'center',justifyContent:'center',paddingHorizontal:22},
   v615EmptyTitle:{fontFamily:FONT.bold,fontSize:16,fontWeight:'900',color:COLORS.black,marginTop:9},

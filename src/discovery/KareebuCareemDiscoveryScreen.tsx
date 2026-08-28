@@ -3,10 +3,8 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -16,19 +14,22 @@ import type {
   KareebuDomainId,
   UnifiedCatalogItem,
 } from '../catalog/master/kareebuUnifiedCatalog';
-import { useAppNavigation, useRegisterBackControl } from '../navigation/AppNavigation';
+import { useAppNavigation } from '../navigation/AppNavigation';
 import { COLORS, FONT, SHADOW, TYPE } from '../theme';
 import { useKareebuDiscoveryController } from './controller';
 import { KAREEBU_DISCOVERY_DOMAIN_CONFIG } from './domainConfig';
 import { renderKareebuDiscoveryWidget } from './renderer';
 import type { KareebuDiscoverySort } from './types';
+import { PromotionHero } from '../promotions/PromotionCards';
+import { promotionsFor } from '../promotions/catalog';
+import type { PromotionCampaign, PromotionService } from '../promotions/types';
+import { KareebuPageHeader } from '../components/KareebuPageHeader';
+import { searchContext } from '../search/context';
+import { CategoryLandingBanner } from '../components/CategoryLandingBanner';
+import { mainCategoryBanner } from '../assets/categoryBannerResolver';
 
-const SORTS:Array<{id:KareebuDiscoverySort;label:string;body:string}> = [
-  {id:'recommended',label:'Recommended',body:'Best overall match'},
-  {id:'top-rated',label:'Top rated',body:'Highest customer ratings'},
-  {id:'fastest',label:'Fastest',body:'Lowest estimated wait'},
-  {id:'price-low',label:'Price: low to high',body:'Lower prices first'},
-  {id:'price-high',label:'Price: high to low',body:'Higher prices first'},
+const SORTS: Array<{id:KareebuDiscoverySort;label:string;body:string}> = [
+  {id:'recommended',label:'Default order',body:'Catalogue order without invented ranking signals'},
 ];
 
 export function KareebuCareemDiscoveryScreen({
@@ -38,6 +39,8 @@ export function KareebuCareemDiscoveryScreen({
   initialVerticalTitle,
   onOpenItem,
   onOpenMembership,
+  onOpenPromotion,
+  onOpenVertical,
 }:{
   domainId:KareebuDomainId;
   city:string;
@@ -45,10 +48,11 @@ export function KareebuCareemDiscoveryScreen({
   initialVerticalTitle?:string;
   onOpenItem:(item:UnifiedCatalogItem)=>void;
   onOpenMembership:()=>void;
+  onOpenPromotion:(campaign:PromotionCampaign)=>void;
+  onOpenVertical?:(id:string,title:string)=>void;
 }){
   const insets=useSafeAreaInsets();
   const navigation=useAppNavigation();
-  useRegisterBackControl(true);
 
   const controller=useKareebuDiscoveryController({
     domainId,
@@ -57,45 +61,16 @@ export function KareebuCareemDiscoveryScreen({
     initialVerticalTitle,
     onOpenItem,
     onOpenMembership,
+    onOpenVertical,
   });
   const config=KAREEBU_DISCOVERY_DOMAIN_CONFIG[domainId];
+  const promotionService:PromotionService=domainId==='home-care'||domainId==='fix'?'services':domainId==='electronics'?'shops':domainId;
+  const heroPromotion=promotionsFor({service:promotionService,country,city},'hero')[0];
+  const scope=domainId==='dineout'?'dineout':domainId==='home-care'||domainId==='fix'?'services':domainId;
+  const homeCareBanner=domainId==='home-care'||domainId==='fix'?mainCategoryBanner('home-care'):undefined;
 
   return <View style={styles.root}>
-    <StatusBar barStyle="dark-content" backgroundColor={COLORS.yellow}/>
-    <View style={[styles.header,{paddingTop:Math.max(insets.top,6)+6}]}>
-      <View style={styles.headerRow}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={()=>navigation?.goBack()} style={({pressed})=>[styles.headerAction,pressed&&styles.pressed]}>
-          <Feather name="arrow-left" size={23} color={COLORS.black}/>
-        </Pressable>
-
-        <View style={styles.headerLocation}>
-          <Text style={styles.locationEyebrow}>{controller.document.header.locationEyebrow}</Text>
-          <View style={styles.locationLine}>
-            <Ionicons name="location-outline" size={19} color={COLORS.black}/>
-            <Text numberOfLines={1} style={styles.locationText}>{city}, {country}</Text>
-            <Feather name="chevron-down" size={17} color={COLORS.black}/>
-          </View>
-        </View>
-
-        <Pressable onPress={()=>controller.setFiltersOpen(true)} style={({pressed})=>[styles.headerAction,pressed&&styles.pressed]}>
-          <Feather name="menu" size={23} color={COLORS.black}/>
-        </Pressable>
-      </View>
-
-      <View style={styles.search}>
-        <Feather name="search" size={20} color="#4A4E51"/>
-        <TextInput
-          value={controller.query}
-          onChangeText={controller.setQuery}
-          placeholder={controller.document.header.searchPlaceholder}
-          placeholderTextColor="#73777A"
-          style={styles.searchInput}
-          returnKeyType="search"
-        />
-        {controller.query?<Pressable hitSlop={10} onPress={()=>controller.setQuery('')}><Ionicons name="close-circle" size={20} color="#757A7D"/></Pressable>:null}
-      </View>
-      <View style={styles.whiteBridge}/>
-    </View>
+    <KareebuPageHeader title={controller.document.header.locationEyebrow} country={country} city={city} locationEnabled searchEnabled searchContext={searchContext(scope,{market:country,city})} searchValue={controller.query} onSearchChange={controller.setQuery} onBack={()=>navigation?.goBack()} rightIcon="options-outline" rightLabel="Filters and sorting" onRightAction={()=>controller.setFiltersOpen(true)}/>
 
     <ScrollView
       style={styles.scroll}
@@ -103,6 +78,7 @@ export function KareebuCareemDiscoveryScreen({
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
+      {homeCareBanner?<View style={styles.promotion}><CategoryLandingBanner banner={homeCareBanner} accessibilityLabel="Home and Care services"/></View>:heroPromotion?<View style={styles.promotion}><PromotionHero campaign={heroPromotion} onPress={onOpenPromotion}/></View>:null}
       {controller.document.widgets.map((widget)=>(
         <React.Fragment key={widget.id}>{renderKareebuDiscoveryWidget(widget,controller)}</React.Fragment>
       ))}
@@ -165,6 +141,7 @@ const styles=StyleSheet.create({
   whiteBridge:{position:'absolute',left:0,right:0,bottom:-1,height:16,backgroundColor:COLORS.white,borderTopLeftRadius:28,borderTopRightRadius:28},
   scroll:{flex:1},
   content:{paddingTop:7},
+  promotion:{paddingHorizontal:14,paddingTop:7,paddingBottom:10},
   modalBackdrop:{...StyleSheet.absoluteFill,backgroundColor:'rgba(0,0,0,.42)'},
   sheet:{position:'absolute',left:0,right:0,bottom:0,maxHeight:'88%',backgroundColor:COLORS.white,borderTopLeftRadius:26,borderTopRightRadius:26,paddingHorizontal:16,paddingTop:9},
   sheetHandle:{alignSelf:'center',width:44,height:5,borderRadius:3,backgroundColor:'#D4D7D9',marginBottom:13},

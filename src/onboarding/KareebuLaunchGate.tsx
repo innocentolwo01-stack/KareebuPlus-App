@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useRegisterBackControl } from '../navigation/AppNavigation';
+import { SERVICE_PREFERENCES_STORAGE_KEY, type ServicePreference } from '../preferences';
+import { MARKET_CONFIG } from '../markets/config';
 
 const BRAND = {
   yellow: '#FFC400',
@@ -30,12 +32,12 @@ const BRAND = {
 const STORAGE = {
   complete: '@kareebu/plus/onboarding-v10-complete',
   country: '@kareebu/plus/onboarding-v10-country',
-  services: '@kareebu/plus/onboarding-v10-services',
+  services: SERVICE_PREFERENCES_STORAGE_KEY,
 } as const;
 const LEGACY_COMPLETE_KEY = '@kareebu/plus/onboarding-v6-complete';
 
 type LaunchChoice = 'guest' | 'signup' | 'signin';
-type ServiceKey = 'rides' | 'food' | 'deliveries' | 'shopping';
+type ServiceKey = ServicePreference;
 type LaunchActions = {
   go: (screen: any) => void;
   setGuest?: (value: boolean) => void;
@@ -60,10 +62,10 @@ type Country = {
 const art = {
   wordmark: require('../../assets/kareebu-plus/brand/wordmark-v6.png'),
   mark: require('../../assets/kareebu-plus/brand/adaptive-foreground-v10.png'),
-  rides: require('../../assets/kareebu-plus/services-3d/rides.png'),
-  food: require('../../assets/kareebu-plus/services-3d/food.png'),
-  deliveries: require('../../assets/kareebu-plus/services-3d/send.png'),
-  shopping: require('../../assets/kareebu-plus/services-3d/shops.png'),
+  rides: require('../../assets/kareebu-plus/lifestyle-cutouts/service-rides.png'),
+  food: require('../../assets/kareebu-plus/lifestyle-cutouts/service-food.png'),
+  deliveries: require('../../assets/kareebu-plus/lifestyle-cutouts/service-send.png'),
+  shopping: require('../../assets/kareebu-plus/lifestyle-cutouts/service-shops.png'),
   uganda: require('../../assets/kareebu-plus/country-landmarks/uganda.jpg'),
   kenya: require('../../assets/kareebu-plus/country-landmarks/kenya.jpg'),
   tanzania: require('../../assets/kareebu-plus/country-landmarks/tanzania.jpg'),
@@ -75,44 +77,19 @@ const SERVICES: Array<{ key: ServiceKey; label: string; body: string; image: any
   { key: 'deliveries', label: 'Deliveries', body: 'Send anything, anywhere', image: art.deliveries },
   { key: 'shopping', label: 'Shopping', body: 'Groceries, shops and more', image: art.shopping },
 ];
-const COUNTRIES: Country[] = [
-  {
-    code: 'UG',
-    country: 'Uganda',
-    city: 'Kampala',
-    image: art.uganda,
-    latitude: 1.3733,
-    longitude: 32.2903,
-    latitudeDelta: 6.4,
-    longitudeDelta: 6.4,
-    cityLatitude: 0.3476,
-    cityLongitude: 32.5825,
-  },
-  {
-    code: 'KE',
-    country: 'Kenya',
-    city: 'Nairobi',
-    image: art.kenya,
-    latitude: 0.0236,
-    longitude: 37.9062,
-    latitudeDelta: 7.8,
-    longitudeDelta: 7.8,
-    cityLatitude: -1.2864,
-    cityLongitude: 36.8172,
-  },
-  {
-    code: 'TZ',
-    country: 'Tanzania',
-    city: 'Dar es Salaam',
-    image: art.tanzania,
-    latitude: -6.3690,
-    longitude: 34.8888,
-    latitudeDelta: 9.2,
-    longitudeDelta: 9.2,
-    cityLatitude: -6.7924,
-    cityLongitude: 39.2083,
-  },
-];
+const countryArt = { Uganda: art.uganda, Kenya: art.kenya, Tanzania: art.tanzania };
+const COUNTRIES: Country[] = Object.values(MARKET_CONFIG).map((market) => ({
+  code: market.iso,
+  country: market.country,
+  city: market.primaryCity,
+  image: countryArt[market.country],
+  latitude: market.map.countryRegion.latitude,
+  longitude: market.map.countryRegion.longitude,
+  latitudeDelta: market.map.countryRegion.latitudeDelta,
+  longitudeDelta: market.map.countryRegion.longitudeDelta,
+  cityLatitude: market.map.primaryCityRegion.latitude,
+  cityLongitude: market.map.primaryCityRegion.longitude,
+}));
 
 function PrimaryButton({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
   return (
@@ -399,7 +376,7 @@ export function KareebuLaunchGate({screen,data,actions,children}:Props){
   const [storedCompletion,setStoredCompletion]=useState<boolean|null>(null);
   const [step,setStep]=useState(0);
   const [countryIndex,setCountryIndex]=useState(()=>{const index=COUNTRIES.findIndex(item=>item.country===data?.country);return index>=0?index:0;});
-  const [selectedServices,setSelectedServices]=useState<ServiceKey[]>(SERVICES.map(item=>item.key));
+  const [selectedServices,setSelectedServices]=useState<ServiceKey[]>([]);
   const actionsRef=useRef(actions); actionsRef.current=actions; void screen;
   const handleSplashDone=useCallback(()=>setSplashFinished(true),[]);
   useEffect(()=>{let active=true;AsyncStorage.getItem(STORAGE.complete).then(value=>active&&setStoredCompletion(value==='1')).catch(()=>active&&setStoredCompletion(false));return()=>{active=false;};},[]);

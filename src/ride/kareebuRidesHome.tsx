@@ -15,8 +15,15 @@ import MapView, { Marker } from 'react-native-maps';
 import { COLORS, TYPE } from '../theme';
 
 import { ScreenShell } from '../components';
+import { KareebuPageHeader } from '../components/KareebuPageHeader';
 import type { MobilityActions, MobilityData } from './mobilityScreens';
-import { useRegisterBackControl } from '../navigation/AppNavigation';
+import { formatLocalDateTime, formatMoney, localeProfile } from '../locale';
+import { marketConfig, mobilityPlaces } from '../markets/config';
+import { KareebuDestinationCard, MobilityPlaceRail } from './KareebuDestinationCard';
+import { promotionsFor } from '../promotions/catalog';
+import { PromoCarousel } from '../promotions/PromoCarousel';
+import { PromotionalImageBanner } from '../promotions/PromotionalImageBanner';
+import { promotionalBannerAssets } from '../promotions/promotionalBannerAssets';
 
 type RideView =
   | 'home'
@@ -154,35 +161,6 @@ const CITY_TRIPS: CityTrip[] = [
   },
 ];
 
-function regionForCity(city: string) {
-  const key = city.trim().toLowerCase();
-
-  if (key.includes('entebbe')) {
-    return {
-      latitude: 0.0512,
-      longitude: 32.4637,
-      latitudeDelta: 0.07,
-      longitudeDelta: 0.07,
-    };
-  }
-
-  if (key.includes('jinja')) {
-    return {
-      latitude: 0.4478,
-      longitude: 33.2026,
-      latitudeDelta: 0.07,
-      longitudeDelta: 0.07,
-    };
-  }
-
-  return {
-    latitude: 0.3476,
-    longitude: 32.5825,
-    latitudeDelta: 0.085,
-    longitudeDelta: 0.085,
-  };
-}
-
 function trafficMarkers(region: {
   latitude: number;
   longitude: number;
@@ -221,19 +199,15 @@ function BackMenuHeader({
   light?: boolean;
   onMenu?: () => void;
 }) {
-  useRegisterBackControl(true);
   return (
-    <View style={styles.header}>
-      <Pressable onPress={onBack} style={({ pressed }) => [styles.headerSquare, pressed && styles.pressed]}>
-        <Feather name="arrow-left" size={24} color="#37393C" />
-      </Pressable>
-
-      {title ? <Text style={[styles.headerTitle, !light && styles.headerTitleDark]}>{title}</Text> : <View />}
-
-      <Pressable onPress={onMenu} style={({ pressed }) => [styles.menuSquare, pressed && styles.pressed]}>
-        <Feather name="menu" size={23} color={COLORS.yellow} />
-      </Pressable>
-    </View>
+    <KareebuPageHeader
+      title={title ?? 'Rides'}
+      variant="transaction"
+      backEnabled
+      onBack={onBack}
+      rightIcon={onMenu ? 'menu' : undefined}
+      onRightAction={onMenu}
+    />
   );
 }
 
@@ -264,7 +238,7 @@ function HomeRideTile({
   onPress,
 }: {
   label: string;
-  image: any;
+  image?: any;
   width: number;
   onPress: () => void;
 }) {
@@ -274,7 +248,7 @@ function HomeRideTile({
       style={({ pressed }) => [styles.shortcutCard, { width }, pressed && styles.pressed]}
     >
       <View style={styles.shortcutVisual}>
-        <Image source={image} resizeMode="contain" style={styles.shortcutImage} />
+        {image?<Image source={image} resizeMode="contain" style={styles.shortcutImage} />:<View style={styles.airportArt}><Ionicons name="airplane" size={42} color={COLORS.black}/></View>}
       </View>
       <Text numberOfLines={2} style={styles.shortcutLabel}>{label}</Text>
     </Pressable>
@@ -320,7 +294,7 @@ export function KareebuRidesHomeScreen({
   actions: MobilityActions;
 }) {
   const { width } = useWindowDimensions();
-  const region = useMemo(() => regionForCity(data.city ?? 'Kampala'), [data.city]);
+  const region = useMemo(() => marketConfig(data.country).map.primaryCityRegion, [data.country]);
   const pickupName =
     data.pickup && data.pickup.trim().length > 0
       ? data.pickup
@@ -332,30 +306,39 @@ export function KareebuRidesHomeScreen({
   const [schoolQuery, setSchoolQuery] = useState('');
   const [selectedSchool, setSelectedSchool] = useState<School>(SCHOOLS[0]);
   const [selectedPlace, setSelectedPlace] = useState<SavedPlace>(SAVED_PLACES[2]);
-  const [selectedTime, setSelectedTime] = useState('Today · 5:23 PM');
+  const [selectedTime, setSelectedTime] = useState('Now');
+  const profile = localeProfile(data.country);
+  const cityTrips: CityTrip[] = profile.cityToCityExamples.map((item) => ({ id:item.city.toLowerCase().replace(/\s/g,'-'), city:item.city, fare:formatMoney(data.country,item.baseFareUgx), subtitle:item.detail }));
+  const rideContextPromotions=promotionsFor({service:'rides',country:data.country,city:data.city},'contextual').slice(0,3);
+  const places=useMemo(()=>mobilityPlaces(data.country),[data.country]);
 
   const rideTiles = [
     {
+      label: 'Airport',
+      image: undefined,
+      action: () => actions.prefillDestination(places.find(place=>place.kind==='airport')!),
+    },
+    {
       label: 'Schedule',
       image: require('../../assets/kareebu-plus/rides-home/schedule.png'),
-      next: 'scheduleIntro' as RideView,
+      action: () => navigate('scheduleIntro'),
     },
     {
       label: 'School Rides',
       image: require('../../assets/kareebu-plus/rides-home/school-rides.png'),
-      next: 'schoolIntro' as RideView,
+      action: () => navigate('schoolIntro'),
     },
     {
       label: 'City to City',
       image: require('../../assets/kareebu-plus/rides-home/city-to-city.png'),
-      next: 'cityToCity' as RideView,
+      action: () => navigate('cityToCity'),
     },
     {
       label: 'For a Friend',
       image: require('../../assets/kareebu-plus/rides-home/for-a-friend.png'),
-      next: 'forFriend' as RideView,
+      action: () => navigate('forFriend'),
     },
-  ];
+  ].filter((tile) => data.country === 'Uganda' || tile.label !== 'School Rides');
 
   const tileWidth = useMemo(() => {
     const available = width - 32 - 24;
@@ -443,53 +426,38 @@ export function KareebuRidesHomeScreen({
 
         <BackMenuHeader onBack={() => actions.go('home')} onMenu={() => actions.go('rideSettings')} />
 
-        <View style={styles.searchPanel}>
-          <View style={styles.searchPanelTop}>
-            <Pressable onPress={() => actions.go('whereTo')} style={({ pressed }) => [styles.searchBigButton, pressed && styles.pressed]}>
-              <View style={styles.searchIconBox}>
-                <Feather name="search" size={28} color="#FFFFFF" />
-              </View>
-              <Text style={styles.searchBigText}>Where to?</Text>
-            </Pressable>
-
-            <Pressable onPress={() => navigate('scheduleIntro')} style={({ pressed }) => [styles.laterButton, pressed && styles.pressed]}>
-              <Ionicons name="calendar-outline" size={20} color="#44484C" />
-              <Text style={styles.laterButtonText}>{laterChipLabel}</Text>
-            </Pressable>
-          </View>
-
-          <Pressable onPress={() => navigate('pickupConfirm')} style={({ pressed }) => [styles.pickupPanel, pressed && styles.pressed]}>
-            <Ionicons name="location-outline" size={29} color="#44484C" />
-            <View style={styles.pickupPanelCopy}>
-              <Text numberOfLines={1} style={styles.pickupPanelTitle}>{pickupName}</Text>
-              <Text numberOfLines={1} style={styles.pickupPanelSubtitle}>{pickupSubtitle}</Text>
-            </View>
-          </Pressable>
-        </View>
+        <KareebuDestinationCard mode="RIDE" pickup={pickupName} city={pickupSubtitle} onDestination={()=>actions.go('whereTo')} onPickup={()=>navigate('pickupConfirm')} onLater={()=>navigate('scheduleIntro')}/>
       </View>
 
       <View style={styles.contentSection}>
-        <Text style={styles.pageHeading}>Rides for every need</Text>
+        <Text style={styles.pageHeading}>Saved & recent places</Text>
+        <MobilityPlaceRail places={places} onPress={(place)=>actions.prefillDestination(place)}/>
 
-        <View style={styles.tileRow}>
+        <PromotionalImageBanner image={promotionalBannerAssets.ride.primary} accessibilityLabel="Explore Kareebu Rides" accessibilityHint="Opens Ride booking" onPress={()=>actions.go('whereTo')}/>
+
+        <Text style={styles.pageHeading}>More ways to ride</Text>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileRow}>
           {rideTiles.map((tile) => (
             <HomeRideTile
               key={tile.label}
               label={tile.label}
               image={tile.image}
               width={tileWidth}
-              onPress={() => navigate(tile.next)}
+              onPress={tile.action}
             />
           ))}
-        </View>
+        </ScrollView>
+
+        {rideContextPromotions.length?<View style={{marginHorizontal:-16,marginTop:8}}><PromoCarousel campaigns={rideContextPromotions} onPress={(campaign)=>actions.go(campaign.ctaScreen)} autoAdvanceMs={0}/></View>:null}
 
         <Pressable onPress={() => actions.go('plusManage')} style={styles.plusBanner}>
           <View style={styles.plusPatternOne} />
           <View style={styles.plusPatternTwo} />
           <View style={styles.plusCopyBox}>
             <Text style={styles.plusKareebu}>Kareebu+</Text>
-            <Text style={styles.plusTitle}>Exclusive gift: 30 days for free!</Text>
-            <Text style={styles.plusBody}>Tap to unlock ride perks across Kareebu Rides.</Text>
+            <Text style={styles.plusTitle}>See configured Kareebu+ ride benefits</Text>
+            <Text style={styles.plusBody}>Eligible ride benefits appear here only when enabled for your market.</Text>
           </View>
           <View style={styles.plusGiftBox}>
             <Ionicons name="gift" size={42} color="#FFC928" />
@@ -697,14 +665,14 @@ export function KareebuRidesHomeScreen({
             <Text style={styles.calendarBadgeDay}>15</Text>
           </View>
 
-          <Text style={styles.scheduleQuestion}>When would you like to be picked up in Kampala?</Text>
+          <Text style={styles.scheduleQuestion}>When would you like to be picked up in {data.city}?</Text>
           <Text style={styles.scheduleQuestionSub}>Free cancellation up to 1 hour before pickup</Text>
         </View>
 
         <Pressable style={({ pressed }) => [styles.todayRow, pressed && styles.pressed]}>
           <View>
             <Text style={styles.todayTitle}>Today</Text>
-            <Text style={styles.todaySub}>Fri, August 15</Text>
+            <Text style={styles.todaySub}>{formatLocalDateTime(data.country)}</Text>
           </View>
           <Feather name="chevron-right" size={28} color="#323436" />
         </Pressable>
@@ -715,11 +683,11 @@ export function KareebuRidesHomeScreen({
           <Text style={styles.timeWheelBig}>PM</Text>
         </View>
 
-        <Text style={styles.localTimeText}>Local time (GMT+3)</Text>
+        <Text style={styles.localTimeText}>Local time · {profile.timezone}</Text>
 
         <Pressable
           onPress={() => {
-            setSelectedTime('Today · 5:23 PM');
+            setSelectedTime(formatLocalDateTime(data.country));
             setView('home');
             setHistory(['home']);
           }}
@@ -944,12 +912,12 @@ export function KareebuRidesHomeScreen({
         />
       </View>
 
-      <Text style={styles.schoolPackageSave}>Save up to 35%</Text>
+      <Text style={styles.schoolPackageSave}>20-ride school package</Text>
 
       <View style={styles.packageCard}>
         <View>
           <Text style={styles.packageMain}>20 rides</Text>
-          <Text style={styles.packageSub}>Save up to 35%</Text>
+          <Text style={styles.packageSub}>School travel bundle</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={styles.packagePrice}>UGX 390,000</Text>
@@ -1008,7 +976,7 @@ export function KareebuRidesHomeScreen({
       <Text style={styles.cityHeading}>On your way out of town?</Text>
       <Text style={styles.citySubheading}>Select a city to book your ride</Text>
 
-      {CITY_TRIPS.map((item) => (
+      {cityTrips.map((item) => (
         <CityCard
           key={item.id}
           item={item}
@@ -1295,7 +1263,8 @@ const styles = StyleSheet.create({
   tileRow: {
     marginTop: 12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 10,
+    paddingRight: 18,
   },
   shortcutCard: {
     height: 108,
@@ -1314,6 +1283,7 @@ const styles = StyleSheet.create({
     width: '90%',
     height: 62,
   },
+  airportArt:{width:68,height:68,borderRadius:20,backgroundColor:COLORS.yellowWash,alignItems:'center',justifyContent:'center'},
   shortcutLabel: {
     marginTop: 8,
     paddingHorizontal: 4,

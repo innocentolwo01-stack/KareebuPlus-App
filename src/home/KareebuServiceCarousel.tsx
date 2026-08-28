@@ -1,140 +1,47 @@
-import React from 'react';
-import {
-  Image,
-  ImageSourcePropType,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import React, { memo, useMemo, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View, type ListRenderItem } from 'react-native';
+import { COLORS, RADIUS, SHADOW, SPACE, TYPE } from '../theme';
+import type { ServicePreference } from '../preferences';
+import { servicesForMarket, type KareebuServiceDefinition } from '../services/serviceRegistry';
+import { ServiceArtwork } from '../components/ServiceArtwork';
 
-type ServiceItem = {
-  label: string;
-  screen: string;
-  image: ImageSourcePropType;
-};
+const ITEMS_PER_PAGE=8;
+const COLUMNS_PER_PAGE=4;
+const COLUMN_GAP=8;
+const PAGE_GAP=12;
 
-type ServiceColumn = [ServiceItem, ServiceItem];
+type Props={country:string;onOpen:(service:KareebuServiceDefinition)=>void;preferences?:ServicePreference[]};
 
-const serviceColumns: ServiceColumn[] = [
-  [
-    { label: 'Rides', screen: 'mobilityHome', image: require('../../assets/kareebu-plus/services-3d/rides.png') },
-    { label: 'Pharmacies', screen: 'shops', image: require('../../assets/kareebu-plus/services-3d/pharmacies.png') },
-  ],
-  [
-    { label: 'Food', screen: 'food', image: require('../../assets/kareebu-plus/services-3d/food.png') },
-    { label: 'Shops', screen: 'shops', image: require('../../assets/kareebu-plus/services-3d/shops.png') },
-  ],
-  [
-    { label: 'Groceries', screen: 'groceries', image: require('../../assets/kareebu-plus/services-3d/groceries.png') },
-    { label: 'Send', screen: 'parcel', image: require('../../assets/kareebu-plus/services-3d/send.png') },
-  ],
-  [
-    { label: 'Boda', screen: 'mobilityHome', image: require('../../assets/kareebu-plus/services-3d/boda.png') },
-    { label: 'More', screen: 'services', image: require('../../assets/kareebu-plus/services-3d/more.png') },
-  ],
-  [
-    { label: 'DineOut', screen: 'dineOut', image: require('../../assets/kareebu-plus/services-3d/dineout.png') },
-    { label: 'Pay', screen: 'wallet', image: require('../../assets/kareebu-plus/services-3d/pay.png') },
-  ],
-  [
-    { label: 'Fix', screen: 'fix', image: require('../../assets/kareebu-plus/services-3d/fix.png') },
-    { label: 'Home & Care', screen: 'homeCare', image: require('../../assets/kareebu-plus/services-3d/home-care.png') },
-  ],
-  [
-    { label: 'For Good', screen: 'donations', image: require('../../assets/kareebu-plus/services-3d/for-good.png') },
-    { label: 'Go Out', screen: 'dineOut', image: require('../../assets/kareebu-plus/services-3d/go-out.png') },
-  ],
-  [
-    { label: 'Electronics', screen: 'electronics', image: require('../../assets/kareebu-plus/services-3d/electronics.png') },
-    { label: 'Healthcare', screen: 'shops', image: require('../../assets/kareebu-plus/services-3d/healthcare.png') },
-  ],
-];
-
-export function KareebuServiceCarousel({
-  onOpen,
-}: {
-  onOpen: (label: string, screen: any) => void;
-}) {
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      decelerationRate="fast"
-      style={styles.bleed}
-      contentContainerStyle={styles.rail}
-      keyboardShouldPersistTaps="handled"
-    >
-      {serviceColumns.map((column, columnIndex) => (
-        <View key={`service-column-${columnIndex}`} style={styles.column}>
-          {column.map((item) => (
-            <Pressable
-              key={item.label}
-              accessibilityRole="button"
-              accessibilityLabel={item.label}
-              onPress={() => onOpen(item.label, item.screen)}
-              style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
-            >
-              <View style={styles.artWrap}>
-                <Image source={item.image} style={styles.art} resizeMode="contain" />
-              </View>
-              <Text numberOfLines={2} style={styles.label}>
-                {item.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      ))}
-    </ScrollView>
-  );
+function pagesOf(items:KareebuServiceDefinition[]):KareebuServiceDefinition[][] {
+  const pages:KareebuServiceDefinition[][]=[];
+  for(let index=0;index<items.length;index+=ITEMS_PER_PAGE)pages.push(items.slice(index,index+ITEMS_PER_PAGE));
+  return pages;
 }
 
-const styles = StyleSheet.create({
-  bleed: {
-    marginHorizontal: -14,
-  },
-  rail: {
-    paddingLeft: 14,
-    paddingRight: 28,
-    gap: 6,
-  },
-  column: {
-    width: 76,
-    gap: 8,
-  },
-  tile: {
-    width: 76,
-    height: 92,
-    borderRadius: 13,
-    backgroundColor: '#FFFDF8',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 6,
-    paddingHorizontal: 4,
-  },
-  pressed: {
-    opacity: 0.68,
-    transform: [{ scale: 0.98 }],
-  },
-  artWrap: {
-    width: 58,
-    height: 58,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  art: {
-    width: 56,
-    height: 56,
-  },
-  label: {
-    minHeight: 24,
-    marginTop: 0,
-    paddingHorizontal: 2,
-    textAlign: 'center',
-    color: '#202124',
-    fontSize: 11.5,
-    lineHeight: 14,
-    fontWeight: '700',
-  },
+const ServiceTile=memo(function ServiceTile({item,width,preferences,onOpen}:{item:KareebuServiceDefinition;width:number;preferences:ServicePreference[];onOpen:(service:KareebuServiceDefinition)=>void}){
+  const preferred=Boolean(item.preference&&preferences.includes(item.preference));
+  const artSize=Math.max(52,Math.min(66,width-4));
+  return <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.label}. ${item.description}`} accessibilityHint={`Opens ${item.label}`} accessibilityState={{selected:preferred}} onPress={()=>onOpen(item)} style={({pressed})=>[styles.tile,{width},preferred&&styles.preferred,pressed&&styles.pressed]}>
+    {item.badge?<View style={styles.badge}><Text style={styles.badgeText}>{item.badge}</Text></View>:null}
+    <View style={styles.artRegion}>
+      <ServiceArtwork visualKey={item.visualKey} size="large" maxWidth={artSize}/>
+    </View>
+    <View style={styles.labelRegion}><Text numberOfLines={2} style={styles.label}>{item.label}</Text></View>
+  </Pressable>;
 });
+
+export function KareebuServiceCarousel({country,onOpen,preferences=[]}:Props){
+  const {width:screenWidth}=useWindowDimensions();
+  const viewportWidth=Math.min(520,Math.max(240,screenWidth-SPACE.lg*2));
+  const pageWidth=viewportWidth-12;
+  const tileWidth=(pageWidth-COLUMN_GAP*(COLUMNS_PER_PAGE-1))/COLUMNS_PER_PAGE;
+  const pages=useMemo(()=>pagesOf(servicesForMarket(country,true)),[country]);
+  const [activePage,setActivePage]=useState(0);
+  const renderPage:ListRenderItem<KareebuServiceDefinition[]>=({item})=><View accessibilityRole="list" style={[styles.page,{width:pageWidth}]}>{item.map(service=><ServiceTile key={service.id} item={service} width={tileWidth} preferences={preferences} onOpen={onOpen}/>)}</View>;
+  return <View style={styles.shell}>
+    <FlatList horizontal style={{width:viewportWidth}} data={pages} keyExtractor={(_,index)=>`service-page-${index}`} renderItem={renderPage} ItemSeparatorComponent={()=> <View style={{width:PAGE_GAP}}/>} getItemLayout={(_,index)=>({length:pageWidth+PAGE_GAP,offset:(pageWidth+PAGE_GAP)*index,index})} showsHorizontalScrollIndicator={false} snapToInterval={pageWidth+PAGE_GAP} snapToAlignment="start" decelerationRate="fast" disableIntervalMomentum directionalLockEnabled nestedScrollEnabled scrollEnabled contentContainerStyle={styles.track} initialNumToRender={2} maxToRenderPerBatch={2} windowSize={3} onMomentumScrollEnd={event=>setActivePage(Math.max(0,Math.min(pages.length-1,Math.round(event.nativeEvent.contentOffset.x/(pageWidth+PAGE_GAP)))))}/>
+    {pages.length>1?<View accessibilityLabel={`Service page ${activePage+1} of ${pages.length}`} style={styles.dots}>{pages.map((_,index)=><View key={`service-dot-${index}`} style={[styles.dot,index===activePage&&styles.dotActive]}/>)}</View>:null}
+  </View>;
+}
+
+const styles=StyleSheet.create({shell:{marginRight:-SPACE.lg},track:{paddingRight:16},page:{height:222,flexDirection:'row',flexWrap:'wrap',columnGap:COLUMN_GAP,rowGap:8},tile:{height:104,borderRadius:RADIUS.lg,backgroundColor:COLORS.surfaceStrong,alignItems:'center',justifyContent:'flex-start',paddingHorizontal:2,...SHADOW},preferred:{backgroundColor:COLORS.yellowWash,borderWidth:1,borderColor:COLORS.yellow},pressed:{opacity:.72,transform:[{scale:.97}]},artRegion:{height:68,width:'100%',alignItems:'center',justifyContent:'center',overflow:'visible'},labelRegion:{height:34,alignItems:'center',justifyContent:'center',paddingHorizontal:1},label:{...TYPE.caption,fontSize:11,lineHeight:13,fontWeight:'800',color:COLORS.black,textAlign:'center'},badge:{position:'absolute',right:3,top:3,zIndex:2,minHeight:16,borderRadius:8,backgroundColor:COLORS.black,paddingHorizontal:4,alignItems:'center',justifyContent:'center'},badgeText:{...TYPE.caption,fontSize:8,lineHeight:10,fontWeight:'900',color:COLORS.yellow},dots:{height:10,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,marginTop:4},dot:{width:5,height:5,borderRadius:3,backgroundColor:COLORS.lineDark},dotActive:{width:14,backgroundColor:COLORS.yellowDeep}});

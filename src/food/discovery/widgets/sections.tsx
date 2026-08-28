@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS, TYPE } from '../../../theme';
+import { formatMoney } from '../../../locale';
 
 import type {
   FoodHomeController,
@@ -23,48 +24,64 @@ type Category = {
   image: ImageSourcePropType;
 };
 
-const FILTERS: FoodHomeFilter[] = [
-  '4.7+ Rated',
-  'Top Choices',
-  'Calorie info',
-  '30% Off',
+const FILTERS: Array<{label:string;value:FoodHomeFilter}> = [
+  {label:'4.5+ Rated',value:'Top rated'},
+  {label:'Top Choices',value:'Top rated'},
+  {label:'Offers',value:'Offers'},
+  {label:'Fast Delivery',value:'Fast delivery'},
+  {label:'Kareebu+',value:'Kareebu+'},
+  {label:'Healthy',value:'Healthy'},
+  {label:'Under 30 mins',value:'Under 30 mins'},
+  {label:'Free Delivery',value:'Free delivery'},
 ];
 
 const CATEGORY_COLUMNS: Category[][] = [
   [{label:'Offers',image:require('../../../../assets/kareebu-plus/food-exact/categories/offers.png')},{label:'New Additions',image:require('../../../../assets/kareebu-plus/food-exact/categories/new-additions.png')}],
-  [{label:'Asian',image:require('../../../../assets/kareebu-plus/food-exact/categories/asian.png')},{label:'Dessert',image:require('../../../../assets/kareebu-plus/food-exact/categories/dessert.png')}],
-  [{label:'Chicken & Wings',image:require('../../../../assets/kareebu-plus/food-exact/categories/chicken-wings.png')},{label:'Pizza',image:require('../../../../assets/kareebu-plus/food-exact/categories/pizza.png')}],
-  [{label:'Burger',image:require('../../../../assets/kareebu-plus/food-exact/categories/burger.png')},{label:'Chaat',image:require('../../../../assets/kareebu-plus/food-exact/categories/chaat.png')}],
-  [{label:'Exclusive Offers',image:require('../../../../assets/kareebu-plus/food-exact/categories/exclusive.png')},{label:'Arabic',image:require('../../../../assets/kareebu-plus/food-exact/categories/arabic.png')}],
-  [{label:'Far-away Gems',image:require('../../../../assets/kareebu-plus/food-exact/categories/far-away.png')},{label:'Lebanese',image:require('../../../../assets/kareebu-plus/food-exact/categories/lebanese.png')}],
-  [{label:'Indian',image:require('../../../../assets/kareebu-plus/food-exact/categories/indian.png')},{label:'Healthy',image:require('../../../../assets/kareebu-plus/food-exact/categories/healthy.png')}],
-  [{label:'Catering',image:require('../../../../assets/kareebu-plus/food-exact/categories/catering.png')},{label:'Gifting Options',image:require('../../../../assets/kareebu-plus/food-exact/categories/gifting.png')}],
-  [{label:'Biryani',image:require('../../../../assets/kareebu-plus/food-exact/categories/biryani.png')},{label:'Coffee',image:require('../../../../assets/kareebu-plus/food-exact/categories/coffee.png')}],
-  [{label:'Egyptian',image:require('../../../../assets/kareebu-plus/food-exact/categories/egyptian.png')},{label:'Filipino',image:require('../../../../assets/kareebu-plus/food-exact/categories/filipino.png')}],
-  [{label:'Best Selling',image:require('../../../../assets/kareebu-plus/food-exact/categories/best-selling.png')},{label:'Ice Cream',image:require('../../../../assets/kareebu-plus/food-exact/categories/ice-cream.png')}],
-  [{label:'Iranian',image:require('../../../../assets/kareebu-plus/food-exact/categories/iranian.png')},{label:'Italian',image:require('../../../../assets/kareebu-plus/food-exact/categories/italian.png')}],
+  [{label:'Burgers',image:require('../../../../assets/kareebu-plus/food-exact/categories/burger.png')},{label:'Chicken',image:require('../../../../assets/kareebu-plus/food-exact/categories/chicken-wings.png')}],
+  [{label:'African',image:require('../../../../assets/kareebu-plus/food-exact/categories/catering.png')},{label:'Healthy',image:require('../../../../assets/kareebu-plus/food-exact/categories/healthy.png')}],
+  [{label:'Pizza',image:require('../../../../assets/kareebu-plus/food-exact/categories/pizza.png')},{label:'Indian',image:require('../../../../assets/kareebu-plus/food-exact/categories/indian.png')}],
+  [{label:'Breakfast',image:require('../../../../assets/kareebu-plus/food-exact/categories/coffee.png')},{label:'Local favourites',image:require('../../../../assets/kareebu-plus/food-exact/categories/best-selling.png')}],
+  [{label:'Grills & BBQ',image:require('../../../../assets/kareebu-plus/food-exact/categories/chicken-wings.png')},{label:'Seafood',image:require('../../../../assets/kareebu-plus/food-exact/categories/healthy.png')}],
+  [{label:'Cafés & Coffee',image:require('../../../../assets/kareebu-plus/food-exact/categories/coffee.png')},{label:'Desserts & Treats',image:require('../../../../assets/kareebu-plus/food-exact/categories/dessert.png')}],
+  [{label:'Fast Food',image:require('../../../../assets/kareebu-plus/food-exact/categories/burger.png')}],
 ];
 
-const PROMOS: ImageSourcePropType[] = [
-  require('../../../../assets/kareebu-plus/food-exact/banners/promo-30.png'),
-  require('../../../../assets/kareebu-plus/food-exact/banners/promo-delivery.png'),
-  require('../../../../assets/kareebu-plus/food-exact/banners/promo-weekend.png'),
-];
+const MARKET_CATEGORY: Record<string, Category> = {
+  Uganda:{label:'Ugandan',image:require('../../../../assets/kareebu-plus/food-exact/categories/biryani.png')},
+  Kenya:{label:'Kenyan',image:require('../../../../assets/kareebu-plus/food-exact/categories/catering.png')},
+  Tanzania:{label:'Tanzanian',image:require('../../../../assets/kareebu-plus/food-exact/categories/biryani.png')},
+};
 
-const BANKS: ImageSourcePropType[] = [
-  require('../../../../assets/kareebu-plus/food-exact/banners/bank-stanbic.png'),
-  require('../../../../assets/kareebu-plus/food-exact/banners/bank-absa.png'),
-  require('../../../../assets/kareebu-plus/food-exact/banners/bank-equity.png'),
-  require('../../../../assets/kareebu-plus/food-exact/banners/bank-centenary.png'),
-];
+function restaurantPrimaryMeta(restaurant:FoodHomeRestaurant){
+  return restaurant.liveAvailability
+    ? `★ ${restaurant.rating.toFixed(1)} (${restaurant.reviews}) · ${restaurant.availabilityLabel ?? restaurant.eta}`
+    : 'Reference listing';
+}
 
-const BRANDS = [
-  { label:'Cafe\nJavas', background:'#F4C72D', foreground:'#221A0D', restaurantId:'cafe-javas' },
-  { label:'Chicken\nTonight', background:'#E53C46', foreground:'#FFFFFF', restaurantId:'chicken-tonight' },
-  { label:'Pizza\nInn', background:'#139B62', foreground:'#FFFFFF', restaurantId:'pizza-inn' },
-  { label:'KFC', background:'#F4F4F4', foreground:'#D9242F', restaurantId:null },
-  { label:'Java\nHouse', background:'#64271F', foreground:'#FFFFFF', restaurantId:'java-house' },
-];
+function restaurantDetailMeta(restaurant:FoodHomeRestaurant){
+  return restaurant.liveAvailability
+    ? [restaurant.distance,restaurant.deliveryLabel].filter(Boolean).join(' · ')
+    : 'Check current availability';
+}
+
+function restaurantAccessibilityLabel(restaurant:FoodHomeRestaurant){
+  return restaurant.liveAvailability
+    ? `${restaurant.name}, ${restaurant.rating.toFixed(1)} stars, ${restaurant.availabilityLabel ?? restaurant.eta}`
+    : `${restaurant.name}, reference listing`;
+}
+
+function categoriesForMarket(country:string):Category[][] {
+  return [
+    ...CATEGORY_COLUMNS,
+    [MARKET_CATEGORY[country] ?? MARKET_CATEGORY.Uganda,{label:country==='Uganda'?'Rolex':country==='Kenya'?'Nyama Choma':'Pilau',image:country==='Uganda'?require('../../../../assets/kareebu-plus/food-exact/categories/best-selling.png'):require('../../../../assets/kareebu-plus/food-exact/categories/biryani.png')}],
+  ];
+}
+
+const FOOD_DISCOVERY_PROMOS = [
+  {id:'restaurants',eyebrow:'DISCOVER',title:'Explore restaurants',body:'Browse reference listings and confirm current availability before ordering.'},
+  {id:'cuisines',eyebrow:'FOOD',title:'Find a cuisine',body:'Use categories and search to find the food you want.'},
+  {id:'membership',eyebrow:'KAREEBU+',title:'Explore member benefits',body:'Configured member benefits appear before checkout when available.'},
+] as const;
 
 function PlusMark() {
   return (
@@ -77,14 +94,19 @@ function PlusMark() {
 function Favourite({
   active,
   onPress,
+  label = 'restaurant',
   light = false,
 }: {
   active: boolean;
   onPress: () => void;
+  label?: string;
   light?: boolean;
 }) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={active ? `Remove ${label} from favourites` : `Add ${label} to favourites`}
+      accessibilityState={{ selected: active }}
       onPress={onPress}
       hitSlop={10}
       style={styles.favourite}
@@ -105,12 +127,9 @@ function RestaurantMeta({
 }) {
   return (
     <>
-      <Text style={styles.rating}>
-        ★ {restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.eta}{' '}
-        <Text style={styles.meta}>({restaurant.distance})</Text>
-      </Text>
+      <Text style={styles.rating}>{restaurantPrimaryMeta(restaurant)}</Text>
       <Text numberOfLines={1} style={styles.meta}>
-        {[restaurant.priceLevel, restaurant.neighborhood, restaurant.cuisine, restaurant.deliveryLabel].filter(Boolean).join(' · ')}
+        {[restaurant.priceLevel, restaurant.neighborhood, restaurant.cuisine, restaurant.liveAvailability ? restaurant.deliveryLabel : 'Check current availability'].filter(Boolean).join(' · ')}
       </Text>
       {restaurant.featuredDish ? (
         <Text numberOfLines={1} style={styles.featuredDish}>
@@ -152,6 +171,8 @@ function LargeRestaurantCard({
 }) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={restaurantAccessibilityLabel(restaurant)}
       onPress={() => controller.actions.openRestaurant(restaurant.id)}
       style={({ pressed }) => [
         styles.largeCard,
@@ -168,6 +189,7 @@ function LargeRestaurantCard({
 
         <Favourite
           active={controller.favouriteIds.includes(restaurant.id)}
+          label={restaurant.name}
           onPress={() => controller.actions.toggleFavourite(restaurant.id)}
           light
         />
@@ -197,13 +219,27 @@ export function FilterRail({
 }: {
   controller: FoodHomeController;
 }) {
+  const hasLiveRestaurantData=controller.restaurants.some(restaurant=>restaurant.liveAvailability);
+  const availableFilters=useMemo(()=>FILTERS.filter(filter=>{
+    if(filter.value==='Healthy')return controller.restaurants.some(restaurant=>`${restaurant.cuisine} ${restaurant.categories.join(' ')}`.toLowerCase().includes('healthy'));
+    if(filter.value==='Offers')return controller.restaurants.some(restaurant=>restaurant.liveAvailability&&Boolean(restaurant.offer));
+    if(filter.value==='Kareebu+')return controller.restaurants.some(restaurant=>restaurant.liveAvailability&&restaurant.plus);
+    if(filter.value==='Top rated')return controller.restaurants.some(restaurant=>restaurant.liveAvailability&&Number.isFinite(restaurant.rating));
+    if(filter.value==='Fast delivery'||filter.value==='Under 30 mins')return controller.restaurants.some(restaurant=>restaurant.liveAvailability&&Boolean(restaurant.eta));
+    if(filter.value==='Free delivery')return controller.restaurants.some(restaurant=>restaurant.liveAvailability&&restaurant.deliveryLabel.toLowerCase().includes('free'));
+    return false;
+  }),[controller.restaurants]);
+  if(!hasLiveRestaurantData&&!availableFilters.length)return null;
+
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.filterRail}
     >
-      <Pressable
+      {hasLiveRestaurantData?<Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open food filters"
         onPress={controller.openFilters}
         style={({ pressed }) => [
           styles.filterIcon,
@@ -211,15 +247,18 @@ export function FilterRail({
         ]}
       >
         <Feather name="filter" size={21} color="#33373A" />
-      </Pressable>
+      </Pressable>:null}
 
-      {FILTERS.map((filter) => {
-        const active = controller.activeFilter === filter;
+      {availableFilters.map((filter) => {
+        const active = controller.activeFilter === filter.value;
 
         return (
           <Pressable
-            key={filter}
-            onPress={() => controller.selectFilter(filter)}
+            key={filter.label}
+            accessibilityRole="button"
+            accessibilityLabel={filter.label}
+            accessibilityState={{ selected: active }}
+            onPress={() => controller.selectFilter(filter.value)}
             style={({ pressed }) => [
               styles.filterChip,
               active && styles.filterChipActive,
@@ -232,7 +271,7 @@ export function FilterRail({
                 active && styles.filterChipTextActive,
               ]}
             >
-              {filter}
+              {filter.label}
             </Text>
           </Pressable>
         );
@@ -254,7 +293,7 @@ export function CategoryCarousel({
       snapToInterval={112}
       contentContainerStyle={styles.categoryRail}
     >
-      {CATEGORY_COLUMNS.map((column, columnIndex) => (
+      {categoriesForMarket(controller.document.market.country).map((column, columnIndex) => (
         <View
           key={`food-category-column-${columnIndex}`}
           style={styles.categoryColumn}
@@ -265,6 +304,9 @@ export function CategoryCarousel({
             return (
               <Pressable
                 key={category.label}
+                accessibilityRole="button"
+                accessibilityLabel={`${category.label} food`}
+                accessibilityState={{ selected: active }}
                 onPress={() => controller.openCategory(category.label)}
                 style={({ pressed }) => [
                   styles.categoryItem,
@@ -342,210 +384,91 @@ export function RestaurantCarousel({
   );
 }
 
-export function PromoCarousel({
-  controller,
-}: {
-  controller: FoodHomeController;
-}) {
+export function PromoCarousel({ controller }: { controller: FoodHomeController }) {
   const { width } = useWindowDimensions();
   const cardWidth = Math.max(280, width - 74);
-
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      decelerationRate="fast"
-      snapToInterval={cardWidth + 14}
-      contentContainerStyle={styles.promoRail}
-    >
-      {PROMOS.map((source, index) => (
-        <Pressable
-          key={`food-promo-${index}`}
-          onPress={() => controller.openPromo(String(index))}
-          style={({ pressed }) => [
-            styles.promoCard,
-            { width: cardWidth },
-            pressed && styles.pressed,
-          ]}
-        >
-          <Image source={source} resizeMode="cover" style={styles.promoImage} />
-        </Pressable>
-      ))}
-    </ScrollView>
-  );
+  return <ScrollView horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast" snapToInterval={cardWidth+14} contentContainerStyle={styles.promoRail}>
+    {FOOD_DISCOVERY_PROMOS.map((promo,index)=><Pressable key={promo.id} onPress={()=>controller.openPromo(String(index))} style={({pressed})=>[styles.promoCard,{width:cardWidth,backgroundColor:index===2?COLORS.black:COLORS.yellow,padding:18,justifyContent:'center'},pressed&&styles.pressed]}><Text style={[TYPE.caption,{fontWeight:'900',color:index===2?COLORS.yellow:COLORS.red}]}>{promo.eyebrow}</Text><Text style={[TYPE.sectionTitle,{marginTop:6,color:index===2?COLORS.white:COLORS.black}]}>{promo.title}</Text><Text style={[TYPE.body,{marginTop:8,color:index===2?'#D7D7D7':COLORS.black}]}>{promo.body}</Text></Pressable>)}
+  </ScrollView>;
 }
 
-function SellerCard({
+export function RestaurantLogoTile({
   restaurant,
-  controller,
+  onPress,
 }: {
   restaurant: FoodHomeRestaurant;
-  controller: FoodHomeController;
+  onPress: () => void;
 }) {
+  if (!restaurant.logo) return null;
+
   return (
     <Pressable
-      onPress={() => controller.actions.openRestaurant(restaurant.id)}
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${restaurant.name} restaurant menu`}
+      onPress={onPress}
       style={({ pressed }) => [
-        styles.sellerCard,
+        styles.restaurantLogoTile,
         pressed && styles.pressed,
       ]}
     >
-      <FoodRestaurantPhoto restaurant={restaurant} style={styles.sellerImage}/>
-
-      <View style={styles.sellerCopy}>
-        <Text numberOfLines={1} style={styles.sellerName}>
-          {restaurant.name}
-        </Text>
-        <Text style={styles.rating}>
-          ★ {restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.eta}
-        </Text>
-        <Text numberOfLines={1} style={styles.sellerCuisine}>
-          {restaurant.cuisine}
-        </Text>
-
-        {restaurant.offer ? (
-          <View style={styles.smallOffer}>
-            <Text style={styles.smallOfferText}>{restaurant.offer}</Text>
-          </View>
-        ) : null}
+      <View
+        style={[
+          styles.restaurantLogoArea,
+          {
+            backgroundColor:
+              restaurant.logoBackgroundColor ?? COLORS.white,
+          },
+        ]}
+      >
+        <Image
+          source={restaurant.logo}
+          resizeMode="contain"
+          style={styles.restaurantLogoImage}
+        />
       </View>
-
-      <Favourite
-        active={controller.favouriteIds.includes(restaurant.id)}
-        onPress={() => controller.actions.toggleFavourite(restaurant.id)}
-      />
+      <Text numberOfLines={2} style={styles.restaurantLogoName}>
+        {restaurant.name}
+      </Text>
     </Pressable>
   );
 }
 
-export function BestSellers({
+export function PopularRestaurants({
   controller,
 }: {
   controller: FoodHomeController;
 }) {
-  const { width } = useWindowDimensions();
-  const columnWidth = Math.round(
-    Math.min(338, Math.max(296, width * 0.76)),
-  );
-
-  const columns = useMemo(() => {
-    const rows = controller.rankedRestaurants.slice(0, 8);
-    const result: FoodHomeRestaurant[][] = [];
-
-    for (let index = 0; index < rows.length; index += 2) {
-      result.push(rows.slice(index, index + 2));
-    }
-
-    return result;
-  }, [controller.rankedRestaurants]);
+  if (!controller.popularRestaurants.length) return null;
 
   return (
-    <View style={styles.mintSection}>
-      <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingRight:18}}>
-        <Text style={styles.sectionTitle}>Best Sellers 🔥</Text>
-        <Pressable onPress={controller.openBestSellers} hitSlop={8}>
-          <Text style={{fontSize:13,fontWeight:'900',color:COLORS.black}}>View all</Text>
+    <View style={styles.popularRestaurantSection}>
+      <View style={styles.sectionHeadingRow}>
+        <Text style={styles.popularRestaurantTitle}>Popular Restaurants</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="View all popular restaurants"
+          onPress={controller.openPopularRestaurants}
+          hitSlop={8}
+        >
+          <Text style={styles.sectionViewAll}>View all</Text>
         </Pressable>
       </View>
-      <Text style={styles.sectionSubtitle}>
-        Satisfy cravings from top restaurants!
+      <Text style={styles.popularRestaurantSubtitle}>
+        Restaurants in the current catalogue
       </Text>
 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        snapToInterval={columnWidth + 14}
-        contentContainerStyle={styles.sellerRail}
+        nestedScrollEnabled
+        contentContainerStyle={styles.restaurantLogoRail}
       >
-        {columns.map((column, index) => (
-          <View
-            key={`seller-column-${index}`}
-            style={[styles.sellerColumn, { width: columnWidth }]}
-          >
-            {column.map((restaurant) => (
-              <SellerCard
-                key={restaurant.id}
-                restaurant={restaurant}
-                controller={controller}
-              />
-            ))}
-          </View>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-export function MostOrdered({
-  controller,
-}: {
-  controller: FoodHomeController;
-}) {
-  const { width } = useWindowDimensions();
-  const cardWidth = Math.round(Math.min(334, Math.max(286, width * 0.64)));
-
-  return (
-    <View style={styles.mostSection}>
-      <Text style={styles.sectionTitle}>Most Ordered 🤤</Text>
-      <Text style={styles.sectionSubtitle}>
-        Your guide to popular dishes making waves!
-      </Text>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        snapToInterval={cardWidth + 14}
-        contentContainerStyle={styles.largeRail}
-      >
-        {controller.rankedRestaurants.slice(0, 6).map((restaurant, index) => (
-          <LargeRestaurantCard
-            key={`ordered-${restaurant.id}`}
+        {controller.popularRestaurants.map((restaurant) => (
+          <RestaurantLogoTile
+            key={restaurant.id}
             restaurant={restaurant}
-            width={cardWidth}
-            rank={index + 1}
-            controller={controller}
+            onPress={() => controller.actions.openRestaurant(restaurant.id)}
           />
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-export function PopularBrands({
-  controller,
-}: {
-  controller: FoodHomeController;
-}) {
-  return (
-    <View style={styles.brandSection}>
-      <Text style={styles.popularBrandsTitle}>Popular Brands</Text>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.brandRail}
-      >
-        {BRANDS.map((brand) => (
-          <Pressable
-            key={brand.label}
-            onPress={() => controller.openBrand(brand.label, brand.restaurantId)}
-            style={({ pressed }) => [
-              styles.brandCard,
-              { backgroundColor: brand.background },
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text
-              style={[
-                styles.brandText,
-                { color: brand.foreground },
-              ]}
-            >
-              {brand.label}
-            </Text>
-          </Pressable>
         ))}
       </ScrollView>
     </View>
@@ -575,6 +498,7 @@ function NearbyCard({
 
         <Favourite
           active={controller.favouriteIds.includes(restaurant.id)}
+          label={restaurant.name}
           onPress={() => controller.actions.toggleFavourite(restaurant.id)}
           light
         />
@@ -594,7 +518,7 @@ function NearbyCard({
       </View>
 
       <Text style={styles.rating}>
-        ★ {restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.eta}
+        {restaurantPrimaryMeta(restaurant)}
       </Text>
       <Text numberOfLines={1} style={styles.meta}>
         {restaurant.cuisine}
@@ -608,83 +532,12 @@ export function Nearby({
 }: {
   controller: FoodHomeController;
 }) {
-  const { width } = useWindowDimensions();
-  const cardWidth = Math.round(Math.min(166, Math.max(148, width * 0.38)));
-
-  return (
-    <View style={styles.nearbySection}>
-      <View style={styles.nearbyHeader}>
-        <View style={styles.nearbyHeaderCopy}>
-          <Text style={styles.nearbyTitle}>Nearby</Text>
-          <Text style={styles.nearbySubtitle}>
-            Savor the speedy goodness!
-          </Text>
-
-          <Pressable
-            onPress={controller.openNearby}
-            style={({ pressed }) => [
-              styles.viewAll,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.viewAllText}>View All</Text>
-          </Pressable>
-        </View>
-
-        <Image
-          source={require('../../../../assets/kareebu-plus/food-exact/banners/nearby-stopwatch.png')}
-          resizeMode="contain"
-          style={styles.stopwatch}
-        />
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.nearbyRail}
-      >
-        {controller.nearbyRestaurants.slice(0, 7).map((restaurant) => (
-          <NearbyCard
-            key={`nearby-${restaurant.id}`}
-            restaurant={restaurant}
-            width={cardWidth}
-            controller={controller}
-          />
-        ))}
-      </ScrollView>
-    </View>
-  );
+  if (!controller.speedyRestaurants.length) return null;
+  return <View style={styles.nearbySection}><Pressable accessibilityRole="button" accessibilityLabel="Restaurants with a current delivery estimate of 20 minutes or less" onPress={controller.openSpeedyDelivery} style={({pressed})=>[styles.nearbyHeader,pressed&&styles.pressed]}><View style={styles.nearbyHeaderCopy}><Text style={styles.nearbyTitle}>20 minutes or less</Text><Text style={styles.nearbySubtitle}>Current fulfilment estimates verified at 20 minutes or less</Text><View style={styles.viewAll}><Text style={styles.viewAllText}>View all</Text></View></View><Feather name="arrow-right" size={28} color={COLORS.black}/></Pressable></View>;
 }
 
-export function BankSavings({
-  controller,
-}: {
-  controller: FoodHomeController;
-}) {
-  return (
-    <View style={styles.bankSection}>
-      <Text style={styles.bankTitle}>Big bank savings 💸</Text>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.bankRail}
-      >
-        {BANKS.map((source, index) => (
-          <Pressable
-            key={`food-bank-${index}`}
-            onPress={controller.actions.openOffers}
-            style={({ pressed }) => [
-              styles.bankCard,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Image source={source} resizeMode="cover" style={styles.bankImage} />
-          </Pressable>
-        ))}
-      </ScrollView>
-    </View>
-  );
+export function BankSavings({ controller }: { controller: FoodHomeController }) {
+  return <View style={styles.bankSection}><Text style={styles.bankTitle}>Payment benefits</Text><Pressable onPress={controller.actions.openOffers} style={({pressed})=>[styles.bankCard,{padding:16,justifyContent:'center',backgroundColor:COLORS.surface},pressed&&styles.pressed]}><Text style={TYPE.cardTitle}>No bank benefit assumed</Text><Text style={[TYPE.body,{color:COLORS.muted,marginTop:4}]}>Eligible payment or bank campaigns appear here only when configured for your market.</Text></Pressable></View>;
 }
 
 type StackedRailVariant =
@@ -700,23 +553,27 @@ const STACKED_RAIL_COPY: Record<
 > = {
   'top-rated': {
     title: 'Top rated restaurants',
-    subtitle: "Here's what everyone loves near you",
+    subtitle: 'Live restaurant ratings only',
   },
   inspired: {
-    title: 'Inspired by your past orders',
+    title: 'More restaurants to explore',
   },
   popular: {
-    title: 'Popular today',
+    title: 'Restaurant discovery',
   },
   trending: {
-    title: 'Trending near you',
+    title: 'More places to explore',
   },
   'just-landed': {
-    title: 'Just landed',
+    title: 'Explore more restaurants',
   },
 };
 
-const ALL_RESTAURANT_CATEGORIES = [
+const ALL_RESTAURANT_CATEGORIES: Array<{
+  label: string;
+  image: ImageSourcePropType;
+  terms: string[];
+}> = [
   {
     label: 'Burgers',
     image: require('../../../../assets/kareebu-plus/food-exact/categories/burger.png'),
@@ -751,7 +608,6 @@ function rotateRestaurants(
   if (restaurants.length === 0) return restaurants;
 
   const normalised = offset % restaurants.length;
-
   return [
     ...restaurants.slice(normalised),
     ...restaurants.slice(0, normalised),
@@ -770,15 +626,14 @@ function stackedRestaurantsForVariant(
       const favourites = controller.restaurants.filter((restaurant) =>
         controller.favouriteIds.includes(restaurant.id),
       );
-      const remaining = controller.rankedRestaurants.filter(
+      const remaining = controller.restaurants.filter(
         (restaurant) => !controller.favouriteIds.includes(restaurant.id),
       );
-
       return [...favourites, ...remaining];
     }
 
     case 'popular':
-      return rotateRestaurants(controller.rankedRestaurants, 1);
+      return rotateRestaurants(controller.restaurants, 1);
 
     case 'trending':
       return rotateRestaurants(controller.restaurants, 2);
@@ -802,6 +657,7 @@ function groupByThree(restaurants: FoodHomeRestaurant[]) {
 }
 
 function compactOfferText(restaurant: FoodHomeRestaurant) {
+  if (!restaurant.liveAvailability) return null;
   if (restaurant.offer) return restaurant.offer;
 
   if (restaurant.deliveryLabel.toLowerCase().includes('free')) {
@@ -833,6 +689,7 @@ function CompactStackedRestaurantCard({
 
         <Favourite
           active={controller.favouriteIds.includes(restaurant.id)}
+          label={restaurant.name}
           onPress={() => controller.actions.toggleFavourite(restaurant.id)}
           light
         />
@@ -860,9 +717,7 @@ function CompactStackedRestaurantCard({
         </View>
 
         <Text numberOfLines={1} style={styles.stackMeta}>
-          <Text style={styles.stackStar}>★</Text>{' '}
-          {restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.eta} ·{' '}
-          {restaurant.deliveryLabel}
+          {restaurant.liveAvailability?<><Text style={styles.stackStar}>★</Text>{' '}{restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.availabilityLabel ?? restaurant.eta} · {restaurant.deliveryLabel}</>:'Reference listing · Check current availability'}
         </Text>
       </View>
     </Pressable>
@@ -878,6 +733,7 @@ function recommendationLabel(
     restaurant.cuisine.split(',')[0]?.trim() ??
     'Food';
 
+  if (!restaurant.liveAvailability) return `Explore ${category}`;
   return index % 2 === 0
     ? `Top rated in ${category}`
     : `Popular in ${category}`;
@@ -905,6 +761,7 @@ function InspiredRecommendationList({
             <FoodRestaurantPhoto restaurant={restaurant} style={styles.inspiredImage}/>
             <Favourite
               active={controller.favouriteIds.includes(restaurant.id)}
+              label={restaurant.name}
               onPress={() => controller.actions.toggleFavourite(restaurant.id)}
               light
             />
@@ -928,9 +785,7 @@ function InspiredRecommendationList({
             </View>
 
             <Text numberOfLines={1} style={styles.inspiredMeta}>
-              <Text style={styles.stackStar}>★</Text>{' '}
-              {restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.eta} ·{' '}
-              {restaurant.deliveryLabel}
+              {restaurant.liveAvailability?<><Text style={styles.stackStar}>★</Text>{' '}{restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.availabilityLabel ?? restaurant.eta} · {restaurant.deliveryLabel}</>:'Reference listing · Check current availability'}
             </Text>
 
             {compactOfferText(restaurant) ? (
@@ -1005,6 +860,18 @@ export function StackedRestaurantRail({
 
 type AllSortMode = 'default' | 'rating';
 
+export function AllRestaurantsFeedHeader() {
+  return <View style={styles.allFeedHeader}><Text accessibilityRole="header" style={styles.allReferenceTitle}>All Restaurants</Text><Text style={styles.allFeedSubtitle}>Browse restaurants available in your market</Text></View>;
+}
+
+export const AllRestaurantFeedRow = React.memo(function AllRestaurantFeedRow({restaurant,controller}:{restaurant:FoodHomeRestaurant;controller:FoodHomeController}) {
+  const favourite=controller.favouriteIds.includes(restaurant.id);
+  return <Pressable accessibilityRole="button" accessibilityLabel={restaurantAccessibilityLabel(restaurant)} onPress={()=>controller.actions.openRestaurant(restaurant.id)} style={({pressed})=>[styles.allReferenceRow,pressed&&styles.pressed]}>
+    <View style={styles.allReferenceImageWrap}><FoodRestaurantPhoto restaurant={restaurant} style={styles.allReferenceImage}/>{restaurant.liveAvailability&&restaurant.offer?<View style={styles.stackOfferBadge}><Text numberOfLines={1} style={styles.stackOfferText}>{restaurant.offer}</Text></View>:null}</View>
+    <View style={styles.allReferenceCopy}><View style={styles.nameRow}><Text numberOfLines={1} style={styles.allFeedName}>{restaurant.name}</Text>{restaurant.plus?<PlusMark/>:null}<View style={styles.allFeedFavourite}><Favourite active={favourite} label={restaurant.name} onPress={()=>controller.actions.toggleFavourite(restaurant.id)}/></View></View><Text numberOfLines={2} style={styles.allReferenceMeta}>{restaurant.cuisine}</Text><Text style={styles.rating}>{restaurantPrimaryMeta(restaurant)}</Text><Text numberOfLines={1} style={styles.meta}>{restaurantDetailMeta(restaurant)}</Text></View>
+  </Pressable>;
+});
+
 function allRestaurantSearchText(restaurant: FoodHomeRestaurant) {
   return [
     restaurant.name,
@@ -1062,21 +929,22 @@ export function AllRestaurantsEnhanced({
     }
 
     if (offersOnly) {
-      next = next.filter((restaurant) => Boolean(restaurant.offer));
+      next = next.filter((restaurant) => restaurant.liveAvailability && Boolean(restaurant.offer));
     }
 
     if (ratingOnly) {
-      next = next.filter((restaurant) => restaurant.rating >= 4);
+      next = next.filter((restaurant) => restaurant.liveAvailability && restaurant.rating >= 4);
     }
 
     if (fastOnly) {
       next = next.filter(
         (restaurant) =>
-          (Number.parseInt(restaurant.eta, 10) || 99) <= 25,
+          restaurant.liveAvailability && (Number.parseInt(restaurant.eta, 10) || 99) <= 25,
       );
     }
 
     if (sortMode === 'rating') {
+      next = next.filter((restaurant) => restaurant.liveAvailability);
       next.sort((a, b) => b.rating - a.rating);
     }
 
@@ -1270,6 +1138,7 @@ export function AllRestaurantsEnhanced({
 
                 <Favourite
                   active={controller.favouriteIds.includes(restaurant.id)}
+                  label={restaurant.name}
                   onPress={() =>
                     controller.actions.toggleFavourite(restaurant.id)
                   }
@@ -1297,9 +1166,7 @@ export function AllRestaurantsEnhanced({
                 </View>
 
                 <Text numberOfLines={1} style={styles.allReferenceMeta}>
-                  <Text style={styles.stackStar}>★</Text>{' '}
-                  {restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.eta} ·{' '}
-                  {restaurant.deliveryLabel}
+                  {restaurant.liveAvailability?<><Text style={styles.stackStar}>★</Text>{' '}{restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.availabilityLabel ?? restaurant.eta} · {restaurant.deliveryLabel}</>:'Reference listing · Check current availability'}
                 </Text>
 
                 {compactOfferText(restaurant) ? (
@@ -1348,6 +1215,12 @@ export const styles = StyleSheet.create({
   offerBadgeText:{color:COLORS.red,fontSize:13,lineHeight:17,fontWeight:'800'},
   rank:{position:'absolute',left:11,top:5,color:'#FFFFFF',fontSize:47,lineHeight:52,fontWeight:'900'},
   largeCopy:{paddingHorizontal:12,paddingTop:10,paddingBottom:13},
+  dishCard:{overflow:'hidden',borderRadius:18,borderWidth:1,borderColor:'#EEEEEE',backgroundColor:'#FFFFFF'},
+  dishImage:{width:'100%',height:148,backgroundColor:'#F2F2F2'},
+  dishCopy:{padding:11},
+  dishName:{...TYPE.cardTitle,color:COLORS.black},
+  dishRestaurant:{...TYPE.caption,color:COLORS.muted,marginTop:3},
+  dishPrice:{...TYPE.bodyStrong,color:COLORS.black,marginTop:7},
   nameRow:{flexDirection:'row',alignItems:'center',gap:5,minWidth:0},
   restaurantName:{flex:1,...TYPE.cardTitle,color:COLORS.black},
   plusMark:{height:20,minWidth:26,borderRadius:10,backgroundColor:COLORS.black,alignItems:'center',justifyContent:'center',paddingHorizontal:5},
@@ -1362,23 +1235,31 @@ export const styles = StyleSheet.create({
 
   mintSection:{backgroundColor:COLORS.yellowWash,paddingTop:24,paddingBottom:22},
   mostSection:{backgroundColor:COLORS.yellowWash,paddingTop:25,paddingBottom:4},
+  sectionHeadingRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingRight:18},
   sectionTitle:{paddingHorizontal:14,color:COLORS.black,...TYPE.sectionTitle},
   sectionSubtitle:{paddingHorizontal:14,marginTop:4,color:COLORS.muted,...TYPE.small},
-  sellerRail:{paddingLeft:16,paddingRight:22,paddingTop:18,gap:14},
-  sellerColumn:{gap:12},
-  sellerCard:{height:112,borderRadius:16,overflow:'hidden',backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#E9EEEC',flexDirection:'row'},
-  sellerImage:{width:112,height:'100%',backgroundColor:'#F3F3F3'},
-  sellerCopy:{flex:1,minWidth:0,paddingHorizontal:10,paddingVertical:10},
-  sellerName:{fontSize:16,lineHeight:20,fontWeight:'900',color:'#323639'},
-  sellerCuisine:{marginTop:5,color:'#777D82',fontSize:13,lineHeight:17},
-  smallOffer:{alignSelf:'flex-start',marginTop:8,borderWidth:1.5,borderColor:COLORS.red,borderRadius:11,paddingHorizontal:8,paddingVertical:4},
-  smallOfferText:{color:COLORS.red,fontSize:12,lineHeight:15,fontWeight:'800'},
+  sectionViewAll:{fontSize:13,lineHeight:18,fontWeight:'900',color:COLORS.black},
+  bestSellerRail:{paddingLeft:16,paddingRight:22,paddingTop:18,gap:14},
+  restaurantDishCard:{width:182,minHeight:262,overflow:'hidden',borderRadius:18,borderWidth:1,borderColor:'#E4E6E4',backgroundColor:COLORS.white},
+  restaurantDishImageWrap:{width:'100%',height:137,position:'relative',overflow:'hidden',backgroundColor:'#F2F2F2'},
+  restaurantDishImage:{width:'100%',height:'100%'},
+  dishFavourite:{position:'absolute',right:9,top:9,width:34,height:34,borderRadius:17,alignItems:'center',justifyContent:'center',backgroundColor:'rgba(255,255,255,0.94)'},
+  restaurantDishCopy:{flex:1,paddingHorizontal:11,paddingTop:10,paddingBottom:11},
+  restaurantDishName:{minHeight:42,fontSize:16,lineHeight:20,fontWeight:'800',color:COLORS.black},
+  dishRestaurantIdentity:{minHeight:36,marginTop:7,flexDirection:'row',alignItems:'center',gap:8},
+  dishRestaurantLogoWrap:{width:34,height:34,borderRadius:9,borderWidth:1,borderColor:'#E5E6E5',alignItems:'center',justifyContent:'center',padding:4},
+  dishRestaurantLogo:{width:'100%',height:'100%'},
+  restaurantDishRestaurant:{flex:1,fontSize:12,lineHeight:16,fontWeight:'800',color:'#4E5356'},
+  restaurantDishPrice:{marginTop:7,...TYPE.bodyStrong,color:COLORS.black,fontWeight:'900'},
 
-  brandSection:{backgroundColor:COLORS.yellowWash,paddingBottom:24},
-  popularBrandsTitle:{paddingHorizontal:14,color:COLORS.black,...TYPE.sectionTitle},
-  brandRail:{paddingLeft:14,paddingRight:22,paddingTop:16,gap:12},
-  brandCard:{width:92,height:92,borderRadius:16,alignItems:'center',justifyContent:'center'},
-  brandText:{textAlign:'center',fontSize:17,lineHeight:20,fontWeight:'900'},
+  popularRestaurantSection:{backgroundColor:COLORS.yellowWash,paddingTop:4,paddingBottom:24},
+  popularRestaurantTitle:{paddingHorizontal:14,color:COLORS.black,...TYPE.sectionTitle},
+  popularRestaurantSubtitle:{paddingHorizontal:14,marginTop:4,...TYPE.small,color:COLORS.muted},
+  restaurantLogoRail:{paddingLeft:14,paddingRight:22,paddingTop:16,gap:12},
+  restaurantLogoTile:{width:112,height:140,borderRadius:16,alignItems:'center',justifyContent:'flex-start',padding:8,backgroundColor:COLORS.white,borderWidth:1,borderColor:'#E2E4E2',shadowColor:'#000000',shadowOpacity:0.04,shadowRadius:5,shadowOffset:{width:0,height:2},elevation:1},
+  restaurantLogoArea:{width:94,height:86,borderRadius:12,alignItems:'center',justifyContent:'center',padding:11},
+  restaurantLogoImage:{width:'100%',height:'100%'},
+  restaurantLogoName:{marginTop:7,paddingHorizontal:2,textAlign:'center',fontSize:12,lineHeight:16,fontWeight:'800',color:COLORS.black},
 
   nearbySection:{backgroundColor:'#FFFFFF',paddingBottom:20},
   nearbyHeader:{height:172,overflow:'hidden',backgroundColor:COLORS.yellowSoft,flexDirection:'row',alignItems:'center',paddingLeft:14},
@@ -1446,7 +1327,11 @@ export const styles = StyleSheet.create({
   inspiredOfferText:{fontSize:13,lineHeight:16,fontWeight:'800',color:'#101514'},
 
   allReferenceSection:{backgroundColor:'#FFFFFF',paddingTop:28,paddingBottom:28},
-  allReferenceTitle:{paddingHorizontal:14,fontSize:30,lineHeight:35,fontWeight:'900',color:'#303437',letterSpacing:-0.5},
+  allFeedHeader:{paddingTop:28,paddingBottom:10,backgroundColor:COLORS.white},
+  allFeedSubtitle:{paddingHorizontal:16,marginTop:4,...TYPE.small,color:COLORS.muted},
+  allFeedName:{flex:1,...TYPE.cardTitle,color:COLORS.black},
+  allFeedFavourite:{width:44,height:44,position:'relative'},
+  allReferenceTitle:{paddingHorizontal:16,fontSize:20,lineHeight:25,fontWeight:'900',color:COLORS.black,letterSpacing:-0.25},
   allCategoryRail:{paddingLeft:14,paddingRight:30,paddingTop:18,paddingBottom:18,gap:18},
   allCategoryItem:{width:82,alignItems:'center'},
   allCategoryImageWrap:{width:72,height:72,borderRadius:36,alignItems:'center',justifyContent:'center',backgroundColor:'#F7F7F7'},
@@ -1455,9 +1340,9 @@ export const styles = StyleSheet.create({
   allCategoryLabel:{marginTop:8,width:88,textAlign:'center',fontSize:14,lineHeight:18,color:'#909496'},
   allCategoryLabelActive:{color:COLORS.black,fontWeight:'800'},
   allFilterRail:{paddingLeft:14,paddingRight:22,paddingBottom:22,gap:10},
-  allFilterChip:{height:47,borderRadius:24,borderWidth:1,borderColor:'#DDDFE0',paddingHorizontal:16,backgroundColor:'#FFFFFF',flexDirection:'row',alignItems:'center',gap:7},
+  allFilterChip:{height:40,borderRadius:20,borderWidth:1,borderColor:COLORS.line,paddingHorizontal:14,backgroundColor:COLORS.white,flexDirection:'row',alignItems:'center',gap:7},
   allFilterChipActive:{backgroundColor:COLORS.black,borderColor:COLORS.black},
-  allFilterChipText:{fontSize:15,lineHeight:19,fontWeight:'700',color:'#34383A'},
+  allFilterChipText:{fontSize:13,lineHeight:17,fontWeight:'700',color:COLORS.black},
   allFilterChipTextActive:{color:'#FFFFFF'},
   allReferenceList:{paddingHorizontal:20},
   allReferenceRow:{minHeight:146,flexDirection:'row',alignItems:'center',paddingVertical:12},

@@ -55,4 +55,6 @@ export type ProductMetadata = {
   careInstructions?: string;
   warranty?: string;
   returnPolicy?: string;
+  /** Semantic product artwork key used by Kareebu discovery/product visual resolvers. */
+  imageKey?: string;
 };

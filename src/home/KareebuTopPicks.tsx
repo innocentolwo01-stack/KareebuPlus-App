@@ -19,8 +19,7 @@ type GroceryPick = {
   weight: string;
   discount: string;
   price: string;
-  oldPrice: string;
-  plusPrice: string;
+  priceNote: string;
   image: ImageSourcePropType;
 };
 
@@ -30,10 +29,9 @@ const GROCERY_PICKS: GroceryPick[] = [
     productId: 'bananas',
     title: 'Bananas',
     weight: '400–500 g',
-    discount: '25% off',
+    discount: 'Discover',
     price: 'UGX 4,900',
-    oldPrice: 'UGX 6,500',
-    plusPrice: 'UGX 3,900 with Kareebu+',
+    priceNote: 'Price confirmed before checkout',
     image: require('../../assets/kareebu-plus/top-picks/bananas.png'),
   },
   {
@@ -41,10 +39,9 @@ const GROCERY_PICKS: GroceryPick[] = [
     productId: 'cucumber',
     title: 'Cucumber',
     weight: '400–500 g',
-    discount: '17% off',
+    discount: 'Discover',
     price: 'UGX 5,900',
-    oldPrice: 'UGX 7,100',
-    plusPrice: 'UGX 4,900 with Kareebu+',
+    priceNote: 'Price confirmed before checkout',
     image: require('../../assets/kareebu-plus/top-picks/cucumber.png'),
   },
   {
@@ -52,10 +49,9 @@ const GROCERY_PICKS: GroceryPick[] = [
     productId: 'tomatoes',
     title: 'Tomato Round',
     weight: '500 g',
-    discount: '46% off',
+    discount: 'Discover',
     price: 'UGX 3,700',
-    oldPrice: 'UGX 6,900',
-    plusPrice: 'UGX 3,000 with Kareebu+',
+    priceNote: 'Price confirmed before checkout',
     image: require('../../assets/kareebu-plus/top-picks/tomatoes.png'),
   },
 ];
@@ -136,12 +132,9 @@ export function KareebuTopPicks({
 
       <View style={styles.priceRow}>
         <Text style={styles.price}>{item.price}</Text>
-        <Text style={styles.oldPrice}>{item.oldPrice}</Text>
       </View>
 
-      <Text numberOfLines={1} style={styles.plusPrice}>
-        {item.plusPrice}
-      </Text>
+      <Text numberOfLines={1} style={styles.priceNote}>{item.priceNote}</Text>
     </Pressable>
   );
 
@@ -327,12 +320,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontWeight: '800',
   },
-  oldPrice: {
-    color: '#55595D',
-    fontSize: 12.5,
-    textDecorationLine: 'line-through',
-  },
-  plusPrice: {
+  priceNote: {
     marginTop: 5,
     paddingHorizontal: 8,
     color: '#006E59',

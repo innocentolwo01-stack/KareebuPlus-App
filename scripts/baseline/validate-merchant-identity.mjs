@@ -1,0 +1,20 @@
+import fs from 'node:fs';
+const seller=fs.readFileSync('src/commerce/SellerLogo.tsx','utf8');
+const home=fs.readFileSync('src/home/homeFeed.ts','utf8');
+const blueprint=fs.readFileSync('src/experience/verticalLandingBlueprint.ts','utf8');
+const demo=fs.readFileSync('src/demoData.ts','utf8');
+const all=[home,blueprint,demo].join('\n');
+const checks=[];const pass=(name,c)=>checks.push([name,!!c]);
+pass('Goodlife uses packaged logo resolver',seller.includes("key.includes('goodlife')")&&seller.includes('assets.homeBrands.goodlife'));
+pass("Gentleman's Pharmacy has explicit wordmark fallback",seller.includes("GENTLEMAN'S\\nPHARMACY"));
+pass('Breeze Pharmacy has explicit wordmark fallback',seller.includes('Breeze\\nPHARMACY'));
+pass('configured pharmacy data contains Goodlife',demo.includes("name:'Goodlife Pharmacy'"));
+pass("configured pharmacy data contains Gentleman's Pharmacy",demo.includes("name:\"Gentleman's Pharmacy\""));
+pass('configured Tanzania pharmacy identity exists',demo.includes("name:'Breeze Pharmacy'"));
+pass('Home pharmacy rail names actual merchants',home.includes("title:'Goodlife Pharmacy'")&&home.includes("title:\"Gentleman's Pharmacy\""));
+pass('Home merchant rail explicitly asks SellerLogo to render identities',home.includes("merchantName:'Goodlife Pharmacy'")&&home.includes("merchantName:\"Gentleman's Pharmacy\""));
+pass('generic merchant names are not used as pharmacy cards',!all.includes("title:'Nearby pharmacy'")&&!all.includes("title:'Health & wellness store'"));
+pass('vertical pharmacy fallback uses real configured merchant identities',!blueprint.includes('Pharmacy Network')&&!blueprint.includes('Wellness Chemist')&&blueprint.includes('Goodlife Pharmacy'));
+pass('merchant cards do not claim fake live metrics in Home pharmacy rail',!home.includes("Goodlife Pharmacy',merchantName:'Goodlife Pharmacy',subtitle:'Pharmacy & wellness',meta:'★"));
+let failures=0;for(const [name,ok] of checks){console.log(`${ok?'PASS':'FAIL'} — ${name}`);if(!ok)failures++;}
+console.log(`Kareebu merchant identity contracts: ${checks.length-failures}/${checks.length}.`);process.exit(failures?1:0);

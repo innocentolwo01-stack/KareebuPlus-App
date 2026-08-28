@@ -58,6 +58,29 @@ const files = {
   boda: read('src/ride/kareebuBodaHome.tsx', false),
   rides: read('src/ride/kareebuRidesHome.tsx', false),
   mobilityScreens: read('src/ride/mobilityScreens.tsx', false),
+  mobilityDestination: read('src/ride/KareebuDestinationCard.tsx', false),
+  mobilityLanding: read('src/ride/mobilityLanding.ts', false),
+  marketConfig: read('src/markets/config.ts', false),
+  mobilityVisuals: read('src/visuals/mobilityVisuals.ts', false),
+  sellerLogo: read('src/commerce/SellerLogo.tsx', false),
+  appEngineTypes: read('src/appEngine/types.ts', false),
+  verticalBlueprint: read('src/experience/verticalLandingBlueprint.ts', false),
+  verticalLanding: read('src/experience/VerticalLandingScreen.tsx', false),
+  foodCategory: read('src/food/category/FoodCategoryLandingScreen.tsx', false),
+  foodCategoryConfig: read('src/food/category/config.ts', false),
+  categoryTypes: read('src/categoryLanding/types.ts', false),
+  categoryRegistry: read('src/categoryLanding/registry.ts', false),
+  categoryPage: read('src/categoryLanding/CategoryLandingPage.tsx', false),
+  categoryComponents: read('src/categoryLanding/components.tsx', false),
+  pageHeader: read('src/components/KareebuPageHeader.tsx', false),
+  searchField: read('src/components/KareebuSearchField.tsx', false),
+  searchContext: read('src/search/context.ts', false),
+  searchProvider: read('src/search/provider.ts', false),
+  categoryVisuals: read('src/visuals/categoryVisuals.ts', false),
+  categoryArtwork: read('src/components/CategoryArtwork.tsx', false),
+  visualAssetGaps: read('src/visuals/visualAssetGaps.ts', false),
+  homeServiceCarousel: read('src/home/KareebuServiceCarousel.tsx', false),
+  serviceRegistry: read('src/services/serviceRegistry.ts', false),
 };
 
 let passed = 0;
@@ -108,6 +131,10 @@ check('navigation','navigation module exports Back-control registration', hasAll
 check('navigation','shared Header can inherit global Back', files.components.includes('resolvedBack') && files.components.includes('useAppNavigation'));
 check('navigation','BottomNav has persistent-shell mode', files.components.includes('persistent?: boolean') && files.components.includes('if (!persistent) return null'));
 check('navigation','primary navigation keeps five customer tabs', hasAll(files.components,["label: 'Home'","label: 'Explore'","label: 'Activity'","label: 'Wallet'","label: 'Account'"]));
+check('navigation','Home services use a horizontal two-row page carousel', hasAll(files.homeServiceCarousel,['horizontal','ITEMS_PER_PAGE=6','COLUMNS_PER_PAGE=3','snapToInterval={pageWidth+PAGE_GAP}']));
+check('navigation','Home services resolve through one typed registry', files.homeServiceCarousel.includes('servicesForMarket(country,true)') && files.serviceRegistry.includes('KAREEBU_SERVICE_REGISTRY'));
+check('navigation','Home service registry preserves the core mobility and commerce order', hasAll(files.serviceRegistry,["sortOrder:1,homeCarousel:true","sortOrder:4,homeCarousel:true","sortOrder:5,homeCarousel:true","sortOrder:8,homeCarousel:true"]));
+check('navigation','Home service registry exposes App Engine carousel metadata', files.serviceRegistry.includes("type:'service-tile-carousel'") && files.serviceRegistry.includes('rows:2,visibleColumns:3'));
 
 // Marketplace/category
 for (const exportName of [
@@ -121,7 +148,7 @@ for (const exportName of [
   check('marketplace',`${exportName} is exported`, files.marketplace.includes(`export function ${exportName}`));
 }
 check('marketplace','category header has delivery hierarchy', files.marketplace.includes('Deliver to'));
-check('marketplace','category grid uses semantic Kareebu 3D art', /<BrandIcon\s+semantic=\{tile\.semantic\}/.test(files.marketplace));
+check('marketplace','category grid uses centralized semantic category artwork', files.marketplace.includes('<CategoryArtwork visualKey={marketplaceVisualKeyForCategory(tile.label)}') && files.marketplace.includes('function marketplaceVisualKeyForCategory'));
 check('marketplace','promotions use photographic media', files.marketplace.includes('ImageBackground'));
 check('marketplace','category layout uses two-row eight-tile model', /tiles\.slice\(0,\s*8\)/.test(files.marketplace));
 check('marketplace','Shops consumes shared category chrome',
@@ -152,10 +179,32 @@ check('marketplace','marketplace promotions expose carousel position affordance'
   files.marketplace.includes('heroDots') && files.marketplace.includes('heroDotActive'));
 check('marketplace','marketplace category grid has its own discovery heading',
   files.marketplace.includes('Shop by category'));
-check('marketplace','marketplace promo grid has its own offers heading',
-  files.marketplace.includes('Offers for you'));
+check('marketplace','marketplace promo grid has its own discovery heading',
+  files.marketplace.includes('Discover more'));
 check('marketplace','generated category files contain no escaped template delimiters',
   !files.screens.includes('\\`') && !files.frontend.includes('\\`') && !files.foodSurfaces.includes('\\`'));
+check('marketplace','universal category landing contract exists', files.categoryTypes.includes('export type CategoryLandingConfig') && files.categoryTypes.includes("pageType:'categoryLanding'"));
+check('marketplace','category registry covers initial Food and commerce targets', hasAll(files.categoryRegistry,["'Offers'","'New Additions'","'Burgers'","'Fresh Produce'","'Cold & Flu'","'Phones'","'Birthday'"]));
+check('marketplace','category registry compiles into App Engine pages', files.categoryRegistry.includes('categoryLandingPageDefinition') && files.appEngineTypes.includes("'category-landing'"));
+check('marketplace','retail category results use a virtualized two-column grid', files.categoryPage.includes('<FlatList') && files.categoryPage.includes('numColumns={2}'));
+check('marketplace','category landing handles loading empty error and retry states', hasAll(files.categoryPage,["state==='loading'","state==='error'",'onRetry','No products found']));
+check('marketplace','category pages use shared hero and filter organisms', files.categoryPage.includes('CategoryLandingHero') && files.categoryPage.includes('CategoryFilterRail') && files.categoryComponents.includes('DealCategoryGrid'));
+check('marketplace','contextual search covers every customer discovery scope', ['global','food','food_category','shops','shop_vertical','seller','restaurant','groceries','pharmacy','electronics','pets','gifts','dineout','services','rides','boda'].every((scope)=>files.searchContext.includes("'"+scope+"'")));
+check('marketplace','search providers keep seller and restaurant results local', files.searchProvider.includes("seller: { scope:'seller', resultTypes:['product'], localEntityOnly:true") && files.searchProvider.includes("restaurant: { scope:'restaurant', resultTypes:['dish'], localEntityOnly:true"));
+check('marketplace','seller and restaurant pages expose only one scoped search affordance', !files.screens.includes('accessibilityLabel="Search store"') && !files.screens.includes('accessibilityLabel="Search menu"') && files.screens.includes('sellerSearchContext(') && files.screens.includes('restaurantSearchContext('));
+check('marketplace','category artwork supports packaged and CMS visual resolution', files.categoryArtwork.includes('cmsOverride') && files.categoryArtwork.includes('categoryVisual('));
+check('marketplace','resolved merchandising art uses packaged semantic media while genuine gaps remain explicit',
+  hasAll(files.categoryVisuals,[
+    "'electronics.gaming': local(merchV5.gaming",
+    "'fashion.women': local(merchV5.fashionWomen",
+    "'fashion.men': local(merchV5.fashionMen",
+    "'fashion.children': local(merchV5.fashionKids",
+    "'fashion.accessories': local(merchV5.fashionAccessories",
+  ]) && hasAll(files.visualAssetGaps,[
+    "key:'services.ac'",
+    "key:'services.moving'",
+    "key:'send.documents'",
+  ]) && !files.visualAssetGaps.includes("key:'fashion.women'") && !files.visualAssetGaps.includes("key:'electronics.gaming'"));
 
 // Food
 check('food','Food home uses controller architecture', files.foodHome.includes('useKareebuFoodHomeController'));
@@ -170,6 +219,12 @@ check('food','Food rating helper is preserved', files.foodSurfaces.includes('con
 check('food','Food filter toggle helper is preserved', files.foodSurfaces.includes('function ToggleRow'));
 check('food','Food controller implementation exists', files.foodController.includes('useKareebuFoodHomeController'));
 check('food','Food renderer implementation exists', files.foodRenderer.includes('renderKareebuFoodWidget'));
+check('food','Food categories route to a dedicated landing page', files.types.includes("'foodCategory'") && files.screens.includes("case 'foodCategory'"));
+check('food','Food category landing uses a virtualized all-restaurants list', files.foodCategory.includes('<FlatList'));
+check('food','Food category blueprint supports featured, brands, trending, editorial and all restaurants', ['featured_seller','brand_carousel','trending_sellers','editorial_seller_carousel','all_restaurants'].every((type)=>files.foodCategoryConfig.includes("type:'"+type+"'")));
+check('food','Food Offers and New Additions use dedicated category configurations', files.foodCategoryConfig.includes("type:'deal_grid'") && files.foodCategoryConfig.includes("type:'new_sellers'") && !files.foodController.includes("category === 'Offers' || category === 'Exclusive Offers'"));
+check('food','Restaurant back preserves Food category context', files.screens.includes("data.selectedFoodCategory?'foodCategory':'food'"));
+check('food','Restaurant menu supports sticky tabs and section scrolling', files.screens.includes('v615StickyTabs') && files.screens.includes('scrollToMenuCategory'));
 
 // Mobility
 check('mobility','dedicated Boda home exists', files.boda.includes('KareebuBodaHomeScreen'));
@@ -181,6 +236,22 @@ check('mobility','Boda provides safety flow', files.boda.includes("go('rideSafet
 check('mobility','dedicated Rides home exists', files.rides.includes('KareebuRidesHomeScreen'));
 check('mobility','Rides retains map-first home', files.rides.includes('MapView'));
 check('mobility','BODA mode delegates through mobility home', files.mobilityScreens.includes('KAREEBU_BODA_RIDES_PARITY_V1'));
+check('mobility','mobility routes resolve products through the market-aware selector', files.screens.includes('const selectedRide = selectedRideData(data)'));
+check('mobility','removed mixed rideData binding cannot crash renderScreen', !/\brideData\b/.test(files.screens));
+check('mobility','ride, Boda, checkout, tracking and activity routes remain rendered', ['mobilityHome','chooseRide','confirmBooking','driver','onTrip','activity'].every((route)=>files.screens.includes("case '"+route+"'")));
+check('mobility','Rides and Boda share the destination-first component', files.rides.includes('KareebuDestinationCard') && files.boda.includes('KareebuDestinationCard'));
+check('mobility','Rides and Boda expose no customer-facing mode switch', !files.mobilityDestination.includes('MobilityModeSwitch') && !files.mobilityDestination.includes('accessibilityRole="tab"'));
+check('mobility','market configuration owns saved places and airports', files.marketConfig.includes('mobilityPlaces') && ['Entebbe International Airport','Jomo Kenyatta International Airport','Julius Nyerere International Airport'].every((airport)=>files.marketConfig.includes(airport)));
+check('mobility','city events remain CMS-only when no live event exists', files.marketConfig.includes('source:\'cms\'') && files.marketConfig.includes('return [];'));
+check('mobility','Rides and Boda expose separate CMS module slots', files.mobilityLanding.includes('RIDES_HERO') && files.mobilityLanding.includes('BODA_HERO') && files.mobilityLanding.includes('BODA_SAFETY'));
+check('mobility','normal product selection bypasses fare bidding', files.screens.includes("actions.setSelectedRideBidId(null);if(data.guest){actions.setAuthReturn('confirmBooking')"));
+check('mobility','booking confirmation requests automatic matching', files.screens.includes("actions.setCaptainRideStatus('requested'); actions.go('driver')"));
+check('mobility','ride products resolve through central semantic visuals', ['mobility.rides.economy','mobility.rides.comfort','mobility.rides.xl','mobility.boda.standard'].every((key)=>files.mobilityVisuals.includes(key)));
+check('mobility','destination search suppresses static suggestions before typing', files.screens.includes('if (term.length < 2) return []'));
+check('mobility','ride options retain the route map', files.screens.includes('v40RideMapPreview'));
+check('marketplace','seller discovery has a reusable logo treatment', files.sellerLogo.includes('export const SellerLogo'));
+check('marketplace','seller page uses a two-column retail product grid', files.screens.includes("v615ProductRow:{width:'48%'"));
+check('routes','App Engine includes mobility and commerce organisms', ['mobility-map','places-autocomplete','ride-product-sheet','driver-matching','seller-logo-carousel','product-grid-2col','restaurant-list'].every((type)=>files.appEngineTypes.includes(type)));
 
 // Merchant
 const restaurantBody = functionSlice(files.screens,'RestaurantScreen');
@@ -205,6 +276,9 @@ check('ui','Android bottom system safe area remains reserved', /paddingBottom\s*
 check('ui','shared Header component exists', files.components.includes('export function Header'));
 check('ui','shared ScreenShell component exists', files.components.includes('export function ScreenShell'));
 check('ui','shared PrimaryButton component exists', files.components.includes('export function PrimaryButton'));
+check('ui','global page header uses safe-area insets on every platform', files.pageHeader.includes('Math.max(insets.top, StatusBar.currentHeight ?? 0)') && !files.pageHeader.includes("Platform.OS === 'android'"));
+check('ui','global header controls and search retain compact token sizes', files.theme.includes('pageHeaderAction: 48') && files.theme.includes('pageHeaderSearch: 52'));
+check('ui','shared search places its search icon on the right', files.searchField.includes('{context.placeholder}</Text><Feather name="search"'));
 
 // Careem-style discovery parity
 const discoveryScreen=read('src/discovery/KareebuCareemDiscoveryScreen.tsx', false);
@@ -221,8 +295,10 @@ check('marketplace','discovery uses vertical → category → subcategory hierar
   discoveryDocument.includes("type:'vertical-grid'") &&
   discoveryDocument.includes("type:'category-rail'") &&
   discoveryDocument.includes("type:'subcategory-grid'"));
-check('marketplace','discovery includes hero promotion carousel',
-  discoveryDocument.includes("type:'hero-carousel'"));
+check('marketplace','discovery promotion hero is campaign-backed rather than static',
+  discoveryScreen.includes('promotionsFor(') &&
+  discoveryScreen.includes('<PromotionHero campaign={heroPromotion}') &&
+  !discoveryDocument.includes("type:'hero-carousel'"));
 check('marketplace','discovery includes recommended and all-item sections',
   discoveryDocument.includes("type:'item-rail'") && discoveryDocument.includes("type:'item-list'"));
 check('marketplace','all five new customer discovery routes render',
@@ -236,6 +312,9 @@ check('marketplace','domain configuration covers Food DineOut Groceries Shops El
   discoveryConfig.includes('shops:') &&
   discoveryConfig.includes('fix:') &&
   discoveryConfig.includes('food:'));
+check('marketplace','vertical landing pages use a shared typed blueprint', files.verticalBlueprint.includes('export type VerticalLandingBlueprint') && files.verticalBlueprint.includes('export function verticalLandingBlueprint'));
+check('marketplace','vertical landing feed is virtualized', files.verticalLanding.includes('<FlatList'));
+check('marketplace','vertical blueprint supports Talabat-style merchandising organisms', ['hero_promo','seller_carousel','category_grid','product_carousel','bestseller_carousel','reorder','all_results'].every((type)=>files.verticalBlueprint.includes("'"+type+"'")));
 
 // Commerce
 check('commerce','Food cart route UI exists', files.screens.includes('export function CartScreen'));

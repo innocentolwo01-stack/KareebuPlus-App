@@ -21,7 +21,6 @@
     "validate:merchant-profile": "node scripts/baseline/validate-contracts.mjs merchant",
     "validate:parity": "node scripts/baseline/validate-contracts.mjs routes",
     "validate:routes": "node scripts/baseline/validate-contracts.mjs routes",
-    "validate:interactions": "node scripts/baseline/validate-contracts.mjs interactions",
-    "validate:legacy": "node scripts/baseline/run-legacy-validators.mjs"
+    "validate:interactions": "node scripts/baseline/validate-contracts.mjs interactions"
   }
 }

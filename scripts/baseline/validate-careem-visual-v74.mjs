@@ -20,7 +20,7 @@ const checks=[
   ['recommendations stay inside selected vertical/category',document.includes('recommendationPool')&&document.includes('item.categoryId===selectedCategory.id')],
   ['subcategory heading follows selected category',document.includes("title:selectedCategory?.title??config.subcategoryHeading")],
   ['category heading follows selected vertical',document.includes("title:selectedVertical?.title??config.categoryHeading")],
-  ['Offers uses valid Feather tag icon',config.includes("id:'offers',label:'Offers',icon:'tag'")],
+  ['static discovery uses neutral delivery-details filter',config.includes("id:'delivery-details',label:'Delivery details',icon:'truck'")&&!config.includes("id:'offers',label:'Offers'")],
   ['old invalid pricetag icon removed',!config.includes("icon:'pricetag'")],
   ['DineOut provider pool is realistic',catalog.includes('The Pearl Table')&&catalog.includes('Kampala Social')&&catalog.includes('Saffron House')],
   ['new discovery routes classify as Explore',app.includes('electronics|groceries|homecare|fix')],

@@ -1,19 +1,20 @@
 import React, { useMemo, useState } from 'react';
 import {
   ImageBackground,
+  type ImageSourcePropType,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 
-import { BrandIcon, type BrandIconSemantic } from '../components';
-import { useRegisterBackControl } from '../navigation/AppNavigation';
+import { CategoryArtwork, KareebuPageHeader, type BrandIconSemantic } from '../components';
+import { SellerLogo } from '../commerce/SellerLogo';
 import { COLORS, FONT, SHADOW } from '../theme';
+import type { SearchContext } from '../search/context';
 
 export type MarketplaceRecommendedMerchant = {
   id: string;
@@ -33,7 +34,7 @@ type PromoCard = {
   title: string;
   body: string;
   cta: string;
-  photo: string;
+  photo: ImageSourcePropType;
   tone: 'dark' | 'light';
   chip?: string;
 };
@@ -47,17 +48,16 @@ type PromoTheme = {
 };
 
 const PHOTOS = {
-  retail: 'https://images.unsplash.com/photo-1670684684445-a4504dca0bbc?auto=format&fit=crop&w=1800&q=90',
-  grocery: 'https://images.unsplash.com/photo-1775830443507-2a047e6eb49a?auto=format&fit=crop&w=1800&q=90',
-  pharmacy: 'https://images.unsplash.com/photo-1696861286643-341a8d7a79e9?auto=format&fit=crop&w=1800&q=90',
-  electronics: 'https://images.unsplash.com/photo-1641440615796-5302077ce9fe?auto=format&fit=crop&w=1800&q=90',
-  beauty: 'https://images.unsplash.com/photo-1757800946096-b3f14edd6809?auto=format&fit=crop&w=1800&q=90',
-  pets: 'https://images.unsplash.com/photo-1722336131103-cfaa6461e8d6?auto=format&fit=crop&w=1800&q=90',
-  home: 'https://images.unsplash.com/photo-1770385605649-11de1a033064?auto=format&fit=crop&w=1800&q=90',
-  food: 'https://images.unsplash.com/photo-1567121938596-6d9d015d348b?auto=format&fit=crop&w=1800&q=90',
-  cafe: 'https://images.unsplash.com/photo-1769138885048-4f91ed2353a0?auto=format&fit=crop&w=1800&q=90',
-  market: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1800&q=90',
-  delivery: 'https://images.unsplash.com/photo-1617347454431-f49d7ff5c3b1?auto=format&fit=crop&w=1800&q=90',
+  retail: require('../../assets/kareebu-plus/realistic-v9/fashion.jpg'),
+  grocery: require('../../assets/kareebu-plus/realistic-v9/groceries.jpg'),
+  pharmacy: require('../../assets/kareebu-plus/realistic-v9/pharmacy.jpg'),
+  electronics: require('../../assets/kareebu-plus/realistic-v9/electronics.jpg'),
+  beauty: require('../../assets/kareebu-plus/realistic-v9/beauty.jpg'),
+  pets: require('../../assets/kareebu-plus/realistic-v9/pet-supplies.jpg'),
+  home: require('../../assets/kareebu-plus/realistic-v9/home.jpg'),
+  food: require('../../assets/kareebu-plus/realistic-v9/restaurants.jpg'),
+  market: require('../../assets/kareebu-plus/realistic-v9/groceries.jpg'),
+  delivery: require('../../assets/kareebu-plus/realistic-v9/send-business.jpg'),
 } as const;
 
 export function marketplaceSemanticForCategory(label: string): BrandIconSemantic {
@@ -72,120 +72,102 @@ export function marketplaceSemanticForCategory(label: string): BrandIconSemantic
   return 'shops';
 }
 
+export function marketplaceVisualKeyForCategory(label:string):string {
+  const value=label.toLowerCase().replace(/&/g,'and').trim();
+
+  // Primary marketplace categories use one cohesive commerce-art family.
+  // Subcategories continue into their more specific semantic artwork below.
+  if(value==='restaurants'||value==='restaurant') return 'commerce.restaurants';
+  if(value==='pharmacy'||value==='pharmacies') return 'commerce.pharmacy';
+  if(value==='fashion') return 'commerce.fashion';
+  if(value==='home'||value==='home and living'||value==='home living') return 'commerce.home';
+  if(value==='groceries'||value==='grocery') return 'commerce.groceries';
+  if(value==='electronics'||value==='tech') return 'commerce.electronics';
+  if(value==='beauty') return 'commerce.beauty';
+  if(value==='pet supplies'||value==='pets'||value==='pet stores') return 'commerce.pets';
+
+  // Pharmacy subcategories must never fall through to generic Shops artwork.
+  if(value.includes('cold')||value.includes('flu')) return 'pharmacy.cold-flu';
+  if(value.includes('pain')) return 'pharmacy.pain-relief';
+  if(value.includes('allergy')||value.includes('antihist')) return 'pharmacy.allergy';
+  if(value.includes('digest')||value.includes('stomach')) return 'pharmacy.digestive';
+  if(value.includes('first aid')||value.includes('first-aid')||value.includes('bandage')||value.includes('plaster')) return 'pharmacy.first-aid';
+  if(value.includes('vitamin')||value.includes('supplement')) return 'pharmacy.vitamins';
+  if(value.includes('baby care')) return 'pharmacy.baby-care';
+  if(value.includes('personal care')) return 'pharmacy.personal-care';
+  if(value.includes("women's health")||value.includes('womens health')) return 'pharmacy.womens-health';
+  if(value.includes("men's health")||value.includes('mens health')) return 'pharmacy.mens-health';
+  if(value.includes('pharm')||value.includes('health')||value.includes('wellness')) return 'shops.pharmacy';
+
+  if(value.includes('grocery')||value.includes('super')||value.includes('fresh')) return 'shops.supermarket';
+  if(value.includes('phone')||value.includes('mobile')) return 'electronics.phones';
+  if(value.includes('gaming')||value.includes('console')) return 'electronics.gaming';
+  if(value.includes('audio')||value.includes('headphone')||value.includes('speaker')) return 'electronics.audio';
+  if(value.includes('elect')||value.includes('tech')||value.includes('computer')||value.includes('laptop')) return 'electronics.computing';
+  if(value.includes('women')) return 'fashion.women';
+  if(value.includes('men')) return 'fashion.men';
+  if(value.includes('kid')||value.includes('child')) return 'fashion.children';
+  if(value.includes('shoe')||value.includes('trainer')) return 'fashion.shoes';
+  if(value.includes('makeup')) return 'beauty.makeup';
+  if(value.includes('fragrance')||value.includes('perfume')) return 'beauty.fragrance';
+  if(value.includes('hair')) return 'beauty.hair';
+  if(value.includes('beauty')) return 'beauty.skincare';
+  if(value.includes('gift')||value.includes('flower')) return 'gifts.flowers';
+  if(value.includes('pet')) return 'shops.petSupplies';
+  if(value.includes('home')||value.includes('living')) return 'home.decor';
+  if(value.includes('ugandan')) return 'food.ugandan';
+  if(value.includes('kenyan')) return 'food.kenyan';
+  if(value.includes('tanzanian')) return 'food.tanzanian';
+  if(value.includes('african')) return 'food.african';
+  if(value.includes('food')||value.includes('restaurant')||value.includes('cafe')||value.includes('pizza')||value.includes('chicken')||value.includes('burger')) return 'food.food';
+  return 'shops.specialty';
+}
+
 function promo(
   eyebrow:string,
   title:string,
   body:string,
   cta:string,
-  photo:string,
+  photo:ImageSourcePropType,
   tone:'dark'|'light'='dark',
   chip?:string,
 ): PromoCard {
   return {eyebrow,title,body,cta,photo,tone,chip};
 }
 
+function visualKeyForCategory(label:string){
+  const value=label.toLowerCase();
+  if(/pharm|health|wellness/.test(value)) return 'commerce.pharmacy';
+  if(/grocery|super|fresh|pantry/.test(value)) return 'commerce.groceries';
+  if(/elect|tech|phone|computer|audio|gaming/.test(value)) return 'commerce.electronics';
+  if(/food|restaurant|cafe|pizza|chicken|burger/.test(value)) return 'commerce.restaurants';
+  if(/beauty|skin|hair|fragrance/.test(value)) return 'commerce.beauty';
+  if(/fashion|clothing|women|men|kids|shoe|accessor/.test(value)) return 'commerce.fashion';
+  if(/pet/.test(value)) return 'commerce.pets';
+  if(/gift|flower/.test(value)) return 'shops.giftsFlowers';
+  if(/home|living|kitchen|decor/.test(value)) return 'commerce.home';
+  return 'commerce.fashion';
+}
+
 function themeFor(category: string): PromoTheme {
   const value=category.toLowerCase();
-
-  if (value.includes('pharm') || value.includes('health') || value.includes('wellness')) {
-    return {
-      categoryLabel:'Health & wellness',
-      hero:promo('KAREEBU+ HEALTH','Wellness delivered','Trusted pharmacy, personal care and everyday health around you.','Shop health',PHOTOS.pharmacy,'dark','UP TO 30% OFF'),
-      secondary:promo('FREE DELIVERY','Member delivery on wellness','Save on delivery from selected health stores.','See stores',PHOTOS.delivery,'dark','KAREEBU+'),
-      member:promo('MEMBER PRICE','More value on everyday care','Unlock member-only delivery and selected offers.','Try Kareebu+',PHOTOS.beauty,'dark','60 DAYS'),
-      tiles:[
-        promo('WELLNESS EDIT','Everyday essentials','Vitamins, personal care and pharmacy favourites.','Explore',PHOTOS.pharmacy,'dark','SAVE MORE'),
-        promo('BEAUTY & CARE','Care delivered','Skincare, haircare and personal care offers.','Explore',PHOTOS.beauty,'dark','NEW DEALS'),
-      ],
-    };
-  }
-
-  if (value.includes('grocery') || value.includes('super') || value.includes('fresh')) {
-    return {
-      categoryLabel:'Groceries',
-      hero:promo('KAREEBU+ GROCERIES','Your weekly shop, without the queue','Fresh food, pantry and household essentials from stores around you.','Shop groceries',PHOTOS.grocery,'dark','UP TO 25% OFF'),
-      secondary:promo('FRESH TODAY','Fresh for less','Fruit, veg and everyday grocery savings.','Shop fresh',PHOTOS.market,'dark','TODAY'),
-      member:promo('KAREEBU+','Free-delivery favourites','Member delivery on selected grocery baskets.','Try Kareebu+',PHOTOS.delivery,'dark','60 DAYS'),
-      tiles:[
-        promo('FRESH PICKS','Market favourites','Fruit, vegetables and fresh everyday essentials.','Explore',PHOTOS.market,'dark','FRESH'),
-        promo('STOCK UP','Pantry & home','Useful bundles for the weekly shop.','Explore',PHOTOS.retail,'dark','SAVE'),
-      ],
-    };
-  }
-
-  if (value.includes('beauty')) {
-    return {
-      categoryLabel:'Beauty',
-      hero:promo('KAREEBU+ BEAUTY','Your beauty edit, delivered','Skincare, haircare, fragrance and everyday personal care.','Shop beauty',PHOTOS.beauty,'dark','UP TO 35% OFF'),
-      secondary:promo('TRENDING','Glow favourites','Discover popular beauty and skincare picks.','Explore',PHOTOS.beauty,'dark','NEW'),
-      member:promo('MEMBER DELIVERY','More beauty, less delivery','Selected member delivery and exclusive offers.','Try Kareebu+',PHOTOS.delivery,'dark','KAREEBU+'),
-      tiles:[
-        promo('SKINCARE','Daily essentials','Cleansers, moisturisers and targeted care.','Explore',PHOTOS.beauty,'dark','TRENDING'),
-        promo('PERSONAL CARE','Everyday care','Useful favourites delivered around you.','Explore',PHOTOS.pharmacy,'dark','SAVE'),
-      ],
-    };
-  }
-
-  if (value.includes('elect') || value.includes('tech')) {
-    return {
-      categoryLabel:'Electronics',
-      hero:promo('KAREEBU+ TECH','Tech when you need it','Phones, accessories and useful everyday electronics from local stores.','Shop tech',PHOTOS.electronics,'dark','TOP DEALS'),
-      secondary:promo('POWER UP','Accessories & power','Chargers, power banks, cables and more.','Explore',PHOTOS.electronics,'dark','FROM UGX 15K'),
-      member:promo('FAST DELIVERY','Local tech, delivered','Selected electronics from stores around you.','See stores',PHOTOS.delivery,'dark','KAREEBU+'),
-      tiles:[
-        promo('MOBILE','Useful upgrades','Phone accessories and everyday essentials.','Explore',PHOTOS.electronics,'dark','POPULAR'),
-        promo('HOME TECH','Tech for home','Useful devices and accessories.','Explore',PHOTOS.retail,'dark','DISCOVER'),
-      ],
-    };
-  }
-
-  if (value.includes('pet')) {
-    return {
-      categoryLabel:'Pets',
-      hero:promo('KAREEBU+ PETS','Everything for happy pets','Food, treats, care and everyday pet essentials.','Shop pets',PHOTOS.pets,'dark','PET PICKS'),
-      secondary:promo('PET PANTRY','Stock up on favourites','Food and treats for everyday routines.','Explore',PHOTOS.pets,'dark','POPULAR'),
-      member:promo('MEMBER DELIVERY','Pet essentials, delivered','Selected Kareebu+ delivery on pet favourites.','Try Kareebu+',PHOTOS.delivery,'dark','KAREEBU+'),
-      tiles:[
-        promo('FOOD & TREATS','Everyday favourites','Popular pet pantry picks.','Explore',PHOTOS.pets,'dark','SHOP NOW'),
-        promo('CARE','Everyday pet care','Useful essentials from nearby stores.','Explore',PHOTOS.retail,'dark','DISCOVER'),
-      ],
-    };
-  }
-
-  if (value.includes('home')) {
-    return {
-      categoryLabel:'Home',
-      hero:promo('KAREEBU+ HOME','Make home easier','Homeware, cleaning and useful everyday essentials.','Shop home',PHOTOS.home,'dark','HOME PICKS'),
-      secondary:promo('HOME REFRESH','Useful picks for every room','Practical home and cleaning essentials.','Explore',PHOTOS.home,'dark','DISCOVER'),
-      member:promo('MEMBER DELIVERY','Home essentials, delivered','Selected Kareebu+ delivery around you.','Try Kareebu+',PHOTOS.delivery,'dark','KAREEBU+'),
-      tiles:[
-        promo('EVERYDAY HOME','Useful essentials','Practical picks for home.','Explore',PHOTOS.home,'dark','POPULAR'),
-        promo('CLEAN & CARE','Stock up','Cleaning and household favourites.','Explore',PHOTOS.retail,'dark','SAVE'),
-      ],
-    };
-  }
-
-  if (value.includes('food') || value.includes('restaurant') || value.includes('chicken') || value.includes('pizza') || value.includes('burger')) {
-    return {
-      categoryLabel:'Food',
-      hero:promo('KAREEBU+ FOOD','Great food around you','Popular restaurants, fast delivery and offers selected for your area.','Order now',PHOTOS.food,'dark','UP TO 30% OFF'),
-      secondary:promo('POPULAR NOW','Local favourites','Restaurants people around you keep ordering from.','Explore',PHOTOS.food,'dark','TRENDING'),
-      member:promo('KAREEBU+','Try free delivery','Selected member delivery across popular restaurants.','Try Kareebu+',PHOTOS.delivery,'dark','60 DAYS'),
-      tiles:[
-        promo('DINNER PICKS','Tonight sorted','Popular meals and local favourites.','Explore',PHOTOS.food,'dark','DINNER'),
-        promo('COFFEE & MORE','A little treat','Cafés, breakfast and something sweet.','Explore',PHOTOS.cafe,'dark','POPULAR'),
-      ],
-    };
-  }
-
+  const isPharmacy=/pharm|health|wellness/.test(value);
+  const isGrocery=/grocery|super|fresh/.test(value);
+  const isElectronics=/elect|tech|phone/.test(value);
+  const isBeauty=/beauty|skin|hair|fragrance/.test(value);
+  const isPets=/pet/.test(value);
+  const isHome=/home|living/.test(value);
+  const isFood=/food|restaurant|cafe|pizza|chicken|burger/.test(value);
+  const photo=isPharmacy?PHOTOS.pharmacy:isGrocery?PHOTOS.grocery:isElectronics?PHOTOS.electronics:isBeauty?PHOTOS.beauty:isPets?PHOTOS.pets:isHome?PHOTOS.home:isFood?PHOTOS.food:PHOTOS.retail;
+  const categoryLabel=isPharmacy?'Health & wellness':isGrocery?'Groceries':isElectronics?'Electronics':isBeauty?'Beauty':isPets?'Pet supplies':isHome?'Home & living':isFood?'Food':'Shops';
   return {
-    categoryLabel:'Shops',
-    hero:promo('KAREEBU+ SHOPS','Everything you need, around you','Discover local stores, specialist shops and everyday essentials.','Shop now',PHOTOS.retail,'dark','LOCAL DEALS'),
-    secondary:promo('NEW FINDS','Discover more for less','Useful products and local stores worth discovering.','Explore',PHOTOS.market,'dark','UP TO 30% OFF'),
-    member:promo('KAREEBU+','Try free delivery','Selected member delivery and savings around you.','Try Kareebu+',PHOTOS.delivery,'dark','60 DAYS'),
+    categoryLabel,
+    hero:promo('EXPLORE',`Shop ${categoryLabel}`,`Browse ${categoryLabel.toLowerCase()} from stores available in your area.`,'Browse',photo,'dark'),
+    secondary:promo('DISCOVER','Find what you need','Open a category or store to see current products, prices and delivery details.','Explore',photo,'dark'),
+    member:promo('KAREEBU+','Your marketplace, in one place','Availability, price and delivery details are confirmed from the active catalogue.','Browse',PHOTOS.delivery,'dark'),
     tiles:[
-      promo('LOCAL FAVOURITES','Stores worth discovering','Popular stores around you.','Explore',PHOTOS.retail,'dark','POPULAR'),
-      promo('FRESH FINDS','New offers nearby','Everyday essentials and useful finds.','Explore',PHOTOS.market,'dark','NEW'),
+      promo('BROWSE','Explore the range',`Discover more across ${categoryLabel.toLowerCase()}.`,'Explore',photo,'dark'),
+      promo('STORES','Shop by store','Choose a store to see its current catalogue.','See stores',photo,'dark'),
     ],
   };
 }
@@ -193,6 +175,7 @@ function themeFor(category: string): PromoTheme {
 export function MarketplaceCategoryHeader({
   location,
   searchPlaceholder,
+  searchContext,
   searchValue,
   onSearchChange,
   onSearchPress,
@@ -202,6 +185,7 @@ export function MarketplaceCategoryHeader({
 }: {
   location: string;
   searchPlaceholder: string;
+  searchContext?: SearchContext;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   onSearchPress?: () => void;
@@ -209,63 +193,21 @@ export function MarketplaceCategoryHeader({
   onMenu: () => void;
   onLocation?: () => void;
 }) {
-  useRegisterBackControl(true);
-
-  const search = onSearchChange ? (
-    <View style={styles.searchBox}>
-      <TextInput
-        value={searchValue}
-        onChangeText={onSearchChange}
-        placeholder={searchPlaceholder}
-        placeholderTextColor="#73777A"
-        style={styles.searchInput}
-        returnKeyType="search"
-      />
-      {searchValue ? (
-        <Pressable onPress={() => onSearchChange('')} hitSlop={8} style={styles.searchAction}>
-          <Ionicons name="close-circle" size={21} color="#686D70" />
-        </Pressable>
-      ) : (
-        <View style={styles.searchAction}>
-          <Feather name="search" size={26} color="#25292B" />
-        </View>
-      )}
-    </View>
-  ) : (
-    <Pressable onPress={onSearchPress} style={({pressed})=>[styles.searchBox,pressed&&styles.pressed]}>
-      <Text numberOfLines={1} style={styles.searchPlaceholder}>{searchPlaceholder}</Text>
-      <View style={styles.searchAction}>
-        <Feather name="search" size={26} color="#25292B" />
-      </View>
-    </Pressable>
-  );
-
-  return (
-    <View style={styles.headerShell}>
-      <View style={styles.topRow}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={onBack} style={({pressed})=>[styles.headerButton,pressed&&styles.pressed]}>
-          <Feather name="arrow-left" size={23} color="#292D2F" />
-        </Pressable>
-
-        <Pressable onPress={onLocation} disabled={!onLocation} style={styles.locationBlock}>
-          <Text style={styles.deliverLabel}>Deliver to</Text>
-          <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={20} color="#292D2F" />
-            <Text numberOfLines={1} style={styles.locationText}>{location}</Text>
-            <Feather name="chevron-down" size={18} color="#292D2F" />
-          </View>
-        </Pressable>
-
-        <Pressable accessibilityRole="button" accessibilityLabel="Browse categories" onPress={onMenu} style={({pressed})=>[styles.headerButton,pressed&&styles.pressed]}>
-          <Feather name="menu" size={23} color="#292D2F" />
-        </Pressable>
-      </View>
-
-      {search}
-
-      <View pointerEvents="none" style={styles.whiteSheetBridge}/>
-    </View>
-  );
+  return <KareebuPageHeader
+    title="Deliver to"
+    city={location}
+    locationEnabled
+    onLocationPress={onLocation}
+    onBack={onBack}
+    rightIcon="menu-outline"
+    rightLabel="Browse categories"
+    onRightAction={onMenu}
+    searchEnabled
+    searchContext={searchContext ?? {scope:'shops',placeholder:searchPlaceholder}}
+    searchValue={searchValue}
+    onSearchChange={onSearchChange}
+    onSearchPress={onSearchPress}
+  />;
 }
 
 function PromotionCard({
@@ -279,7 +221,7 @@ function PromotionCard({
 }) {
   return (
     <Pressable onPress={onPress} disabled={!onPress} style={({pressed})=>[styles.heroCard,{width},pressed&&styles.pressed]}>
-      <ImageBackground source={{uri:item.photo}} resizeMode="cover" style={styles.heroImage}>
+      <ImageBackground source={item.photo} resizeMode="cover" style={styles.heroImage}>
         <View style={styles.heroShade}/>
         <View style={styles.heroTop}>
           {item.chip ? <View style={styles.heroChip}><Text style={styles.heroChipText}>{item.chip}</Text></View> : <View/>}
@@ -307,7 +249,9 @@ export function MarketplacePromoBanner({
   onPress?: () => void;
 }) {
   const {width:viewportWidth}=useWindowDimensions();
-  const cardWidth=Math.max(280,viewportWidth-28);
+  const gap=12;
+  const cardWidth=Math.max(276,Math.min(520,viewportWidth-52));
+  const interval=cardWidth+gap;
   const [active,setActive]=useState(0);
   const theme=useMemo(()=>themeFor(category),[category]);
   const promotions=[theme.hero,theme.secondary,theme.member];
@@ -316,12 +260,13 @@ export function MarketplacePromoBanner({
     <View style={styles.heroSection}>
       <ScrollView
         horizontal
-        pagingEnabled
         showsHorizontalScrollIndicator={false}
         decelerationRate="fast"
-        snapToInterval={cardWidth}
+        snapToInterval={interval}
+        snapToAlignment="start"
+        disableIntervalMomentum
         onMomentumScrollEnd={(event)=>{
-          const next=Math.round(event.nativeEvent.contentOffset.x/cardWidth);
+          const next=Math.round(event.nativeEvent.contentOffset.x/interval);
           setActive(Math.max(0,Math.min(promotions.length-1,next)));
         }}
         contentContainerStyle={styles.heroRail}
@@ -351,14 +296,14 @@ export function MarketplaceRecommendedRail({
       <View style={styles.sectionHeading}>
         <View>
           <Text style={styles.sectionTitle}>{title}</Text>
-          <Text style={styles.sectionSub}>Popular around your delivery location</Text>
+          <Text style={styles.sectionSub}>Stores around your delivery location</Text>
         </View>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.merchantRail}>
         {merchants.map((merchant)=>(
           <Pressable key={merchant.id} onPress={()=>onPress?.(merchant.id)} style={({pressed})=>[styles.merchantCard,pressed&&styles.pressed]}>
             <View style={styles.merchantLogo}>
-              <BrandIcon semantic={merchant.semantic} size={52}/>
+              <SellerLogo name={merchant.name}/>
             </View>
             <Text numberOfLines={2} style={styles.merchantName}>{merchant.name}</Text>
             {merchant.meta?<Text numberOfLines={1} style={styles.merchantMeta}>{merchant.meta}</Text>:null}
@@ -381,7 +326,7 @@ export function MarketplaceCategoryGrid({
   const {width}=useWindowDimensions();
   const usable=width-28;
   const gap=8;
-  const cardWidth=Math.floor((usable-gap*3)/4);
+  const cardWidth=Math.floor((usable-gap*2)/3);
 
   return (
     <View style={styles.categorySection}>
@@ -397,7 +342,7 @@ export function MarketplaceCategoryGrid({
           return (
             <Pressable key={tile.id} onPress={()=>onPress?.(tile.id)} style={({pressed})=>[styles.categoryCard,{width:cardWidth},selected&&styles.categoryCardSelected,pressed&&styles.pressed]}>
               <View style={styles.categoryVisual}>
-                <BrandIcon semantic={tile.semantic} size={56}/>
+                <CategoryArtwork visualKey={marketplaceVisualKeyForCategory(tile.label)} size="large"/>
               </View>
               <Text numberOfLines={2} style={[styles.categoryLabel,selected&&styles.categoryLabelSelected]}>{tile.label}</Text>
             </Pressable>
@@ -421,14 +366,14 @@ export function MarketplacePromoGrid({
     <View style={styles.promoSection}>
       <View style={styles.sectionHeading}>
         <View>
-          <Text style={styles.sectionTitle}>Offers for you</Text>
-          <Text style={styles.sectionSub}>Fresh promotions in {theme.categoryLabel}</Text>
+          <Text style={styles.sectionTitle}>Discover more</Text>
+          <Text style={styles.sectionSub}>Curated {theme.categoryLabel.toLowerCase()} discovery</Text>
         </View>
       </View>
       <View style={styles.promoGrid}>
         {theme.tiles.map((item,index)=>(
           <Pressable key={item.title} onPress={()=>onPress?.(index as 0|1)} style={({pressed})=>[styles.promoTile,pressed&&styles.pressed]}>
-            <ImageBackground source={{uri:item.photo}} resizeMode="cover" style={styles.promoTileImage}>
+            <ImageBackground source={item.photo} resizeMode="cover" style={styles.promoTileImage}>
               <View style={styles.promoShade}/>
               <View style={styles.promoTop}>
                 {item.chip?<View style={styles.promoChip}><Text style={styles.promoChipText}>{item.chip}</Text></View>:null}
@@ -460,8 +405,8 @@ export function MarketplaceMembershipStrip({
       <View style={styles.memberMark}><Text style={styles.memberMarkText}>K+</Text></View>
       <View style={styles.memberRule}/>
       <View style={styles.memberCopy}>
-        <Text style={styles.memberTitle}>Try free delivery for 60 days</Text>
-        <Text style={styles.memberBody}>Kareebu+ member delivery and savings</Text>
+        <Text style={styles.memberTitle}>Explore Kareebu+ benefits</Text>
+        <Text style={styles.memberBody}>Eligible benefits are shown for your market before you join</Text>
       </View>
       <View style={styles.memberArrow}><Feather name="arrow-right" size={18} color={COLORS.black}/></View>
     </Pressable>
@@ -516,7 +461,7 @@ const styles=StyleSheet.create({
   },
 
   heroSection:{marginTop:5},
-  heroRail:{gap:0},
+  heroRail:{gap:12,paddingHorizontal:14,paddingRight:34},
   heroCard:{height:198,borderRadius:17,overflow:'hidden'},
   heroImage:{flex:1,justifyContent:'space-between'},
   heroShade:{...StyleSheet.absoluteFill,backgroundColor:'rgba(0,0,0,.31)'},
@@ -554,14 +499,14 @@ const styles=StyleSheet.create({
   categorySection:{marginTop:21},
   categoryGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},
   categoryCard:{
-    height:127,borderRadius:14,
+    minHeight:142,borderRadius:16,
     backgroundColor:'#F4F5F5',
     alignItems:'center',justifyContent:'center',
     paddingHorizontal:5,
     borderWidth:1,borderColor:'transparent',
   },
   categoryCardSelected:{backgroundColor:'#FFF7D9',borderColor:'#EFCB37'},
-  categoryVisual:{height:72,alignItems:'center',justifyContent:'center'},
+  categoryVisual:{height:90,alignItems:'center',justifyContent:'center'},
   categoryLabel:{fontFamily:FONT.bold,fontSize:11.2,lineHeight:14.5,fontWeight:'800',textAlign:'center',color:'#3A3E40'},
   categoryLabelSelected:{color:COLORS.black},
 

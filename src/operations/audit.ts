@@ -1,0 +1,2 @@
+export type AuditEvent={id:string;actorId:string;actorRole:string;action:string;entityType:string;entityId:string;reason:string;before?:unknown;after?:unknown;createdAt:string;correlationId?:string};
+export function createAuditEvent(input:Omit<AuditEvent,'id'|'createdAt'>):AuditEvent{return {...input,id:`AUD-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,createdAt:new Date().toISOString()};}

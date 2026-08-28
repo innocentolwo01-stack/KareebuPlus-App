@@ -29,28 +29,24 @@ function decorateItem(
   const seed=stableHash(item.id);
   return {
     ...item,
-    etaMinutes:12+(seed%42),
-    distanceKm:Number((0.8+((seed%89)/10)).toFixed(1)),
-    freeDelivery:seed%3===0,
-    offerLabel:seed%4===0?'20% off':seed%7===0?'Kareebu+ offer':null,
-    verified:true,
+    // Unified catalogue rows are reference discovery data. Never manufacture
+    // live commercial metrics from a deterministic hash.
+    etaMinutes:null,
+    distanceKm:null,
+    freeDelivery:null,
+    offerLabel:null,
+    verified:null,
     photo:photos[seed%photos.length]!,
   };
 }
 
 function filterItem(item:KareebuDiscoveryItem,filter:KareebuDiscoveryFilterId){
+  // Only filters backed by real fields should narrow a reference catalogue.
+  // Live delivery, rating, offer and verification filters remain no-ops until
+  // those metrics are connected to live merchant/service data.
   switch(filter){
-    case 'offers': return item.offerLabel!==null;
-    case 'rating': return item.rating>=4.5;
-    case 'fast': return item.etaMinutes<=30;
-    case 'free-delivery': return item.freeDelivery;
-    case 'price': return item.basePriceUGX<=75000;
-    case 'nearby': return item.distanceKm<=5;
-    case 'available-now': return stableHash(item.id+'available')%5!==0;
-    case 'today': return item.etaMinutes<=45;
-    case 'verified': return item.verified;
-    case 'emergency': return item.etaMinutes<=25;
-    case 'member': return item.freeDelivery||item.offerLabel==='Kareebu+ offer';
+    case 'price': return Number.isFinite(item.basePriceUGX);
+    case 'delivery-details': return true;
     default: return true;
   }
 }
@@ -58,16 +54,11 @@ function filterItem(item:KareebuDiscoveryItem,filter:KareebuDiscoveryFilterId){
 function sortItems(items:KareebuDiscoveryItem[],sort:KareebuDiscoverySort){
   const rows=[...items];
   switch(sort){
-    case 'top-rated': return rows.sort((a,b)=>b.rating-a.rating);
-    case 'fastest': return rows.sort((a,b)=>a.etaMinutes-b.etaMinutes);
     case 'price-low': return rows.sort((a,b)=>a.basePriceUGX-b.basePriceUGX);
     case 'price-high': return rows.sort((a,b)=>b.basePriceUGX-a.basePriceUGX);
-    default:
-      return rows.sort((a,b)=>{
-        const aScore=(a.rating*100)-a.etaMinutes+(a.offerLabel?20:0)+(a.freeDelivery?12:0);
-        const bScore=(b.rating*100)-b.etaMinutes+(b.offerLabel?20:0)+(b.freeDelivery?12:0);
-        return bScore-aScore;
-      });
+    // Rating/ETA are intentionally unavailable for reference rows, so do not
+    // manufacture a ranking signal for top-rated/fastest/recommended.
+    default: return rows;
   }
 }
 
@@ -95,7 +86,6 @@ export function buildKareebuDiscoveryDocument(input:{
 
   const selectedCategory=
     categories.find((node)=>node.id===input.categoryId) ??
-    categories[0] ??
     null;
 
   const subcategories=selectedCategory
@@ -156,12 +146,11 @@ export function buildKareebuDiscoveryDocument(input:{
       semantic:config.semantic,
     },
     widgets:[
-      {id:'hero',type:'hero-carousel',items:config.promos},
       {id:'filters',type:'filter-rail',items:config.filters},
       {id:'verticals',type:'vertical-grid',title:config.verticalHeading,items:verticals,activeId:selectedVertical?.id??null},
       {id:'categories',type:'category-rail',title:selectedVertical?.title??config.categoryHeading,items:categories,activeId:selectedCategory?.id??null},
       {id:'subcategories',type:'subcategory-grid',title:selectedCategory?.title??config.subcategoryHeading,items:subcategories,activeId:selectedSubcategory?.id??null},
-      {id:'recommended',type:'item-rail',title:config.recommendedHeading,subtitle:`Popular around ${input.city}`,items:recommended},
+      {id:'recommended',type:'item-rail',title:config.recommendedHeading,subtitle:`Reference catalogue for ${input.city}`,items:recommended},
       {id:'all-items',type:'item-list',title:config.allHeading,subtitle:selectedSubcategory?.title??selectedCategory?.title??selectedVertical?.title??config.title,items:decorated.slice(0,80)},
       {id:'membership',type:'membership-strip'},
     ],

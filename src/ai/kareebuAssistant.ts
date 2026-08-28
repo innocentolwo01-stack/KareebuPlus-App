@@ -27,6 +27,11 @@ export type KareebuAssistantReply = {
 
 export type KareebuConversationTurn = { role: 'user' | 'assistant'; text: string };
 
+export const KAREEBU_AI_TRANSACTION_POLICY = {
+  may: ['recommend', 'prefill', 'navigate', 'prepare_action'] as const,
+  requiresExplicitCustomerConfirmation: ['charge', 'place_order', 'dispatch_ride', 'regulated_transfer'] as const,
+};
+
 type AssistantContext = {
   country: string;
   city: string;
@@ -56,28 +61,37 @@ function recommendationCatalog(context: AssistantContext) {
   const stores = DEMO_SHOPS
     .filter((shop) => storeIds.has(shop.id))
     .slice(0, 10)
-    .map((shop) => ({
-      type: 'store',
-      id: shop.id,
-      name: shop.name,
-      category: shop.category,
-      rating: shop.rating,
-      eta: shop.eta,
-      deliveryFee: shop.deliveryFee,
-      deal: shop.deal,
-    }));
+    .map((shop) => {
+      const live = Boolean(shop.contentTrust?.liveAvailability);
+      return {
+        type: 'store' as const,
+        id: shop.id,
+        name: shop.name,
+        category: shop.category,
+        rating: live ? shop.rating : null,
+        eta: live ? shop.eta : null,
+        deliveryFee: live ? shop.deliveryFee : null,
+        deal: live ? shop.deal : null,
+        inventoryHint: shop.inventoryHint ?? shop.category,
+        contentTrust: shop.contentTrust,
+      };
+    });
 
-  const restaurants = DEMO_RESTAURANTS.slice(0, 12).map((restaurant) => ({
-    type: 'restaurant',
-    id: restaurant.id,
-    name: restaurant.name,
-    cuisine: restaurant.cuisine,
-    rating: restaurant.rating,
-    eta: restaurant.eta,
-    deliveryFee: restaurant.deliveryFee,
-    offer: restaurant.offer ?? '',
-    popularItems: restaurant.menu.filter((item) => item.popular).slice(0, 3).map((item) => ({ name: item.name, price: item.price })),
-  }));
+  const restaurants = DEMO_RESTAURANTS.slice(0, 12).map((restaurant) => {
+    const live = Boolean(restaurant.contentTrust?.liveAvailability);
+    return {
+      type: 'restaurant' as const,
+      id: restaurant.id,
+      name: restaurant.name,
+      cuisine: restaurant.cuisine,
+      rating: live ? restaurant.rating : null,
+      eta: live ? restaurant.eta : null,
+      deliveryFee: live ? restaurant.deliveryFee : null,
+      offer: live ? (restaurant.offer ?? null) : null,
+      popularItems: restaurant.menu.filter((item) => item.popular).slice(0, 3).map((item) => ({ name: item.name, price: live && item.referencePrice?.priceIsLive !== false ? item.price : null })),
+      contentTrust: restaurant.contentTrust,
+    };
+  });
 
   return { stores, restaurants };
 }
@@ -106,16 +120,19 @@ function localReply(message: string, context: AssistantContext): KareebuAssistan
   if (/pizza|burger|chicken|breakfast|lunch|dinner|food|restaurant|meal/.test(q)) {
     const picks = catalog.restaurants.slice(0, 3);
     return {
-      text: `I found a few strong food options around ${where}. I’ve prioritised rating, delivery time and current demo offers.`,
+      text: `I found a few food references around ${where}. Live ratings, delivery times and offers are shown only when a merchant supplies them.`,
       actions: [{ label: 'Browse all food', screen: 'food' }],
-      recommendations: picks.map((restaurant) => ({
-        id: restaurant.id,
-        title: restaurant.name,
-        subtitle: `${restaurant.rating.toFixed(1)} ★ · ${restaurant.eta}`,
-        reason: restaurant.offer || `Popular ${restaurant.cuisine.toLowerCase()} option near you.`,
-        badge: restaurant.offer || 'Recommended',
-        action: { label: 'View menu', screen: 'restaurant', entityId: restaurant.id },
-      })),
+      recommendations: picks.map((restaurant) => {
+        const live=Boolean(restaurant.contentTrust?.liveAvailability);
+        return {
+          id: restaurant.id,
+          title: restaurant.name,
+          subtitle: live && restaurant.rating !== null && restaurant.eta ? `${restaurant.rating.toFixed(1)} ★ · ${restaurant.eta}` : `${restaurant.cuisine} · Reference listing`,
+          reason: live && restaurant.offer ? restaurant.offer : 'Open the restaurant to confirm current menu and availability.',
+          badge: live ? (restaurant.offer || 'Available') : 'Reference',
+          action: { label: 'View menu', screen: 'restaurant', entityId: restaurant.id },
+        };
+      }),
       source: 'demo',
     };
   }
@@ -124,7 +141,7 @@ function localReply(message: string, context: AssistantContext): KareebuAssistan
     return {
       text: `These are the pharmacy options I’d check first in ${context.city}. Availability and medicine suitability must still be confirmed with the pharmacy.`,
       actions: [{ label: 'Nearby pharmacies', screen: 'shops', shopCategory: 'Pharmacy' }],
-      recommendations: picks.map((store) => ({ id:store.id, title:store.name, subtitle:`${store.rating.toFixed(1)} ★ · ${store.eta}`, reason:store.deal, badge:store.deliveryFee===0?'Free delivery':'Nearby', action:{label:'Open store', screen:'shop', entityId:store.id, shopCategory:'Pharmacy'} })),
+      recommendations: picks.map((store) => {const live=Boolean(store.contentTrust?.liveAvailability);return {id:store.id,title:store.name,subtitle:live&&store.rating!==null&&store.eta?`${store.rating.toFixed(1)} ★ · ${store.eta}`:`${store.category} · Reference listing`,reason:live&&store.deal?store.deal:(store.inventoryHint??'Open the store to confirm availability.'),badge:live?(store.deliveryFee===0?'Delivery included':'Available'):'Reference',action:{label:'Open store',screen:'shop',entityId:store.id,shopCategory:'Pharmacy'}};}),
       source: 'demo',
     };
   }
@@ -133,7 +150,7 @@ function localReply(message: string, context: AssistantContext): KareebuAssistan
     return {
       text: `Here are grocery options available for the ${context.country} marketplace around ${context.city}.`,
       actions: [{ label: 'Shop groceries', screen: 'shops', shopCategory: 'Groceries' }],
-      recommendations: picks.map((store) => ({ id:store.id, title:store.name, subtitle:`${store.rating.toFixed(1)} ★ · ${store.eta}`, reason:store.deal, badge:store.deliveryFee===0?'Free delivery':'Local store', action:{label:'Open store', screen:'shop', entityId:store.id, shopCategory:'Groceries'} })),
+      recommendations: picks.map((store) => {const live=Boolean(store.contentTrust?.liveAvailability);return {id:store.id,title:store.name,subtitle:live&&store.rating!==null&&store.eta?`${store.rating.toFixed(1)} ★ · ${store.eta}`:`${store.category} · Reference listing`,reason:live&&store.deal?store.deal:(store.inventoryHint??'Open the store to confirm availability.'),badge:live?(store.deliveryFee===0?'Delivery included':'Available'):'Reference',action:{label:'Open store',screen:'shop',entityId:store.id,shopCategory:'Groceries'}};}),
       source: 'demo',
     };
   }

@@ -6,6 +6,7 @@ import { formatMoney } from '../locale';
 import { COLORS, FONT, TYPE } from '../theme';
 import type { RideId, Screen } from '../types';
 import type { VehicleMode } from './vehicle';
+import type { MobilityPlaceConfig } from '../markets/config';
 import { captainOffers, RideFareBreakdown, RidePlan, RideProduct, RideReceipt, rideFareBreakdown, rideLabel } from './mobility';
 
 import { KareebuBodaHomeScreen } from './kareebuBodaHome';
@@ -38,6 +39,7 @@ export type MobilityActions = {
   setRidePromoCode: (value: string) => void;
   updateRidePlan: (patch: Partial<RidePlan>) => void;
   setScheduledTrip: (value: string | null) => void;
+  prefillDestination: (place: MobilityPlaceConfig) => void;
 };
 
 function MobilityShortcut({ icon, title, body, onPress }: { icon: keyof typeof Ionicons.glyphMap; title: string; body: string; onPress: () => void }) {
@@ -126,7 +128,7 @@ function SafetyPoint({icon,text}:{icon:keyof typeof Ionicons.glyphMap;text:strin
 
 export function RideFareDetailsScreen({ data, actions }: { data: MobilityData; actions: MobilityActions }) {
   const offer = captainOffers(data.baseFare,data.country,data.selectedVehicleMode).find(item=>item.id===data.selectedRideBidId);
-  const fare=rideFareBreakdown({baseFare:data.baseFare,offeredFare:offer?.fare,rideProduct:data.rideProduct,vehicleMode:data.selectedVehicleMode,priority:data.ridePriority,member:data.member,promoCode:data.ridePromoCode});
+  const fare=rideFareBreakdown({baseFare:data.baseFare,offeredFare:offer?.fare,rideProduct:data.rideProduct,vehicleMode:data.selectedVehicleMode,priority:data.ridePriority,member:data.member,promoCode:data.ridePromoCode,country:data.country});
   return <ScreenShell><Header title="Fare details" onBack={()=>actions.go('confirmBooking')}/><ScrollView style={styles.flex} contentContainerStyle={styles.scroll}>
     <RoundedCard style={styles.routeCard}><Text style={styles.routeLabel}>TRIP</Text><Text style={styles.routeMain}>{data.pickup}</Text><View style={styles.routeLine}/><Text style={styles.routeMain}>{data.destination}</Text></RoundedCard>
     <RoundedCard style={styles.fareCard}><FareRow label={offer?`${offer.captainName} offer`:`${rideLabel(data.selectedRide)} fare`} amount={fare.baseFare} country={data.country}/><View style={styles.demandSummary}><View><Text style={styles.demandTitle}>{fare.demandLabel} · {fare.demandMultiplier.toFixed(2)}×</Text><Text style={styles.demandMeta}>{fare.demandReason}</Text></View></View><FareRow label="Demand adjustment" amount={fare.demandAdjustment} country={data.country}/><FareRow label="Booking fee" amount={fare.bookingFee} country={data.country}/>{fare.priorityFee?<FareRow label="Priority matching" amount={fare.priorityFee} country={data.country}/>:null}{fare.membershipSaving?<FareRow label="Kareebu Black saving" amount={-fare.membershipSaving} country={data.country}/>:null}{fare.promoDiscount?<FareRow label="Promotion" amount={-fare.promoDiscount} country={data.country}/>:null}<View style={styles.divider}/><View style={styles.totalRow}><Text style={styles.totalLabel}>Estimated total</Text><Text style={styles.totalAmount}>{formatMoney(data.country,fare.total)}</Text></View></RoundedCard>

@@ -14,11 +14,13 @@ import { formatMoney } from '../../locale';
 import { useRegisterBackControl } from '../../navigation/AppNavigation';
 import { MarketplaceCategoryHeader, MarketplacePromoBanner, MarketplacePromoGrid, MarketplaceRecommendedRail } from '../../marketplace/MarketplaceCategoryChrome';
 import type {
+  FoodBestSellerDish,
   FoodDiscoveryAdvancedFilters,
   FoodDiscoverySort,
   FoodHomeController,
   FoodHomeRestaurant,
 } from './types';
+import { foodCategorySearchContext } from '../../search/context';
 
 function SurfaceHeader({
   title,
@@ -109,18 +111,74 @@ function RestaurantRow({
           <Text numberOfLines={1} style={styles.restaurantName}>{restaurant.name}</Text>
         </View>
         <Text numberOfLines={1} style={styles.restaurantMeta}>
-          ★ {restaurant.rating.toFixed(1)} ({restaurant.reviews}) · {restaurant.eta} · {restaurant.distance}
+          {restaurant.liveAvailability?`★ ${restaurant.rating.toFixed(1)} (${restaurant.reviews}) · ${restaurant.eta} · ${restaurant.distance}`:'Reference listing'}
         </Text>
         <Text numberOfLines={1} style={styles.restaurantMeta}>
-          {[restaurant.priceLevel, restaurant.neighborhood, restaurant.cuisine, restaurant.deliveryLabel].filter(Boolean).join(' · ')}
+          {[restaurant.priceLevel, restaurant.neighborhood, restaurant.cuisine, restaurant.liveAvailability?restaurant.deliveryLabel:'Check current availability'].filter(Boolean).join(' · ')}
         </Text>
-        {restaurant.offer ? <Text numberOfLines={1} style={styles.offer}>{restaurant.offer}</Text> : null}
+        {restaurant.liveAvailability&&restaurant.offer ? <Text numberOfLines={1} style={styles.offer}>{restaurant.offer}</Text> : null}
       </View>
 
       <FavouriteButton
         active={controller.favouriteIds.includes(restaurant.id)}
         onPress={() => controller.actions.toggleFavourite(restaurant.id)}
       />
+    </Pressable>
+  );
+}
+
+function BestSellerDishRow({
+  dish,
+  controller,
+}: {
+  dish: FoodBestSellerDish;
+  controller: FoodHomeController;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${dish.dishName} from ${dish.restaurantName}`}
+      accessibilityHint="Opens this menu item"
+      onPress={() =>
+        controller.actions.openFoodItem(
+          dish.route.restaurantId,
+          dish.route.menuItemId,
+        )
+      }
+      style={({ pressed }) => [
+        styles.bestSellerDishRow,
+        pressed && styles.pressed,
+      ]}
+    >
+      <Image
+        source={dish.dishImage}
+        resizeMode="cover"
+        style={styles.bestSellerDishImage}
+      />
+      <View style={styles.restaurantCopy}>
+        <Text numberOfLines={2} style={styles.dishName}>
+          {dish.dishName}
+        </Text>
+        <View style={styles.bestSellerRestaurantIdentity}>
+          <View
+            style={[
+              styles.bestSellerRestaurantLogoWrap,
+              { backgroundColor: dish.restaurantLogoBackgroundColor },
+            ]}
+          >
+            <Image
+              source={dish.restaurantLogo}
+              resizeMode="contain"
+              style={styles.bestSellerRestaurantLogo}
+            />
+          </View>
+          <Text numberOfLines={2} style={styles.bestSellerRestaurantName}>
+            {dish.restaurantName}
+          </Text>
+        </View>
+        <Text style={styles.dishPrice}>Menu price confirmed when opened</Text>
+      </View>
+      <Feather name="chevron-right" size={21} color="#72777B" />
     </Pressable>
   );
 }
@@ -243,6 +301,14 @@ export function FoodListingSurface({
   controller: FoodHomeController;
 }) {
   const title = controller.surface.kind === 'listing' ? controller.surface.title : 'Restaurants';
+  const isBestSellerListing =
+    controller.surface.kind === 'listing' &&
+    controller.surface.source === 'best-sellers';
+  const searchCategory =
+    controller.surface.kind === 'listing' &&
+    controller.surface.source === 'popular-restaurants'
+      ? 'popular'
+      : title;
   const recommended=controller.listingRestaurants.slice(0,6).map((restaurant)=>({
     id:restaurant.id,
     name:restaurant.name,
@@ -256,33 +322,63 @@ export function FoodListingSurface({
         <MarketplaceCategoryHeader
           location={`${controller.document.market.city}, ${controller.document.market.country}`}
           searchPlaceholder={`Search ${title.toLowerCase()}...`}
+          searchContext={foodCategorySearchContext(searchCategory,{market:controller.document.market.country,city:controller.document.market.city})}
           onSearchPress={controller.actions.openSearch}
           onBack={controller.back}
           onMenu={controller.openFilters}
         />
 
         <View style={{paddingHorizontal:14}}>
-          <MarketplacePromoBanner category="Food" onPress={()=>controller.openPromo()}/>
-
-          <MarketplaceRecommendedRail
-            title={`Recommended ${title}`}
-            merchants={recommended}
-            onPress={(id)=>controller.actions.openRestaurant(id)}
-          />
-
-          <MarketplacePromoGrid category="Food" onPress={()=>controller.actions.openOffers()}/>
-
-          <View style={styles.listingSummary}>
-            <Text style={styles.listingCount}>{controller.listingRestaurants.length} restaurant{controller.listingRestaurants.length === 1 ? '' : 's'}</Text>
-            {controller.hasAdvancedFilters ? <Pressable onPress={controller.clearAdvancedFilters}><Text style={styles.clearLink}>Clear filters</Text></Pressable> : null}
-          </View>
-
-          {controller.listingRestaurants.length ? (
-            <View style={styles.listCard}>
-              {controller.listingRestaurants.map((restaurant) => <RestaurantRow key={restaurant.id} restaurant={restaurant} controller={controller} />)}
-            </View>
+          {isBestSellerListing ? (
+            <>
+              <View style={styles.bestSellerListingHeader}>
+                <Text style={styles.bestSellerListingTitle}>Configured restaurant menu picks</Text>
+                <Text style={styles.listingCount}>
+                  {controller.bestSellerDishes.length} dish{controller.bestSellerDishes.length === 1 ? '' : 'es'}
+                </Text>
+              </View>
+              {controller.bestSellerDishes.length ? (
+                <View style={styles.listCard}>
+                  {controller.bestSellerDishes.map((dish) => (
+                    <BestSellerDishRow
+                      key={`${dish.restaurantId}-${dish.menuItemId}`}
+                      dish={dish}
+                      controller={controller}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <Empty
+                  title="No restaurant menu picks available"
+                  body="Restaurant-linked dishes appear here only when an exact menu relationship and catalogue image are configured."
+                />
+              )}
+            </>
           ) : (
-            <Empty title="No restaurants found" body="Try clearing a filter or choosing another Food category." />
+            <>
+              <MarketplacePromoBanner category="Food" onPress={()=>controller.openPromo()}/>
+
+              <MarketplaceRecommendedRail
+                title={`Recommended ${title}`}
+                merchants={recommended}
+                onPress={(id)=>controller.actions.openRestaurant(id)}
+              />
+
+              <MarketplacePromoGrid category="Food" onPress={()=>controller.actions.openOffers()}/>
+
+              <View style={styles.listingSummary}>
+                <Text style={styles.listingCount}>{controller.listingRestaurants.length} restaurant{controller.listingRestaurants.length === 1 ? '' : 's'}</Text>
+                {controller.hasAdvancedFilters ? <Pressable onPress={controller.clearAdvancedFilters}><Text style={styles.clearLink}>Clear filters</Text></Pressable> : null}
+              </View>
+
+              {controller.listingRestaurants.length ? (
+                <View style={styles.listCard}>
+                  {controller.listingRestaurants.map((restaurant) => <RestaurantRow key={restaurant.id} restaurant={restaurant} controller={controller} />)}
+                </View>
+              ) : (
+                <Empty title={controller.surface.kind==='listing'&&controller.surface.source==='speedy'?'No restaurants currently have a verified estimate of 20 minutes or less.':'No restaurants found'} body={controller.surface.kind==='listing'&&controller.surface.source==='speedy'?'You can still browse all configured restaurants.':'Try clearing a filter or choosing another Food category.'} />
+              )}
+            </>
           )}
         </View>
       </ScrollView>
@@ -400,6 +496,14 @@ const styles = StyleSheet.create({
   dishName: { fontSize: 15, lineHeight: 20, fontWeight: '900', color: '#17191B' },
   dishDescription: { marginTop: 3, fontSize: 12, lineHeight: 16, color: '#73787C' },
   dishPrice: { marginTop: 5, fontSize: 13, lineHeight: 17, fontWeight: '900', color: '#17191B' },
+  bestSellerListingHeader:{paddingTop:20,paddingBottom:12},
+  bestSellerListingTitle:{fontSize:18,lineHeight:24,fontWeight:'900',color:'#17191B',marginBottom:4},
+  bestSellerDishRow:{minHeight:126,flexDirection:'row',alignItems:'center',gap:12,padding:11,borderBottomWidth:1,borderBottomColor:'#ECEDEF'},
+  bestSellerDishImage:{width:98,height:98,borderRadius:14,backgroundColor:'#F1F2F3'},
+  bestSellerRestaurantIdentity:{marginTop:5,flexDirection:'row',alignItems:'center',gap:7},
+  bestSellerRestaurantLogoWrap:{width:30,height:30,borderRadius:8,borderWidth:1,borderColor:'#E5E6E5',padding:4,alignItems:'center',justifyContent:'center'},
+  bestSellerRestaurantLogo:{width:'100%',height:'100%'},
+  bestSellerRestaurantName:{flex:1,fontSize:12,lineHeight:16,fontWeight:'800',color:'#64696D'},
   empty: { alignItems: 'center', paddingVertical: 54, paddingHorizontal:14 },
   emptyIcon: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#F1F2F3', alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { marginTop: 13, fontSize: 17, lineHeight: 22, fontWeight: '900', color: '#25282A', textAlign: 'center' },

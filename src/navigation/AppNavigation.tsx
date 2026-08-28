@@ -2,7 +2,6 @@ import React, {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useState,
@@ -43,13 +42,6 @@ export function AppNavigationProvider({
   children: React.ReactNode;
 }) {
   const [registeredBackControls, setRegisteredBackControls] = useState(0);
-
-  useEffect(() => {
-    // Each route starts clean. Existing controls re-register after the route
-    // renders. This prevents a control on the previous page from suppressing
-    // the universal fallback on the next one.
-    setRegisteredBackControls(0);
-  }, [screen]);
 
   const registerBackControl = useCallback(() => {
     let active = true;

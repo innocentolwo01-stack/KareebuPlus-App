@@ -1,0 +1,9 @@
+export type PolicyFeature='global_browse'|'global_procurement'|'rides'|'boda'|'send'|'pharmacy_prescription'|'merchant_payouts'|'mobile_money'|'cards'|'cash'|'pay_transfers';
+export type CountryCompliancePack={country:'Uganda'|'Kenya'|'Tanzania';effectiveFrom:string;privacyRegime:string;paymentNotes:string;taxAuthority:string;features:Record<PolicyFeature,boolean>;requiresCountrySpecificTariffs:boolean;notes:string[]};
+
+const baseFeatures:Record<PolicyFeature,boolean>={global_browse:true,global_procurement:true,rides:true,boda:true,send:true,pharmacy_prescription:false,merchant_payouts:true,mobile_money:true,cards:true,cash:false,pay_transfers:true};
+export const COUNTRY_COMPLIANCE_PACKS:Record<CountryCompliancePack['country'],CountryCompliancePack>={
+  Uganda:{country:'Uganda',effectiveFrom:'2026-07-01',privacyRegime:'Uganda Data Protection and Privacy framework',paymentNotes:'Use licensed payment providers; Kareebu Pay acts as orchestration/UI unless separately licensed.',taxAuthority:'URA',features:{...baseFeatures},requiresCountrySpecificTariffs:true,notes:['Global quotes require Uganda/EAC tariff resolver and restricted-goods checks.','Tax and fiscalisation integrations remain provider boundaries until formally connected.']},
+  Kenya:{country:'Kenya',effectiveFrom:'2026-07-01',privacyRegime:'Kenya Data Protection framework',paymentNotes:'Use licensed Kenyan payment rails and market-specific provider configuration.',taxAuthority:'KRA',features:{...baseFeatures},requiresCountrySpecificTariffs:true,notes:['Do not reuse Uganda tariff assumptions.']},
+  Tanzania:{country:'Tanzania',effectiveFrom:'2026-07-01',privacyRegime:'Tanzania Personal Data Protection framework',paymentNotes:'Use licensed Tanzania payment providers and market-specific configuration.',taxAuthority:'TRA',features:{...baseFeatures},requiresCountrySpecificTariffs:true,notes:['Do not reuse Uganda tariff assumptions.']},
+};

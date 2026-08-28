@@ -1,4 +1,7 @@
-export type SupportedCountry = 'Uganda' | 'Kenya' | 'Tanzania';
+import { MARKET_CONFIG, marketConfig, type SupportedCountry } from './markets/config';
+import { marketContent } from './content/markets';
+
+export type { SupportedCountry } from './markets/config';
 
 export type LocaleProfile = {
   country: SupportedCountry;
@@ -8,42 +11,39 @@ export type LocaleProfile = {
   currencyScaleFromUgx: number;
   primaryMobileMoney: string;
   secondaryMobileMoney: string;
+  primaryCity: string;
+  timezone: string;
+  cityToCityExamples: Array<{ city: string; detail: string; baseFareUgx: number }>;
 };
 
-const LOCALE_PROFILES: Record<SupportedCountry, LocaleProfile> = {
-  Uganda: {
-    country: 'Uganda',
-    iso: 'UG',
-    dialCode: '+256',
-    currency: 'UGX',
-    currencyScaleFromUgx: 1,
-    primaryMobileMoney: 'MTN Mobile Money',
-    secondaryMobileMoney: 'Airtel Money',
-  },
-  Kenya: {
-    country: 'Kenya',
-    iso: 'KE',
-    dialCode: '+254',
-    currency: 'KES',
-    // Demo display scaling only. Production pricing should come from the local fare/catalogue service.
-    currencyScaleFromUgx: 0.035,
-    primaryMobileMoney: 'M-PESA',
-    secondaryMobileMoney: 'Airtel Money',
-  },
-  Tanzania: {
-    country: 'Tanzania',
-    iso: 'TZ',
-    dialCode: '+255',
-    currency: 'TZS',
-    // Demo display scaling only. Production pricing should come from the local fare/catalogue service.
-    currencyScaleFromUgx: 0.70,
-    primaryMobileMoney: 'M-Pesa',
-    secondaryMobileMoney: 'Airtel Money',
-  },
+const CITY_FARES: Record<SupportedCountry, number[]> = {
+  Uganda: [80000, 260000],
+  Kenya: [260000, 410000],
+  Tanzania: [210000, 480000],
 };
+
+const LOCALE_PROFILES = Object.fromEntries(
+  (Object.keys(MARKET_CONFIG) as SupportedCountry[]).map((country) => {
+    const config = MARKET_CONFIG[country];
+    const destinations = marketContent(country).rideDestinations;
+    return [country, {
+      country,
+      iso: config.iso,
+      dialCode: config.dialCode,
+      currency: config.currency,
+      currencyScaleFromUgx: config.currencyScaleFromUgx,
+      primaryMobileMoney: config.mobileMoney[0],
+      secondaryMobileMoney: config.mobileMoney[1],
+      primaryCity: config.primaryCity,
+      timezone: config.timezone,
+      cityToCityExamples: destinations.map((destination, index) => ({ city: destination.label, detail: destination.detail, baseFareUgx: CITY_FARES[country][index] })),
+    } satisfies LocaleProfile];
+  }),
+) as Record<SupportedCountry, LocaleProfile>;
 
 export function localeProfile(country: string): LocaleProfile {
-  return LOCALE_PROFILES[country as SupportedCountry] ?? LOCALE_PROFILES.Uganda;
+  const resolved = marketConfig(country).country;
+  return LOCALE_PROFILES[resolved];
 }
 
 export function localAmount(country: string, baseUgx: number) {
@@ -66,4 +66,12 @@ export function primaryMobileMoneyFor(country: string) {
 
 export function secondaryMobileMoneyFor(country: string) {
   return localeProfile(country).secondaryMobileMoney;
+}
+
+export function formatLocalDateTime(country: string, date = new Date()) {
+  const profile = localeProfile(country);
+  return new Intl.DateTimeFormat('en', {
+    weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    timeZone: profile.timezone,
+  }).format(date);
 }

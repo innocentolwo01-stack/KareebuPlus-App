@@ -14,12 +14,8 @@ type Restaurant = {
   id: string;
   restaurantId: string;
   name: string;
-  rating: string;
-  reviews: string;
-  eta: string;
   distance: string;
   cuisine: string;
-  deliveryFee: string;
   offer?: string;
   photoUrl: string;
   image: ImageSourcePropType;
@@ -46,12 +42,8 @@ const RESTAURANTS: Restaurant[] = [
     id: 'kampala-bistro',
     restaurantId: 'kampala-bistro',
     name: 'Kampala Bistro',
-    rating: '4.7',
-    reviews: '1.8k',
-    eta: '20–30 mins',
     distance: '2.8 km',
     cuisine: 'Ugandan · East African',
-    deliveryFee: 'UGX 2,000',
     photoUrl: REAL_DINEOUT_PHOTOS.cafe,
     image: require('../../assets/kareebu-plus/dineout/restaurant-kampala-bistro.jpg'),
   },
@@ -59,13 +51,8 @@ const RESTAURANTS: Restaurant[] = [
     id: 'kololo-kitchen',
     restaurantId: 'kololo-kitchen',
     name: 'Kololo Kitchen',
-    rating: '4.8',
-    reviews: '1.2k',
-    eta: '25–35 mins',
     distance: '3.6 km',
     cuisine: 'African · Grill',
-    deliveryFee: 'UGX 2,500',
-    offer: '20% off',
     photoUrl: REAL_DINEOUT_PHOTOS.african,
     image: require('../../assets/kareebu-plus/dineout/restaurant-kololo-kitchen.jpg'),
   },
@@ -73,12 +60,8 @@ const RESTAURANTS: Restaurant[] = [
     id: 'acacia-grill',
     restaurantId: 'acacia-grill',
     name: 'Acacia Grill',
-    rating: '4.8',
-    reviews: '760',
-    eta: '20–30 mins',
     distance: '4.1 km',
     cuisine: 'Grill · Continental',
-    deliveryFee: 'UGX 3,000',
     photoUrl: REAL_DINEOUT_PHOTOS.grill,
     image: require('../../assets/kareebu-plus/dineout/restaurant-acacia-grill.jpg'),
   },
@@ -116,9 +99,11 @@ function RealDineOutPhoto({ url, fallback, style }: { url: string; fallback: Ima
 export function KareebuDineOutSection({
   onOpenRestaurant,
   onOpenDineOut,
+  city,
 }: {
   onOpenRestaurant: (restaurantId: string) => void;
   onOpenDineOut: () => void;
+  city: string;
 }) {
   const { width } = useWindowDimensions();
 
@@ -138,7 +123,7 @@ export function KareebuDineOutSection({
       <View style={styles.sectionHeader}>
         <View>
           <Text style={styles.sectionTitle}>DineOut</Text>
-          <Text style={styles.sectionSubtitle}>Great places around Kampala</Text>
+          <Text style={styles.sectionSubtitle}>Plan a meal out around {city}</Text>
         </View>
         <Pressable
           onPress={onOpenDineOut}
@@ -178,9 +163,9 @@ export function KareebuDineOutSection({
         disableIntervalMomentum
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => onOpenRestaurant(item.restaurantId)}
+            onPress={onOpenDineOut}
             accessibilityRole="button"
-            accessibilityLabel={`${item.name}, ${item.rating} stars, ${item.eta}`}
+            accessibilityLabel={`${item.name}, reference dining listing, explore dine-in options`}
             style={({ pressed }) => [
               styles.restaurantCard,
               { width: restaurantWidth },
@@ -207,20 +192,19 @@ export function KareebuDineOutSection({
               </Text>
 
               <View style={styles.ratingRow}>
-                <Text style={styles.rating}>★ {item.rating}</Text>
-                <Text style={styles.reviews}>({item.reviews})</Text>
+                <Text style={styles.rating}>Reference dining listing</Text>
                 <View style={styles.metaDot} />
-                <Text style={styles.eta}>{item.eta}</Text>
+                <Text style={styles.eta}>Dine-in</Text>
               </View>
 
               <View style={styles.detailRow}>
                 <Text numberOfLines={1} style={styles.cuisine}>
                   {item.cuisine}
                 </Text>
-                <Text style={styles.distance}>{item.distance}</Text>
+                <Text style={styles.distance}>Availability confirmed separately</Text>
               </View>
 
-              <Text style={styles.deliveryFee}>Delivery {item.deliveryFee}</Text>
+              <Text style={styles.deliveryFee}>Table availability confirmed by restaurant</Text>
             </View>
           </Pressable>
         )}
